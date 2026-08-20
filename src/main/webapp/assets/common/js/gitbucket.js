@@ -1,9 +1,13 @@
+const logger = console;
 $(function(){
+logger.debug('>>> Entering function()');
   // disable Ajax cache
   $.ajaxSetup({ cache: false });
 
   // repository url text field
   $('#repository-url').click(function(){
+	logger.debug('>>> Entering click()');
+	logger.debug('<<< Exiting click()');
     this.select(0, this.value.length);
   });
 
@@ -14,12 +18,16 @@ $(function(){
 
   // activate hotkey
   $('a[data-hotkey]').each(function(){
+	logger.debug('>>> Entering each()');
     var target = this;
+	logger.debug('<<< Exiting each()');
     $(document).bind('keydown', $(target).data('hotkey'), function(){ target.click(); });
   });
 
   // anchor icon for markdown
   $('.markdown-head').on('mouseenter', function(e){
+	logger.debug('>>> Entering on()');
+	logger.debug('<<< Exiting on()');
     $(this).find('span.octicon').css('visibility', 'visible');
   });
   $('.markdown-head').on('mouseleave', function(e){
@@ -32,8 +40,10 @@ $(function(){
   // Suppress transition animation on load
   $("body").removeClass("page-load");
 });
+logger.debug('<<< Exiting function()');
 
 function displayErrors(data, elem){
+logger.debug(`>>> Entering displayErrors(data=${data},elem=${elem})`);
   var i = 0;
   $.each(data, function(key, value){
     $('#error-' + key.split(".").join("_"), elem).text(value);
@@ -42,6 +52,7 @@ function displayErrors(data, elem){
     }
     i++;
   });
+logger.debug(`<<< Exiting displayErrors(data=${data},elem=${elem})`);
 }
 
 (function($){
@@ -57,8 +68,10 @@ function displayErrors(data, elem){
           callback();
         }
         prevValue = newValue;
+		logger.debug(`setInterval(newValue=${newValue}): newValue → ${newValue}`);
       }, 10);
     });
+	logger.debug(`<<< Exiting setInterval(newValue=${newValue})`);
 
     this.on('blur', function(){
       window.clearInterval(timer);
@@ -102,6 +115,7 @@ function diffUsingJS(oldTextId, newTextId, outputId, viewType, ignoreSpace, file
 
 
 function jqSelectorEscape(val) {
+	logger.debug(`>>> Entering jqSelectorEscape(val=${val})`);
     return val.replace(/[!"#$%&'()*+,.\/:;<=>?@\[\\\]^`{|}~]/g, '\\$&');
 }
 
@@ -664,6 +678,7 @@ var imageDiff ={
     stack.onMoveHandleOnBar(function(x){
       stack.neo.toggle(Math.floor(x) % 2 === 0);
     });
+	logger.debug('>>> Entering onMoveHandleOnBar()');
     return stack.div.addClass('blink');
   },
   /** create onion skin box

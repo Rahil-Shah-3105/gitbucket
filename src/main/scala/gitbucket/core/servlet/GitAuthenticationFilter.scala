@@ -28,9 +28,12 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
   override def destroy(): Unit = {}
 
   def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain): Unit = {
+    logger.debug(">>> Entering doFilter(req={},res={},chain={})", req, res, chain)
     val request = req.asInstanceOf[HttpServletRequest]
     val response = res.asInstanceOf[HttpServletResponse]
+    logger.debug("doFilter(req={},res={},chain={}): response → {}", req, res, chain, response)
 
+    logger.debug("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
     val wrappedResponse = new HttpServletResponseWrapper(response) {
       override def setCharacterEncoding(encoding: String) = {}
     }
@@ -142,6 +145,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
         }
     }
 
+    logger.debug("<<< Exiting defaultRepository(request={},response={},chain={},settings={},isUpdating={})", request, response, chain, settings, isUpdating)
     action()
   }
 

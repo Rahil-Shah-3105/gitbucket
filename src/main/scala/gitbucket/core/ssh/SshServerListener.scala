@@ -17,6 +17,8 @@ object SshServer {
     publicAddress: SshAddress,
     baseUrl: String
   ): org.apache.sshd.server.SshServer = {
+    logger.debug(">>> Entering configure(bindAddress={},publicAddress={},baseUrl={})", bindAddress, publicAddress, baseUrl)
+    logger.debug("configure(bindAddress={},publicAddress={},baseUrl={}): SshServer → {}", bindAddress, publicAddress, baseUrl, SshServer)
     val server = org.apache.sshd.server.SshServer.setUpDefaultServer()
     server.setPort(bindAddress.port)
     val provider = new SimpleGeneratorHostKeyProvider(
@@ -30,13 +32,17 @@ object SshServer {
       new GitCommandFactory(baseUrl, publicAddress)
     )
     server.setShellFactory(new NoShell(publicAddress))
+    logger.debug("configure(bindAddress={},publicAddress={},baseUrl={}): server → {}", bindAddress, publicAddress, baseUrl, server)
+    logger.debug("<<< Exiting configure(bindAddress={},publicAddress={},baseUrl={})", bindAddress, publicAddress, baseUrl)
     server
   }
 
   def start(bindAddress: SshAddress, publicAddress: SshAddress, baseUrl: String): Unit = {
+    logger.debug("<<< Exiting start(bindAddress={},publicAddress={},baseUrl={})", bindAddress, publicAddress, baseUrl)
     this.server.synchronized {
       val server = configure(bindAddress, publicAddress, baseUrl)
       if (this.server.compareAndSet(null, server)) {
+       logger.debug("start(bindAddress={},publicAddress={},baseUrl={}): server → {}", bindAddress, publicAddress, baseUrl, server)
         server.start()
         logger.info(s"Start SSH Server Listen on ${server.getPort}")
       }
@@ -44,9 +50,12 @@ object SshServer {
   }
 
   def stop(): Unit = {
+    logger.debug(">>> Entering stop()")
     this.server.synchronized {
+      logger.debug("<<< Exiting stop()")
       val server = this.server.getAndSet(null)
       if (server != null) {
+       logger.debug("stop(): server → {}", server)
         server.stop()
         logger.info("SSH Server is stopped.")
       }
@@ -67,8 +76,10 @@ class SshServerListener extends ServletContextListener with SystemSettingsServic
   override def contextInitialized(sce: ServletContextEvent): Unit = {
     val settings = loadSystemSettings()
     if (settings.sshBindAddress.isDefined && settings.baseUrl.isEmpty) {
+     logger.debug("contextInitialized(sce={}): settings → {}", sce, settings)
       logger.error("Could not start SshServer because the baseUrl is not configured.")
     }
+    logger.debug("<<< Exiting contextInitialized(sce={})", sce)
     for {
       bindAddress <- settings.sshBindAddress
       publicAddress <- settings.sshPublicAddress
@@ -77,6 +88,8 @@ class SshServerListener extends ServletContextListener with SystemSettingsServic
   }
 
   override def contextDestroyed(sce: ServletContextEvent): Unit = {
+    logger.debug(">>> Entering contextDestroyed(sce={})", sce)
+    logger.debug("<<< Exiting contextDestroyed(sce={})", sce)
     SshServer.stop()
   }
 

@@ -6,6 +6,7 @@ trait PriorityComponent extends TemplateComponent { self: Profile =>
   lazy val Priorities = TableQuery[Priorities]
 
   class Priorities(tag: Tag) extends Table[Priority](tag, "PRIORITY") with PriorityTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     override val priorityId = column[Int]("PRIORITY_ID", O AutoInc)
     override val priorityName = column[String]("PRIORITY_NAME")
     val description = column[String]("DESCRIPTION")
@@ -17,6 +18,9 @@ trait PriorityComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(owner: String, repository: String, priorityId: Int) = byPriority(owner, repository, priorityId)
     def byPrimaryKey(userName: Rep[String], repositoryName: Rep[String], priorityId: Rep[Int]) =
+      logger.debug(">>> Entering byPrimaryKey(owner={},repository={},priorityId={})", owner, repository, priorityId)
+      logger.debug("byPrimaryKey(userName={},repositoryName={},priorityId={}): r → {}", userName, repositoryName, priorityId, r)
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},priorityId={})", userName, repositoryName, priorityId)
       byPriority(userName, repositoryName, priorityId)
   }
 }
@@ -38,6 +42,8 @@ case class Priority(
     val b = color.substring(4, 6)
 
     if (Integer.parseInt(r, 16) + Integer.parseInt(g, 16) + Integer.parseInt(b, 16) > 408) {
+      logger.debug("byPrimaryKey(userName={},repositoryName={},priorityId={}): g → {}", userName, repositoryName, priorityId, g)
+      logger.debug("byPrimaryKey(userName={},repositoryName={},priorityId={}): b → {}", userName, repositoryName, priorityId, b)
       "000000"
     } else {
       "ffffff"

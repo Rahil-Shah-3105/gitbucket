@@ -17,9 +17,13 @@ object PublicKeyAuthenticator {
   private val authTypeSessionKey = new AttributeRepository.AttributeKey[AuthType]
 
   def putAuthType(serverSession: ServerSession, authType: AuthType): Unit =
+    logger.debug(">>> Entering putAuthType(serverSession={},authType={})", serverSession, authType)
+    logger.debug("putAuthType(serverSession={},authType={}): serverSession → {}", serverSession, authType, serverSession)
     serverSession.setAttribute(authTypeSessionKey, authType)
 
   def getAuthType(serverSession: ServerSession): Option[AuthType] =
+    logger.debug(">>> Entering getAuthType(serverSession={})", serverSession)
+    logger.debug("<<< Exiting getAuthType(serverSession={})", serverSession)
     Option(serverSession.getAttribute(authTypeSessionKey))
 
   sealed trait AuthType
@@ -32,6 +36,7 @@ object PublicKeyAuthenticator {
      * Retrieves username if authType is UserAuthType, otherwise None.
      */
     def userName(authType: AuthType): Option[String] = {
+      logger.debug(">>> Entering userName(authType={})", authType)
       authType match {
         case UserAuthType(userName) => Some(userName)
         case _                      => None
@@ -47,8 +52,10 @@ class PublicKeyAuthenticator(genericUser: String)
   private val logger = LoggerFactory.getLogger(classOf[PublicKeyAuthenticator])
 
   override def authenticate(username: String, key: PublicKey, session: ServerSession): Boolean = {
+    logger.debug(">>> Entering authenticate(username={},key={},session={})", username, key, session)
     Database().withSession { implicit s =>
       if (username == genericUser) {
+      logger.debug("<<< Exiting authenticate(username={},key={},session={})", username, key, session)
         authenticateGenericUser(username, key, session, genericUser)
       } else {
         authenticateLoginUser(username, key, session)
@@ -59,6 +66,7 @@ class PublicKeyAuthenticator(genericUser: String)
   private def authenticateLoginUser(userName: String, key: PublicKey, session: ServerSession)(implicit
     s: Session
   ): Boolean = {
+    logger.debug(">>> Entering authenticateLoginUser(userName={},key={},session={})", userName, key, session)
     val authenticated = getPublicKeys(userName).map(_.publicKey).flatMap(SshUtil.str2PublicKey).contains(key)
 
     if (authenticated) {
@@ -67,12 +75,14 @@ class PublicKeyAuthenticator(genericUser: String)
     } else {
       logger.info(s"authentication as ssh user ${userName} failed")
     }
+    logger.debug("<<< Exiting authenticateLoginUser(userName={},key={},session={})", userName, key, session)
     authenticated
   }
 
   private def authenticateGenericUser(userName: String, key: PublicKey, session: ServerSession, genericUser: String)(
     implicit s: Session
   ): Boolean = {
+    logger.debug(">>> Entering authenticateGenericUser(userName={},key={},session={},genericUser={})", userName, key, session, genericUser)
     // find all users having the key we got from ssh
     val possibleUserNames = getAllKeys()
       .filter { sshKey =>
@@ -95,6 +105,7 @@ class PublicKeyAuthenticator(genericUser: String)
         true
       }
       .getOrElse {
+        logger.debug("<<< Exiting authenticateGenericUser(userName={},key={},session={},genericUser={})", userName, key, session, genericUser)
         // search deploy keys
         val existsDeployKey = getAllDeployKeys().exists { sshKey =>
           SshUtil.str2PublicKey(sshKey.publicKey).contains(key)

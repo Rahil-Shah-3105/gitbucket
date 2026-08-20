@@ -9,6 +9,7 @@ trait ReleaseAssetComponent extends TemplateComponent { self: Profile =>
   lazy val ReleaseAssets = TableQuery[ReleaseAssets]
 
   class ReleaseAssets(tag_ : Tag) extends Table[ReleaseAsset](tag_, "RELEASE_ASSET") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val tag = column[String]("TAG")
     val releaseAssetId = column[Int]("RELEASE_ASSET_ID", O AutoInc)
     val fileName = column[String]("FILE_NAME")
@@ -22,8 +23,11 @@ trait ReleaseAssetComponent extends TemplateComponent { self: Profile =>
       (userName, repositoryName, tag, releaseAssetId, fileName, label, size, uploader, registeredDate, updatedDate)
         .mapTo[ReleaseAsset]
     def byPrimaryKey(owner: String, repository: String, tag: String, fileName: String) =
+      logger.debug(">>> Entering byPrimaryKey(owner={},repository={},tag={},fileName={})", owner, repository, tag, fileName)
       byTag(owner, repository, tag) && (this.fileName === fileName.bind)
     def byTag(owner: String, repository: String, tag: String) =
+      logger.debug(">>> Entering byTag(owner={},repository={},tag={})", owner, repository, tag)
+      logger.debug("<<< Exiting byTag(owner={},repository={},tag={})", owner, repository, tag)
       byRepository(owner, repository) && (this.tag === tag.bind)
   }
 }

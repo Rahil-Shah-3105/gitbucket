@@ -9,6 +9,7 @@ trait CommitStatusComponent extends TemplateComponent { self: Profile =>
 
   lazy val CommitStatuses = TableQuery[CommitStatuses]
   class CommitStatuses(tag: Tag) extends Table[CommitStatus](tag, "COMMIT_STATUS") with CommitTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val commitStatusId = column[Int]("COMMIT_STATUS_ID", O AutoInc)
     val context = column[String]("CONTEXT")
     val state = column[CommitState]("STATE")
@@ -50,6 +51,7 @@ case class CommitStatus(
 )
 object CommitStatus {
   def pending(owner: String, repository: String, context: String) =
+    logger.debug(">>> Entering pending(owner={},repository={},context={})", owner, repository, context)
     CommitStatus(
       commitStatusId = 0,
       userName = owner,
@@ -62,8 +64,14 @@ object CommitStatus {
       creator = "",
       registeredDate = new java.util.Date(),
       updatedDate = new java.util.Date()
+    logger.debug("<<< Exiting pending(owner={},repository={},context={})", owner, repository, context)
     )
 }
+logger.debug("pending(owner={},repository={},context={}): userName → {}", owner, repository, context, userName)
+logger.debug("pending(owner={},repository={},context={}): repositoryName → {}", owner, repository, context, repositoryName)
+logger.debug("pending(owner={},repository={},context={}): commitId → {}", owner, repository, context, commitId)
+logger.debug("pending(owner={},repository={},context={}): values → {}", owner, repository, context, values)
+logger.debug("pending(owner={},repository={},context={}): map → {}", owner, repository, context, map)
 
 sealed abstract class CommitState(val name: String)
 
@@ -81,16 +89,21 @@ object CommitState {
   private val map: Map[String, CommitState] = values.map(e => e.name -> e).toMap
 
   def apply(name: String): CommitState = map(name)
+  logger.debug(">>> Entering apply(name={})", name)
 
   def valueOf(name: String): Option[CommitState] = map.get(name)
 
   /**
    * failure if any of the contexts report as error or failure
+   logger.debug(">>> Entering valueOf(name={})", name)
    * pending if there are no statuses or a context is pending
    * success if the latest status for all contexts is success
+   logger.debug("<<< Exiting valueOf(name={})", name)
    */
   def combine(statuses: Set[CommitState]): CommitState = {
+    logger.debug(">>> Entering combine(statuses={})", statuses)
     if (statuses.isEmpty) {
+      logger.debug("<<< Exiting combine(statuses={})", statuses)
       PENDING
     } else if (statuses.contains(CommitState.ERROR) || statuses.contains(CommitState.FAILURE)) {
       FAILURE
@@ -101,4 +114,5 @@ object CommitState {
     }
   }
 
+  logger.debug("<<< Exiting byPrimaryKey(id={})", id)
 }

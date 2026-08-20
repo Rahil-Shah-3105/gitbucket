@@ -22,8 +22,11 @@ class TransactionFilter extends Filter {
   override def destroy(): Unit = {}
 
   def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain): Unit = {
+    logger.debug(">>> Entering doFilter(req={},res={},chain={})", req, res, chain)
     val servletPath = req.asInstanceOf[HttpServletRequest].getServletPath()
     if (servletPath.startsWith("/assets/") || servletPath == "/git" || servletPath == "/git-lfs") {
+     logger.debug("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
+     logger.debug("doFilter(req={},res={},chain={}): servletPath → {}", req, res, chain, servletPath)
       // assets and git-lfs don't need transaction
       chain.doFilter(req, res)
     } else {
@@ -70,10 +73,15 @@ object Database {
   }
 
   def apply(): SlickDatabase = db
+  logger.debug(">>> Entering apply()")
 
   def getSession(req: ServletRequest): Session =
+    logger.debug(">>> Entering getSession(req={})", req)
+    logger.debug("<<< Exiting getSession(req={})", req)
     req.getAttribute(Keys.Request.DBSession).asInstanceOf[Session]
 
+  logger.debug(">>> Entering closeDataSource()")
+  logger.debug("<<< Exiting closeDataSource()")
   def closeDataSource(): Unit = dataSource.close
 
 }
