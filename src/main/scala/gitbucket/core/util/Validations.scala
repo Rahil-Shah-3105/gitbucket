@@ -15,6 +15,8 @@ trait Validations {
       } else if (value.startsWith("_") || value.startsWith("-")) {
         Some(s"${name} starts with invalid character.")
       } else {
+        logger.debug(">>> Entering validate(name={},value={},messages={})", name, value, messages)
+        logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
         None
       }
   }
@@ -25,10 +27,12 @@ trait Validations {
   val repository: Constraint = new Constraint() {
     override def validate(name: String, value: String, messages: Messages): Option[String] =
       if (!value.matches("[a-zA-Z0-9\\-\\+_.]+")) {
+        logger.debug(">>> Entering validate(name={},value={},messages={})", name, value, messages)
         Some(s"${name} contains invalid character.")
       } else if (value.startsWith("_") || value.startsWith("-")) {
         Some(s"${name} starts with invalid character.")
       } else {
+        logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
         None
       }
   }
@@ -43,7 +47,11 @@ trait Validations {
    */
   def date(constraints: Constraint*): SingleValueType[java.util.Date] =
     new SingleValueType[java.util.Date]((pattern("\\d{4}-\\d{2}-\\d{2}") +: constraints)*) {
+      private val logger = LoggerFactory.getLogger(getClass)
       def convert(value: String, messages: Messages): java.util.Date =
+        logger.debug(">>> Entering date(constraints={})", constraints)
+        logger.debug(">>> Entering convert(value={},messages={})", value, messages)
+        logger.debug("<<< Exiting convert(value={},messages={})", value, messages)
         new java.text.SimpleDateFormat("yyyy-MM-dd").parse(value)
     }
 

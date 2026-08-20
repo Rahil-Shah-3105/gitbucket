@@ -9,6 +9,7 @@ import profile.api._
 trait IssueHook {
 
   def created(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = ()
+  logger.debug(">>> Entering created(issue={},repository={})", issue, repository)
   def addedComment(commentId: Int, content: String, issue: Issue, repository: RepositoryInfo)(implicit
     session: Session,
     context: Context
@@ -23,6 +24,7 @@ trait IssueHook {
   ): Unit = ()
   def closed(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = ()
   def reopened(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = ()
+  logger.debug(">>> Entering reopened(issue={},repository={})", issue, repository)
   def assigned(
     issue: Issue,
     repository: RepositoryInfo,
@@ -40,7 +42,10 @@ trait IssueHook {
 }
 
 trait PullRequestHook extends IssueHook {
+  private val logger = LoggerFactory.getLogger(getClass)
 
+  logger.debug(">>> Entering merged(issue={},repository={})", issue, repository)
+  logger.debug("<<< Exiting merged(issue={},repository={})", issue, repository)
   def merged(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = ()
 
 }

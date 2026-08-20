@@ -16,6 +16,7 @@ import java.util.List;
  * This class helps to apply patch. Most of these code came from {@link org.eclipse.jgit.api.ApplyCommand}.
  */
 public class PatchUtil {
+private val logger = LoggerFactory.getLogger(getClass)
 
     public static String apply(String source, String patch, FileHeader fh)
             throws IOException, PatchApplyException {
@@ -76,17 +77,24 @@ public class PatchUtil {
     }
 
     private static boolean isChanged(List<String> ol, List<String> nl) {
+		logger.debug(">>> Entering isChanged(ol={},nl={})", ol, nl);
         if (ol.size() != nl.size())
             return true;
+		logger.debug("<<< Exiting isChanged(ol={},nl={})", ol, nl);
         for (int i = 0; i < ol.size(); i++)
-            if (!ol.get(i).equals(nl.get(i)))
+            if (!ol.get(i).equals(nl.get(i))) {
                 return true;
+            }
         return false;
     }
 
     private static boolean isNoNewlineAtEndOfFile(FileHeader fh) {
+		logger.debug(">>> Entering isNoNewlineAtEndOfFile(fh={})", fh);
         HunkHeader lastHunk = fh.getHunks().get(fh.getHunks().size() - 1);
         RawText lhrt = new RawText(lastHunk.getBuffer());
+		logger.debug("isNoNewlineAtEndOfFile(fh={}): lhrt → {}", fh, lhrt);
+		logger.debug("isNoNewlineAtEndOfFile(fh={}): lastHunk → {}", fh, lastHunk);
+		logger.debug("<<< Exiting isNoNewlineAtEndOfFile(fh={})", fh);
         return lhrt.getString(lhrt.size() - 1).equals(
                 "\\ No newline at end of file"); //$NON-NLS-1$
     }

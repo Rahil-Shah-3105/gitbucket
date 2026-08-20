@@ -15,11 +15,14 @@ trait RepositorySearchService { self: IssuesService =>
   import RepositorySearchService._
 
   def countIssues(owner: String, repository: String, query: String, pullRequest: Boolean)(implicit
+  logger.debug(">>> Entering countIssues(owner={},repository={},query={},pullRequest={})", owner, repository, pullRequest)
     session: Session
   ): Int =
     searchIssuesByKeyword(owner, repository, query, pullRequest).length
 
   def searchIssues(owner: String, repository: String, query: String, pullRequest: Boolean)(implicit
+  logger.debug(">>> Entering searchIssues(owner={},repository={},query={},pullRequest={})", owner, repository, pullRequest)
+  logger.debug("<<< Exiting searchIssues(owner={},repository={},query={},pullRequest={})", owner, repository, pullRequest)
     session: Session
   ): List[IssueSearchResult] =
     searchIssuesByKeyword(owner, repository, query, pullRequest).map { case (issue, commentCount, content) =>
@@ -37,12 +40,16 @@ trait RepositorySearchService { self: IssuesService =>
 
   def countFiles(owner: String, repository: String, query: String): Int =
     Using.resource(Git.open(getRepositoryDir(owner, repository))) { git =>
+      logger.debug(">>> Entering countFiles(owner={},repository={},query={})", owner, repository)
+      logger.debug("<<< Exiting countFiles(owner={},repository={},query={})", owner, repository)
       if (JGitUtil.isEmpty(git)) 0 else searchRepositoryFiles(git, query).length
     }
 
   def searchFiles(owner: String, repository: String, query: String): List[FileSearchResult] =
     Using.resource(Git.open(getRepositoryDir(owner, repository))) { git =>
       if (JGitUtil.isEmpty(git)) {
+      logger.debug(">>> Entering searchFiles(owner={},repository={},query={})", owner, repository)
+      logger.debug("<<< Exiting searchFiles(owner={},repository={},query={})", owner, repository)
         Nil
       } else {
         val files = searchRepositoryFiles(git, query)
@@ -50,18 +57,23 @@ trait RepositorySearchService { self: IssuesService =>
         files.map { case (path, text) =>
           val (highlightText, lineNumber) = getHighlightText(text, query)
           FileSearchResult(path, commits(path).getCommitterIdent.getWhen, highlightText, lineNumber)
+        logger.debug("searchFiles(owner={},repository={},query={}): files → {}", owner, repository, files)
+        logger.debug("searchFiles(owner={},repository={},query={}): commits → {}", owner, repository, commits)
         }
       }
     }
 
   def countWikiPages(owner: String, repository: String, query: String): Int =
     Using.resource(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+      logger.debug(">>> Entering countWikiPages(owner={},repository={},query={})", owner, repository)
+      logger.debug("<<< Exiting countWikiPages(owner={},repository={},query={})", owner, repository)
       if (JGitUtil.isEmpty(git)) 0 else searchRepositoryFiles(git, query).length
     }
 
   def searchWikiPages(owner: String, repository: String, query: String): List[FileSearchResult] =
     Using.resource(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
       if (JGitUtil.isEmpty(git)) {
+      logger.debug(">>> Entering searchWikiPages(owner={},repository={},query={})", owner, repository)
         Nil
       } else {
         val files = searchRepositoryFiles(git, query)
@@ -72,9 +84,15 @@ trait RepositorySearchService { self: IssuesService =>
             path.stripSuffix(".md"),
             commits(path).getCommitterIdent.getWhen,
             highlightText,
+            logger.debug("searchWikiPages(owner={},repository={},query={}): files → {}", owner, repository, files)
+            logger.debug("searchWikiPages(owner={},repository={},query={}): commits → {}", owner, repository, commits)
             lineNumber
           )
         }
+      logger.debug(">>> Entering searchRepositoryFiles(git={},query={})", git)
+      val __logStart = System.currentTimeMillis()
+      logger.info("searchRepositoryFiles(git)={}: find query executed in {} ms", git, (System.currentTimeMillis() - __logStart))
+      logger.debug("<<< Exiting searchRepositoryFiles(git={},query={})", git)
       }
     }
 
@@ -88,16 +106,21 @@ trait RepositorySearchService { self: IssuesService =>
 
     val keywords = StringUtil.splitWords(query.toLowerCase)
     val list = new scala.collection.mutable.ListBuffer[(String, String)]
+    logger.debug("searchRepositoryFiles(git={},query={}): keywords → {}", git, keywords)
+    logger.debug("searchRepositoryFiles(git={},query={}): list → {}", git, list)
 
     while (treeWalk.next()) {
       val mode = treeWalk.getFileMode(0)
       if (mode == FileMode.REGULAR_FILE || mode == FileMode.EXECUTABLE_FILE) {
+        logger.debug("searchRepositoryFiles(git={},query={}): mode → {}", git, mode)
         JGitUtil.getContentFromId(git, treeWalk.getObjectId(0), false).foreach { bytes =>
           if (FileUtil.isText(bytes)) {
             val text = StringUtil.convertFromByteArray(bytes)
             val lowerText = text.toLowerCase
+            logger.debug("searchRepositoryFiles(git={},query={}): text → {}", git, text)
             val indices = keywords.map(lowerText.indexOf _)
             if (!indices.exists(_ < 0)) {
+              logger.debug("searchRepositoryFiles(git={},query={}): indices → {}", git, indices)
               list.append((treeWalk.getPathString, text))
             }
           }
@@ -118,12 +141,16 @@ object RepositorySearchService {
   val IssueLimit = 10
 
   def getHighlightText(content: String, query: String): (String, Int) = {
+    logger.debug(">>> Entering getHighlightText(content={},query={})", content)
     val keywords = StringUtil.splitWords(query.toLowerCase)
     val lowerText = content.toLowerCase
+    logger.debug("getHighlightText(content={},query={}): keywords → {}", content, keywords)
     val indices = keywords.map(lowerText.indexOf _)
 
+    logger.debug("getHighlightText(content={},query={}): indices → {}", content, indices)
     if (!indices.exists(_ < 0)) {
       val lineNumber = content.substring(0, indices.min).split("\n").size - 1
+      logger.debug("getHighlightText(content={},query={}): lineNumber → {}", content, lineNumber)
       val highlightText = StringUtil
         .escapeHtml(content.split("\n").drop(lineNumber).take(5).mkString("\n"))
         .replaceAll(
@@ -133,6 +160,7 @@ object RepositorySearchService {
       (highlightText, lineNumber + 1)
     } else {
       (content.split("\n").take(5).mkString("\n"), 1)
+    logger.debug("<<< Exiting getHighlightText(content={},query={})", content)
     }
   }
 

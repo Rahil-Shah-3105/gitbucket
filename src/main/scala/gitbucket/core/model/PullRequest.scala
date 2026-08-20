@@ -6,6 +6,7 @@ trait PullRequestComponent extends TemplateComponent { self: Profile =>
   lazy val PullRequests = TableQuery[PullRequests]
 
   class PullRequests(tag: Tag) extends Table[PullRequest](tag, "PULL_REQUEST") with IssueTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val branch = column[String]("BRANCH")
     val requestUserName = column[String]("REQUEST_USER_NAME")
     val requestRepositoryName = column[String]("REQUEST_REPOSITORY_NAME")
@@ -30,6 +31,8 @@ trait PullRequestComponent extends TemplateComponent { self: Profile =>
       ).mapTo[PullRequest]
 
     def byPrimaryKey(userName: String, repositoryName: String, issueId: Int): Rep[Boolean] =
+      logger.debug(">>> Entering byPrimaryKey(userName={},repositoryName={},issueId={})", userName, repositoryName, issueId)
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},issueId={})", userName, repositoryName, issueId)
       byIssue(userName, repositoryName, issueId)
     def byPrimaryKey(userName: Rep[String], repositoryName: Rep[String], issueId: Rep[Int]): Rep[Boolean] =
       byIssue(userName, repositoryName, issueId)

@@ -58,6 +58,7 @@ trait SuggestionProvider {
    * The first element of tuple is used as a value, and the second element is used as a label.
    *
    * The returned sequence is rendered as follows:
+   private val logger = LoggerFactory.getLogger(getClass)
    * <pre>
    * [
    *   {
@@ -72,6 +73,7 @@ trait SuggestionProvider {
    * </pre>
    *
    * Each element can be accessed as `option` in `template()` or `replace()` method.
+   logger.debug("<<< Exiting values(repository={})", repository)
    */
   def options(repository: RepositoryInfo): Seq[(String, String)] = values(repository).map { value =>
     (value, value)
@@ -84,6 +86,7 @@ trait SuggestionProvider {
 
   /**
    * JavaScript fragment to generate a replaced value of completion proposal. The default is: `option.value`
+   logger.debug("<<< Exiting template(context={})", context)
    */
   def replace(implicit context: Context): String = "option.value"
 

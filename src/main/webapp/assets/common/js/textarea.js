@@ -1,10 +1,14 @@
+const logger = console;
 (function () {
+logger.debug('>>> Entering function()');
   /**
    * constants for line type
    */
   const headingPattern = /^#{1,6} /;
   const quotePattern = /^((>+ )+|>+ )/;
+logger.debug(`function(): quotePattern → ${quotePattern}`);
   const nestedQuotePattern = /^(> ?){2,}/;
+logger.debug(`function(): nestedQuotePattern → ${nestedQuotePattern}`);
   const taskPattern = /^ *- \[ \] /;
   const doneTaskPattern = /^ *- \[x\] /;
   const ulPattern = /^ *- /;
@@ -25,6 +29,7 @@
    * @returns [TYPE, match]
    */
   const getLineType = function (line) {
+	logger.debug(`>>> Entering getLineType(line=${line})`);
     if (m = line.match(headingPattern)) {
       return [TYPE_HEADING, m];
     } else if (m = line.match(quotePattern)) {
@@ -38,6 +43,7 @@
     } else if (m = line.match(olPattern)) {
       return [TYPE_OL, m];
     } else {
+	logger.debug(`<<< Exiting getLineType(line=${line})`);
       return [TYPE_NONE, null];
     }
   };

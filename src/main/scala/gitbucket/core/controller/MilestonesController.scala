@@ -26,6 +26,7 @@ class MilestonesController
     with WritableUsersAuthenticator
 
 trait MilestonesControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: MilestonesService & RepositoryService & CommitStatusService & ReferrerAuthenticator &
     WritableUsersAuthenticator =>
 
@@ -140,7 +141,9 @@ trait MilestonesControllerBase extends ControllerBase {
       params: Map[String, Seq[String]],
       messages: Messages
     ): Option[String] = {
+      logger.debug(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
       for {
+        logger.debug("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
         owner <- params.optionValue("owner")
         repository <- params.optionValue("repository")
         _ <- params.optionValue("milestoneId") match {

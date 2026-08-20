@@ -129,11 +129,15 @@ trait ApiGitReferenceControllerBase extends ControllerBase {
   })
 
   private def notFound(): ApiError = {
+    logger.debug(">>> Entering notFound()")
+    logger.debug("notFound(): response → {}", response)
     response.setStatus(404)
+    logger.debug("<<< Exiting notFound()")
     ApiError("Not Found")
   }
 
   protected def getRef(revstr: String, repository: RepositoryInfo): AnyRef = {
+    logger.debug(">>> Entering getRef(revstr={},repository={})", revstr, repository)
     logger.debug(s"getRef: path '${revstr}'")
 
     val name = RepositoryName(repository)
@@ -155,6 +159,7 @@ trait ApiGitReferenceControllerBase extends ControllerBase {
     })
 
     logger.debug(s"json result: $result")
+    logger.debug("<<< Exiting getRef(revstr={},repository={})", revstr, repository)
     result
   }
 }

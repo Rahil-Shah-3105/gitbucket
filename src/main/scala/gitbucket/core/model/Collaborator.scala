@@ -6,11 +6,14 @@ trait CollaboratorComponent extends TemplateComponent { self: Profile =>
   lazy val Collaborators = TableQuery[Collaborators]
 
   class Collaborators(tag: Tag) extends Table[Collaborator](tag, "COLLABORATOR") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val collaboratorName = column[String]("COLLABORATOR_NAME")
     val role = column[String]("ROLE")
     def * = (userName, repositoryName, collaboratorName, role).mapTo[Collaborator]
 
     def byPrimaryKey(owner: String, repository: String, collaborator: String) =
+      logger.debug(">>> Entering byPrimaryKey(owner={},repository={},collaborator={})", owner, repository, collaborator)
+      logger.debug("<<< Exiting byPrimaryKey(owner={},repository={},collaborator={})", owner, repository, collaborator)
       byRepository(owner, repository) && (collaboratorName === collaborator.bind)
   }
 }

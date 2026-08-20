@@ -13,9 +13,11 @@ object SshUtil {
   private val logger = LoggerFactory.getLogger(SshUtil.getClass)
 
   def str2PublicKey(key: String): Option[PublicKey] = {
+    logger.debug(">>> Entering str2PublicKey(key={})", key)
     // TODO RFC 4716 Public Key is not supported...
     val parts = key.split(" ")
     if (parts.size < 2) {
+      logger.debug("<<< Exiting str2PublicKey(key={})", key)
       logger.debug(s"Invalid PublicKey Format: ${key}")
       None
     } else {
@@ -32,6 +34,8 @@ object SshUtil {
   }
 
   def fingerPrint(key: String): Option[String] =
+    logger.debug(">>> Entering fingerPrint(key={})", key)
+    logger.debug("<<< Exiting fingerPrint(key={})", key)
     str2PublicKey(key) map KeyUtils.getFingerPrint
 
 }

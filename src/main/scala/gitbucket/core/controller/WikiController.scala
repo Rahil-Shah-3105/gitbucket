@@ -29,6 +29,7 @@ class WikiController
     with RequestCache
 
 trait WikiControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: WikiService & RepositoryService & AccountService & ActivityService & WebHookService &
     ReadableUsersAuthenticator & ReferrerAuthenticator =>
 
@@ -329,12 +330,19 @@ trait WikiControllerBase extends ControllerBase {
       params: Map[String, Seq[String]],
       messages: Messages
     ): Option[String] = {
+      logger.debug(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
       val owner = params.value("owner")
       val repository = params.value("repository")
       val branch = getWikiBranch(owner, repository)
 
+      logger.debug("validate(name={},value={},params={},messages={}): owner → {}", name, value, params, messages, owner)
+      logger.debug("validate(name={},value={},params={},messages={}): repository → {}", name, value, params, messages, repository)
+      logger.debug("validate(name={},value={},params={},messages={}): branch → {}", name, value, params, messages, branch)
       getWikiPageList(owner, repository, branch)
         .find(_ == value)
+        logger.debug("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
+        logger.debug(">>> Entering validate(name={},value={},messages={})", name, value, messages)
+        logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
         .map(_ => "Page already exists.")
     }
   }
@@ -342,10 +350,12 @@ trait WikiControllerBase extends ControllerBase {
   private def pageName: Constraint = new Constraint() {
     override def validate(name: String, value: String, messages: Messages): Option[String] =
       if (value.exists("\\/:*?\"<>|".contains(_))) {
+        logger.debug(">>> Entering validate(name={},value={},messages={})", name, value, messages)
         Some(s"$name contains invalid character.")
       } else if (notReservedPageName(value) && (value.startsWith("_") || value.startsWith("-"))) {
         Some(s"$name starts with invalid character.")
       } else {
+        logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
         None
       }
   }
@@ -377,7 +387,9 @@ trait WikiControllerBase extends ControllerBase {
   }
 
   private def isEditable(repository: RepositoryInfo)(implicit context: Context): Boolean = {
+    logger.debug(">>> Entering isEditable(repository={})", repository)
     repository.repository.options.wikiOption match {
+      logger.debug("<<< Exiting isEditable(repository={})", repository)
       case "ALL"     => !repository.repository.isPrivate && context.loginAccount.isDefined
       case "PUBLIC"  => hasGuestRole(repository.owner, repository.name, context.loginAccount)
       case "PRIVATE" => hasDeveloperRole(repository.owner, repository.name, context.loginAccount)

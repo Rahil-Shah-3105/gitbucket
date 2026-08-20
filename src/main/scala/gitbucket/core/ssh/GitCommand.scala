@@ -42,6 +42,7 @@ abstract class GitCommand extends Command with ServerSessionAware {
   protected def runTask(authType: AuthType): Unit
 
   private def newTask(): Runnable = () => {
+    logger.debug(">>> Entering newTask()")
     authType match {
       case Some(authType) =>
         try {
@@ -57,35 +58,48 @@ abstract class GitCommand extends Command with ServerSessionAware {
         }
       case None =>
         val message = "User not authenticated"
+        logger.debug("newTask(): message → {}", message)
         logger.error(message)
         callback.onExit(1, message)
     }
   }
 
   final override def start(channel: ChannelSession, env: Environment): Unit = {
+    logger.debug(">>> Entering start(channel={},env={})", channel, env)
     val thread = new Thread(newTask())
+    logger.debug("<<< Exiting start(channel={},env={})", channel, env)
     thread.start()
   }
 
   override def destroy(channel: ChannelSession): Unit = {}
 
   override def setExitCallback(callback: ExitCallback): Unit = {
+    logger.debug(">>> Entering setExitCallback(callback={})", callback)
+    logger.debug("setExitCallback(callback={}): callback → {}", callback, callback)
     this.callback = callback
   }
 
   override def setErrorStream(err: OutputStream): Unit = {
+    logger.debug(">>> Entering setErrorStream(err={})", err)
+    logger.debug("setErrorStream(err={}): err → {}", err, err)
     this.err = err
   }
 
   override def setOutputStream(out: OutputStream): Unit = {
+    logger.debug(">>> Entering setOutputStream(out={})", out)
+    logger.debug("setOutputStream(out={}): out → {}", out, out)
     this.out = out
   }
 
   override def setInputStream(in: InputStream): Unit = {
+    logger.debug(">>> Entering setInputStream(in={})", in)
+    logger.debug("setInputStream(in={}): in → {}", in, in)
     this.in = in
   }
 
   override def setSession(serverSession: ServerSession): Unit = {
+    logger.debug(">>> Entering setSession(serverSession={})", serverSession)
+    logger.debug("setSession(serverSession={}): authType → {}", serverSession, authType)
     this.authType = PublicKeyAuthenticator.getAuthType(serverSession)
   }
 
@@ -95,6 +109,7 @@ abstract class DefaultGitCommand(val owner: String, val repoName: String) extend
   self: RepositoryService & AccountService & DeployKeyService =>
 
   protected def userName(authType: AuthType): String = {
+    logger.debug(">>> Entering userName(authType={})", authType)
     authType match {
       case AuthType.UserAuthType(userName) => userName
       case AuthType.DeployKeyType(_)       => owner
@@ -104,6 +119,7 @@ abstract class DefaultGitCommand(val owner: String, val repoName: String) extend
   protected def isReadableUser(authType: AuthType, repositoryInfo: RepositoryService.RepositoryInfo)(implicit
     session: Session
   ): Boolean = {
+    logger.debug(">>> Entering isReadableUser(authType={},repositoryInfo={})", authType, repositoryInfo)
     authType match {
       case AuthType.UserAuthType(username) => {
         getAccountByUserName(username) match {
@@ -123,6 +139,7 @@ abstract class DefaultGitCommand(val owner: String, val repoName: String) extend
   protected def isWritableUser(authType: AuthType, repositoryInfo: RepositoryService.RepositoryInfo)(implicit
     session: Session
   ): Boolean = {
+    logger.debug(">>> Entering isWritableUser(authType={},repositoryInfo={})", authType, repositoryInfo)
     authType match {
       case AuthType.UserAuthType(username) => {
         getAccountByUserName(username) match {
@@ -171,15 +188,18 @@ class DefaultGitReceivePack(owner: String, repoName: String, baseUrl: String, ss
     with DeployKeyService {
 
   override protected def runTask(authType: AuthType): Unit = {
+    logger.debug(">>> Entering runTask(authType={})", authType)
     val execute = Database() withSession { implicit session =>
       getRepository(owner, repoName.replaceFirst("\\.wiki\\Z", "")).exists { repositoryInfo =>
         isWritableUser(authType, repositoryInfo)
       }
     }
 
+    logger.debug("<<< Exiting runTask(authType={})", authType)
     if (execute) {
       Using.resource(Git.open(getRepositoryDir(owner, repoName))) { git =>
         val repository = git.getRepository
+        logger.debug("runTask(authType={}): repository → {}", authType, repository)
         val receive = new ReceivePack(repository)
         if (!repoName.endsWith(".wiki")) {
           val hook =
@@ -187,6 +207,7 @@ class DefaultGitReceivePack(owner: String, repoName: String, baseUrl: String, ss
           receive.setPreReceiveHook(hook)
           receive.setPostReceiveHook(hook)
         }
+        logger.debug("runTask(authType={}): receive → {}", authType, receive)
         receive.receive(in, out, err)
       }
     }
@@ -237,6 +258,7 @@ class GitCommandFactory(baseUrl: String, sshAddress: SshAddress) extends Command
   private val logger = LoggerFactory.getLogger(classOf[GitCommandFactory])
 
   override def createCommand(channel: ChannelSession, command: String): Command = {
+    logger.debug(">>> Entering createCommand(channel={},command={})", channel, command)
     import GitCommand._
     logger.debug(s"command: $command")
 
@@ -244,6 +266,7 @@ class GitCommandFactory(baseUrl: String, sshAddress: SshAddress) extends Command
       case f if f.isDefinedAt(command) => f(command)
     }
 
+    logger.debug("<<< Exiting createCommand(channel={},command={})", channel, command)
     pluginCommand.map(_.apply(channel)).getOrElse {
       val (simpleRegex, defaultRegex) =
         if (sshAddress.isDefaultPort) {
@@ -266,8 +289,11 @@ class GitCommandFactory(baseUrl: String, sshAddress: SshAddress) extends Command
   }
 
   private def pluginRepository(repoName: String): Boolean =
+    logger.debug(">>> Entering pluginRepository(repoName={})", repoName)
     PluginRegistry().getRepositoryRouting("/" + repoName).isDefined
   private def routing(repoName: String): GitRepositoryRouting =
+    logger.debug(">>> Entering routing(repoName={})", repoName)
+    logger.debug("<<< Exiting routing(repoName={})", repoName)
     PluginRegistry().getRepositoryRouting("/" + repoName).get
 
 }
