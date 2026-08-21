@@ -25,21 +25,29 @@ object RepositoryCreationService {
   private val Creating = new ConcurrentHashMap[String, Option[String]]()
 
   def isCreating(owner: String, repository: String): Boolean = {
+    private val logger = LoggerFactory.getLogger(getClass)
+    logger.debug(">>> Entering isCreating(owner={},repository={})", owner, repository)
     Option(Creating.get(s"${owner}/${repository}")).exists(_.isEmpty)
   }
 
   def startCreation(owner: String, repository: String): Unit = {
+    logger.debug(">>> Entering startCreation(owner={},repository={})", owner, repository)
+    logger.debug("<<< Exiting startCreation(owner={},repository={})", owner, repository)
     Creating.put(s"${owner}/${repository}", None)
   }
 
   def endCreation(owner: String, repository: String, error: Option[String]): Unit = {
+    logger.debug(">>> Entering endCreation(owner={},repository={},error={})", owner, repository, error)
     error match {
       case None        => Creating.remove(s"${owner}/${repository}")
       case Some(error) => Creating.put(s"${owner}/${repository}", Some(error))
+    logger.debug("<<< Exiting endCreation(owner={},repository={},error={})", owner, repository, error)
     }
   }
 
   def getCreationError(owner: String, repository: String): Option[String] = {
+    logger.debug(">>> Entering getCreationError(owner={},repository={})", owner, repository)
+    logger.debug("<<< Exiting getCreationError(owner={},repository={})", owner, repository)
     Option(Creating.remove(s"${owner}/${repository}")).flatten
   }
 
@@ -49,7 +57,9 @@ trait RepositoryCreationService {
   self: AccountService & RepositoryService & LabelsService & WikiService & ActivityService & PrioritiesService =>
 
   def canCreateRepository(repositoryOwner: String, loginAccount: Account)(implicit session: Session): Boolean = {
+    logger.debug(">>> Entering canCreateRepository(repositoryOwner={},loginAccount={})", repositoryOwner, loginAccount)
     repositoryOwner == loginAccount.userName || getGroupsByUserName(loginAccount.userName)
+    logger.debug("<<< Exiting canCreateRepository(repositoryOwner={},loginAccount={})", repositoryOwner, loginAccount)
       .contains(repositoryOwner) || loginAccount.isAdmin
   }
 
@@ -73,6 +83,7 @@ trait RepositoryCreationService {
       defaultBranch
     )
   }
+  val __logStart = System.currentTimeMillis()
 
   def createRepository(
     loginAccount: Account,
@@ -168,8 +179,10 @@ trait RepositoryCreationService {
                 val defaultBranch = Seq("master", "main").find(branches.contains).getOrElse(branches.head)
                 saveRepositoryDefaultBranch(owner, name, defaultBranch)
                 // Change repository HEAD
+                logger.debug("createRepository(loginAccount={},owner={},name={},description={},isPrivate={},initOption={},sourceUrl={},defaultBranch={}): defaultBranch → {}", loginAccount, owner, name, description, isPrivate, initOption, sourceUrl, defaultBranch, defaultBranch)
                 Using.resource(Git.open(getRepositoryDir(owner, name))) { git =>
                   git.getRepository.updateRef(Constants.HEAD, true).link(Constants.R_HEADS + defaultBranch)
+                logger.info("createRepository(loginAccount,owner,name,description,isPrivate,initOption,sourceUrl,defaultBranch)={},{},{},{},{},{},{},{}: find query executed in {} ms", loginAccount, owner, name, description, isPrivate, initOption, sourceUrl, defaultBranch, (System.currentTimeMillis() - __logStart))
                 }
               }
             }
@@ -192,17 +205,22 @@ trait RepositoryCreationService {
 
     } catch {
       case ex: Exception => RepositoryCreationService.endCreation(owner, name, Some(ex.toString))
+    logger.debug("<<< Exiting createRepository(loginAccount={},owner={},name={},description={},isPrivate={},createReadme={},defaultBranch={})", loginAccount, owner, name, description, isPrivate, createReadme, defaultBranch)
     }
   }
 
   def forkRepository(accountName: String, repository: RepositoryInfo, loginUserName: String): Future[Unit] = Future {
+    logger.debug(">>> Entering forkRepository(accountName={},repository={},loginUserName={})", accountName, repository, loginUserName)
     RepositoryCreationService.startCreation(accountName, repository.name)
     try {
+      logger.debug("<<< Exiting forkRepository(accountName={},repository={},loginUserName={})", accountName, repository, loginUserName)
       LockUtil.lock(s"${accountName}/${repository.name}") {
         Database() withTransaction { implicit session =>
           val originUserName = repository.repository.originUserName.getOrElse(repository.owner)
           val originRepositoryName = repository.repository.originRepositoryName.getOrElse(repository.name)
           val originDefaultBranchName = repository.repository.defaultBranch
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): originUserName → {}", accountName, repository, loginUserName, originUserName)
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): originRepositoryName → {}", accountName, repository, loginUserName, originRepositoryName)
 
           insertRepository(
             repositoryName = repository.name,
@@ -216,6 +234,13 @@ trait RepositoryCreationService {
             parentUserName = Some(repository.owner)
           )
 
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): repositoryName → {}", accountName, repository, loginUserName, repositoryName)
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): userName → {}", accountName, repository, loginUserName, userName)
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): description → {}", accountName, repository, loginUserName, description)
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): isPrivate → {}", accountName, repository, loginUserName, isPrivate)
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): defaultBranch → {}", accountName, repository, loginUserName, defaultBranch)
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): parentRepositoryName → {}", accountName, repository, loginUserName, parentRepositoryName)
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): parentUserName → {}", accountName, repository, loginUserName, parentUserName)
           // Set default collaborators for the private fork
           if (repository.repository.isPrivate) {
             // Copy collaborators from the source repository
@@ -246,6 +271,7 @@ trait RepositoryCreationService {
           // Copy LFS files
           val lfsDir = getLfsDir(repository.owner, repository.name)
           if (lfsDir.exists) {
+            logger.debug("forkRepository(accountName={},repository={},loginUserName={}): lfsDir → {}", accountName, repository, loginUserName, lfsDir)
             FileUtils.copyDirectory(lfsDir, FileUtil.deleteIfExists(getLfsDir(accountName, repository.name)))
           }
 
@@ -253,6 +279,7 @@ trait RepositoryCreationService {
           val forkInfo = ForkInfo(repository.owner, repository.name, loginUserName, accountName)
           recordActivity(forkInfo)
 
+          logger.debug("forkRepository(accountName={},repository={},loginUserName={}): forkInfo → {}", accountName, repository, loginUserName, forkInfo)
           // Call hooks
           PluginRegistry().getRepositoryHooks.foreach(_.forked(repository.owner, accountName, repository.name))
 
@@ -261,19 +288,23 @@ trait RepositoryCreationService {
       }
     } catch {
       case ex: Exception => RepositoryCreationService.endCreation(accountName, repository.name, Some(ex.toString))
+    logger.error("Exception in forkRepository(accountName={},repository={},loginUserName={}): {}", accountName, repository, loginUserName, e.getMessage, e)
     }
   }
 
   def insertDefaultLabels(userName: String, repositoryName: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering insertDefaultLabels(userName={},repositoryName={})", userName, repositoryName)
     createLabel(userName, repositoryName, "bug", "fc2929")
     createLabel(userName, repositoryName, "duplicate", "cccccc")
     createLabel(userName, repositoryName, "enhancement", "84b6eb")
     createLabel(userName, repositoryName, "invalid", "e6e6e6")
     createLabel(userName, repositoryName, "question", "cc317c")
+    logger.debug("<<< Exiting insertDefaultLabels(userName={},repositoryName={})", userName, repositoryName)
     createLabel(userName, repositoryName, "wontfix", "ffffff")
   }
 
   def insertDefaultPriorities(userName: String, repositoryName: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering insertDefaultPriorities(userName={},repositoryName={})", userName, repositoryName)
     createPriority(
       userName,
       repositoryName,
@@ -306,6 +337,7 @@ trait RepositoryCreationService {
     )
     createPriority(userName, repositoryName, "default", Some("Default."), "acacac")
 
+    logger.debug("<<< Exiting insertDefaultPriorities(userName={},repositoryName={})", userName, repositoryName)
     setDefaultPriority(userName, repositoryName, getPriority(userName, repositoryName, "default").map(_.priorityId))
   }
 }

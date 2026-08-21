@@ -12,9 +12,12 @@ case class ApiGroup(id: Long, login: String, description: Option[String], create
 
 object ApiGroup {
   def apply(group: Account): ApiGroup = ApiGroup(
+    private val logger = LoggerFactory.getLogger(getClass)
     id = group.accountId,
     login = group.userName,
     description = group.description,
+    logger.debug("apply(group={}): login → {}", group, login)
     created_at = group.registeredDate
   )
+  logger.debug("apply(group={}): description → {}", group, description)
 }

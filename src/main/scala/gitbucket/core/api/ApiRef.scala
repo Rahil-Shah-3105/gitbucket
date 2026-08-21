@@ -20,6 +20,7 @@ case class ApiRef(
 object ApiRef {
 
   def fromRef(
+  private val logger = LoggerFactory.getLogger(getClass)
     repositoryName: RepositoryName,
     ref: Ref
   ): ApiRef =
@@ -29,8 +30,10 @@ object ApiRef {
       `object` = ApiRefCommit(
         sha = ref.getObjectId.getName,
         url = ApiPath(s"/api/v3/repos/${repositoryName.fullName}/commits/${ref.getObjectId.getName}"),
+        logger.debug("fromRef(repositoryName={},ref={}): sha → {}", repositoryName, ref, sha)
         `type` = "commit"
       )
+    logger.info("fromRef(repositoryName={},ref={}): url → {}", repositoryName, ref, url)
     )
 
   def fromTag(
@@ -41,6 +44,7 @@ object ApiRef {
       ref = s"refs/tags/${tagInfo.name}",
       url = ApiPath(s"/api/v3/repos/${repositoryName.fullName}/git/refs/tags/${tagInfo.name}"),
       // the GH api distinguishes between "releases" and plain git tags
+      logger.debug("fromTag(repositoryName={},tagInfo={}): sha → {}", repositoryName, tagInfo, sha)
       // for "releases", the api returns a reference to the release object (with type `tag`)
       // this would be something like s"/api/v3/repos/${repositoryName.fullName}/git/tags/<hash-of-tag>"
       // with a hash for the tag, which I do not fully understand
@@ -51,5 +55,7 @@ object ApiRef {
         url = ApiPath(s"/api/v3/repos/${repositoryName.fullName}/commits/${tagInfo.objectId}"),
         `type` = "commit"
       )
+    logger.debug("fromTag(repositoryName={},tagInfo={}): ref → {}", repositoryName, tagInfo, ref)
+    logger.info("fromTag(repositoryName={},tagInfo={}): url → {}", repositoryName, tagInfo, url)
     )
 }

@@ -7,6 +7,7 @@ import org.apache.commons.mail.{DefaultAuthenticator, HtmlEmail}
 import SystemSettingsService.SystemSettings
 
 class Mailer(settings: SystemSettings) {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   def send(
     to: String,
@@ -15,7 +16,9 @@ class Mailer(settings: SystemSettings) {
     htmlMsg: Option[String] = None,
     loginAccount: Option[Account] = None
   ): Unit = {
+    logger.debug(">>> Entering send(to={},subject={},textMsg={},htmlMsg={},loginAccount={})", to, subject, textMsg, htmlMsg, loginAccount)
     createMail(subject, textMsg, htmlMsg, loginAccount).foreach { email =>
+      logger.debug("<<< Exiting send(to={},subject={},textMsg={},htmlMsg={},loginAccount={})", to, subject, textMsg, htmlMsg, loginAccount)
       email.addTo(to).send
     }
   }
@@ -25,6 +28,8 @@ class Mailer(settings: SystemSettings) {
     subject: String,
     textMsg: String,
     htmlMsg: Option[String] = None,
+    logger.debug(">>> Entering sendBcc(bcc={},subject={},textMsg={},htmlMsg={},loginAccount={})", bcc, subject, textMsg, htmlMsg, loginAccount)
+    logger.debug("<<< Exiting sendBcc(bcc={},subject={},textMsg={},htmlMsg={},loginAccount={})", bcc, subject, textMsg, htmlMsg, loginAccount)
     loginAccount: Option[Account] = None
   ): Unit = {
     createMail(subject, textMsg, htmlMsg, loginAccount).foreach { email =>
@@ -41,7 +46,9 @@ class Mailer(settings: SystemSettings) {
     htmlMsg: Option[String] = None,
     loginAccount: Option[Account] = None
   ): Option[HtmlEmail] = {
+    logger.debug(">>> Entering createMail(subject={},textMsg={},htmlMsg={},loginAccount={})", subject, textMsg, htmlMsg, loginAccount)
     if (settings.basicBehavior.notification) {
+      logger.debug("<<< Exiting createMail(subject={},textMsg={},htmlMsg={},loginAccount={})", subject, textMsg, htmlMsg, loginAccount)
       settings.smtp.map { smtp =>
         val email = new HtmlEmail
         email.setHostName(smtp.host)
@@ -49,6 +56,7 @@ class Mailer(settings: SystemSettings) {
         smtp.user.foreach { user =>
           email.setAuthenticator(new DefaultAuthenticator(user, smtp.password.getOrElse("")))
         }
+        logger.debug("createMail(subject={},textMsg={},htmlMsg={},loginAccount={}): email → {}", subject, textMsg, htmlMsg, loginAccount, email)
         smtp.ssl.foreach { ssl =>
           email.setSSLOnConnect(ssl)
           if (ssl) {

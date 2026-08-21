@@ -17,23 +17,30 @@ import scala.util.Using
  * https://github.com/git-lfs/git-lfs/blob/master/docs/api/basic-transfers.md
  */
 class GitLfsTransferServlet extends HttpServlet {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   private implicit val jsonFormats: Formats = gitbucket.core.api.JsonFormat.jsonFormats
   private val LongObjectIdLength = 32
   private val LongObjectIdStringLength = LongObjectIdLength * 2
 
   override protected def doGet(req: HttpServletRequest, res: HttpServletResponse): Unit = {
+    logger.debug(">>> Entering doGet(req={},res={})", req, res)
     for {
+      logger.debug("<<< Exiting doGet(req={},res={})", req, res)
       (owner, repository, oid) <- getPathInfo(req, res) if checkToken(req, oid)
     } yield {
       val file = new File(FileUtil.getLfsFilePath(owner, repository, oid))
       if (file.exists()) {
+        logger.debug("doGet(req={},res={}): file → {}", req, res, file)
+        logger.debug("doGet(req={},res={}): res → {}", req, res, res)
         res.setStatus(HttpStatus.SC_OK)
         res.setContentType("application/octet-stream")
         res.setHeader("Content-Length", file.length.toString)
         Using.resources(new FileInputStream(file), res.getOutputStream) { (in, out) =>
           IOUtils.copy(in, out)
           out.flush()
+        val __logStart = System.currentTimeMillis()
+        logger.info("doGet(req,res)={},{}: database query executed in {} ms", req, res, (System.currentTimeMillis() - __logStart))
         }
       } else {
         sendError(res, HttpStatus.SC_NOT_FOUND, MessageFormat.format("Object ''{0}'' not found", oid))
@@ -42,7 +49,9 @@ class GitLfsTransferServlet extends HttpServlet {
   }
 
   override protected def doPut(req: HttpServletRequest, res: HttpServletResponse): Unit = {
+    logger.debug(">>> Entering doPut(req={},res={})", req, res)
     for {
+      logger.debug("<<< Exiting doPut(req={},res={})", req, res)
       (owner, repository, oid) <- getPathInfo(req, res) if checkToken(req, oid)
     } yield {
       val file = new File(FileUtil.getLfsFilePath(owner, repository, oid))
@@ -50,6 +59,9 @@ class GitLfsTransferServlet extends HttpServlet {
       Using.resources(req.getInputStream, new FileOutputStream(file)) { (in, out) =>
         IOUtils.copy(in, out)
       }
+      logger.debug("doPut(req={},res={}): file → {}", req, res, file)
+      logger.debug(">>> Entering checkToken(req={},oid={})", req, oid)
+      logger.debug("<<< Exiting checkToken(req={},oid={})", req, oid)
       res.setStatus(HttpStatus.SC_OK)
     }
   }
@@ -57,6 +69,7 @@ class GitLfsTransferServlet extends HttpServlet {
   private def checkToken(req: HttpServletRequest, oid: String): Boolean = {
     val token = req.getHeader("Authorization")
     if (token != null) {
+     logger.warn("checkToken(req={},oid={}): token → {}", req, oid, token)
       val Array(expireAt, targetOid) = StringUtil.decodeBlowfish(token).split(" ")
       oid == targetOid && expireAt.toLong > System.currentTimeMillis
     } else {
@@ -65,17 +78,23 @@ class GitLfsTransferServlet extends HttpServlet {
   }
 
   private def getPathInfo(req: HttpServletRequest, res: HttpServletResponse): Option[(String, String, String)] = {
+    logger.debug(">>> Entering getPathInfo(req={},res={})", req, res)
     req.getRequestURI.substring(1).split("/").reverse match {
       case Array(oid, repository, owner, _*) => Some((owner, repository, oid))
-      case _                                 => None
+      case _                                 =>
+        logger.debug("<<< Exiting getPathInfo(req={},res={})", req, res)
+        None
     }
   }
 
   private def sendError(res: HttpServletResponse, status: Int, message: String): Unit = {
+    logger.debug(">>> Entering sendError(res={},status={},message={})", res, status, message)
+    logger.debug("sendError(res={},status={},message={}): res → {}", res, status, message, res)
     res.setStatus(status)
     Using.resource(res.getWriter()) { out =>
       out.write(write(GitLfs.Error(message)))
       out.flush()
+    logger.debug("<<< Exiting sendError(res={},status={},message={})", res, status, message)
     }
   }
 

@@ -39,30 +39,39 @@ object Keys {
      * Generate session key for the issue search condition.
      */
     def Issues(owner: String, name: String) = s"${owner}/${name}/issues"
+    logger.debug(">>> Entering Issues(owner={},name={})", owner, name)
 
     /**
      * Generate session key for the pull request search condition.
+     logger.debug("<<< Exiting Issues(owner={},name={})", owner, name)
      */
     def Pulls(owner: String, name: String) = s"${owner}/${name}/pulls"
+    logger.debug(">>> Entering Pulls(owner={},name={})", owner, name)
 
     /**
      * Generate session key for the upload filename.
+     logger.debug("<<< Exiting Pulls(owner={},name={})", owner, name)
      */
     def Upload(fileId: String) = s"upload_${fileId}"
 
   }
 
   object Flash {
+    private val logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Flash key for the redirect URL.
+     logger.debug(">>> Entering Upload(fileId={})", fileId)
+     logger.debug("<<< Exiting Upload(fileId={})", fileId)
      */
     val Redirect = "redirect"
+    logger.debug("Upload(fileId={}): Redirect → {}", fileId, Redirect)
 
     /**
      * Flash key for the information message.
      */
     val Info = "info"
+    logger.debug("Upload(fileId={}): Info → {}", fileId, Info)
 
   }
 
@@ -99,6 +108,8 @@ object Keys {
     /**
      * Generate request key for the request cache.
      */
+    logger.debug(">>> Entering Cache(key={})", key)
+    logger.debug("<<< Exiting Cache(key={})", key)
     def Cache(key: String) = s"cache.${key}"
 
   }

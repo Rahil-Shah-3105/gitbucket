@@ -29,10 +29,13 @@ trait RepositoryCommitFileService {
     branch: String,
     message: String,
     loginAccount: Account,
+    logger.debug(">>> Entering commitFiles(repository={},branch={},message={},loginAccount={},settings={})", repository, branch, message, loginAccount, settings)
+    logger.debug("<<< Exiting commitFiles(repository={},branch={},message={},loginAccount={},settings={})", repository, branch, message, loginAccount, settings)
     settings: SystemSettings
   )(
     f: (Git, ObjectId, DirCacheBuilder, ObjectInserter) => Unit
   )(implicit s: Session, c: JsonFormat.Context): Either[String, ObjectId] = {
+    private val logger = LoggerFactory.getLogger(getClass)
     _createFiles(repository, branch, message, loginAccount, loginAccount.fullName, loginAccount.mailAddress, settings)(
       f
     ).map(_._1)
@@ -141,6 +144,12 @@ trait RepositoryCommitFileService {
     pusherAccount: Account,
     committerName: String,
     committerMailAddress: String,
+    logger.debug(">>> Entering _createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={})", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings)
+    val __logStart = System.currentTimeMillis()
+    logger.info("_createFiles(repository,branch,message,pusherAccount,committerName,committerMailAddress,settings)={},{},{},{},{},{},{}: find query executed in {} ms", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, (System.currentTimeMillis() - __logStart))
+    logger.info("_createFiles(repository,branch,message,pusherAccount,committerName,committerMailAddress,settings)={},{},{},{},{},{},{}: database query executed in {} ms", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, (System.currentTimeMillis() - __logStart))
+    logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): mergePullRequest → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, mergePullRequest)
+    logger.debug("<<< Exiting _createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={})", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings)
     settings: SystemSettings
   )(
     f: (Git, ObjectId, DirCacheBuilder, ObjectInserter) => R
@@ -152,6 +161,9 @@ trait RepositoryCommitFileService {
         val headName = s"refs/heads/${branch}"
         val headTip = git.getRepository.resolve(headName)
 
+        logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): inserter → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, inserter)
+        logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): headName → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, headName)
+        logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): headTip → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, headTip)
         val result = f(git, headTip, builder, inserter)
 
         val commitId = JGitUtil.createNewCommit(
@@ -165,12 +177,15 @@ trait RepositoryCommitFileService {
           message
         )
 
+        logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): result → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, result)
         inserter.flush()
         inserter.close()
 
         val receivePack = new ReceivePack(git.getRepository)
         val receiveCommand = new ReceiveCommand(headTip, commitId, headName)
 
+        logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): receivePack → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, receivePack)
+        logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): receiveCommand → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, receiveCommand)
         // call pre-commit hook
         val error = PluginRegistry().getReceiveHooks.flatMap { hook =>
           hook.preReceive(
@@ -179,6 +194,7 @@ trait RepositoryCommitFileService {
             receivePack,
             receiveCommand,
             pusherAccount.userName,
+            logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): error → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, error)
             mergePullRequest = false
           )
         }.headOption
@@ -190,6 +206,7 @@ trait RepositoryCommitFileService {
             refUpdate.setNewObjectId(headTip)
             refUpdate.setForceUpdate(true)
             refUpdate.update()
+            logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): refUpdate → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, refUpdate)
             Left(error)
 
           case None =>
@@ -210,6 +227,7 @@ trait RepositoryCommitFileService {
               PushInfo(repository.owner, repository.name, pusherAccount.userName, branch, List(commitInfo))
             recordActivity(pushInfo)
 
+            logger.debug("_createFiles(repository={},branch={},message={},pusherAccount={},committerName={},committerMailAddress={},settings={}): commitInfo → {}", repository, branch, message, pusherAccount, committerName, committerMailAddress, settings, commitInfo)
             // create issue comment by commit message
             createIssueComment(repository.owner, repository.name, commitInfo)
 

@@ -30,14 +30,19 @@ trait IssuesService {
   import IssuesService._
 
   def getIssue(owner: String, repository: String, issueId: String)(implicit s: Session) =
+    logger.debug(">>> Entering getIssue(owner={},repository={},issueId={})", owner, repository, issueId)
     if (isInteger(issueId))
       Issues filter (_.byPrimaryKey(owner, repository, issueId.toInt)) firstOption
     else None
 
   def getOpenIssues(owner: String, repository: String)(implicit s: Session): List[Issue] =
+    logger.debug(">>> Entering getOpenIssues(owner={},repository={})", owner, repository)
+    logger.debug("<<< Exiting getOpenIssues(owner={},repository={})", owner, repository)
     Issues filter (_.byRepository(owner, repository)) filterNot (_.closed) sortBy (_.issueId desc) list
 
   def getComments(owner: String, repository: String, issueId: Int)(implicit s: Session) =
+    logger.debug(">>> Entering getComments(owner={},repository={},issueId={})", owner, repository, issueId)
+    logger.debug("<<< Exiting getComments(owner={},repository={},issueId={})", owner, repository, issueId)
     IssueComments filter (_.byIssue(owner, repository, issueId)) sortBy (_.commentId asc) list
 
   /** @return IssueComment and commentedUser and Issue */
@@ -57,24 +62,30 @@ trait IssuesService {
   def getMergedComment(owner: String, repository: String, issueId: Int)(implicit
     s: Session
   ): Option[(IssueComment, Account)] = {
+    private val logger = LoggerFactory.getLogger(getClass)
     IssueComments
+    logger.debug(">>> Entering getMergedComment(owner={},repository={},issueId={})", owner, repository, issueId)
       .filter(_.byIssue(owner, repository, issueId))
       .filter(_.action === "merge".bind)
       .join(Accounts)
       .on { case t1 ~ t2 => t1.commentedUserName === t2.userName }
       .map { case t1 ~ t2 => (t1, t2) }
+      logger.debug("<<< Exiting getMergedComment(owner={},repository={},issueId={})", owner, repository, issueId)
       .firstOption
   }
 
   def getComment(owner: String, repository: String, commentId: String)(implicit s: Session): Option[IssueComment] = {
+    logger.debug(">>> Entering getComment(owner={},repository={},commentId={})", owner, repository, commentId)
     if (commentId forall (_.isDigit))
       IssueComments filter { t =>
         t.byPrimaryKey(commentId.toInt) && t.byRepository(owner, repository)
+      logger.debug("<<< Exiting getComment(owner={},repository={},commentId={})", owner, repository, commentId)
       } firstOption
     else None
   }
 
   def getCommentForApi(owner: String, repository: String, commentId: Int)(implicit
+  logger.debug("<<< Exiting getCommentForApi(owner={},repository={},commentId={})", owner, repository, commentId)
     s: Session
   ): Option[(IssueComment, Account, Issue)] =
     IssueComments
@@ -89,6 +100,7 @@ trait IssuesService {
       .firstOption
 
   def getIssueLabels(owner: String, repository: String, issueId: Int)(implicit s: Session): List[Label] = {
+    logger.debug(">>> Entering getIssueLabels(owner={},repository={},issueId={})", owner, repository, issueId)
     IssueLabels
       .join(Labels)
       .on { case t1 ~ t2 =>
@@ -96,10 +108,13 @@ trait IssuesService {
       }
       .filter { case t1 ~ t2 => t1.byIssue(owner, repository, issueId) }
       .map { case t1 ~ t2 => t2 }
+      logger.debug("<<< Exiting getIssueLabels(owner={},repository={},issueId={})", owner, repository, issueId)
       .list
   }
 
   def getIssueLabel(owner: String, repository: String, issueId: Int, labelId: Int)(implicit
+  logger.debug(">>> Entering getIssueLabel(owner={},repository={},issueId={},labelId={})", owner, repository, issueId, labelId)
+  logger.debug("<<< Exiting getIssueLabel(owner={},repository={},issueId={},labelId={})", owner, repository, issueId, labelId)
     s: Session
   ): Option[IssueLabel] = {
     IssueLabels filter (_.byPrimaryKey(owner, repository, issueId, labelId)) firstOption
@@ -114,6 +129,8 @@ trait IssuesService {
    * @return the count of the search result
    */
   def countIssue(condition: IssueSearchCondition, searchOption: IssueSearchOption, repos: (String, String)*)(implicit
+  logger.debug(">>> Entering countIssue(condition={},searchOption={},repos={})", condition, searchOption, repos)
+  logger.debug("<<< Exiting countIssue(condition={},searchOption={},repos={})", condition, searchOption, repos)
     s: Session
   ): Int = {
     Query(searchIssueQuery(repos, condition, searchOption).length).first
@@ -132,6 +149,7 @@ trait IssuesService {
     repository: String,
     condition: IssueSearchCondition
   )(implicit s: Session): Map[String, Int] = {
+    logger.debug(">>> Entering countIssueGroupByLabels(owner={},repository={},condition={})", owner, repository, condition)
 
     searchIssueQuery(Seq(owner -> repository), condition.copy(labels = Set.empty), IssueSearchOption.Issues)
       .join(IssueLabels)
@@ -149,6 +167,7 @@ trait IssuesService {
         labelName -> t.length
       }
       .list
+      logger.debug("<<< Exiting countIssueGroupByLabels(owner={},repository={},condition={})", owner, repository, condition)
       .toMap
   }
 
@@ -165,6 +184,7 @@ trait IssuesService {
     repository: String,
     condition: IssueSearchCondition
   )(implicit s: Session): Map[String, Int] = {
+    logger.debug(">>> Entering countIssueGroupByPriorities(owner={},repository={},condition={})", owner, repository, condition)
 
     searchIssueQuery(Seq(owner -> repository), condition.copy(labels = Set.empty), IssueSearchOption.Issues)
       .join(Priorities)
@@ -178,6 +198,7 @@ trait IssuesService {
         priorityName -> t.length
       }
       .list
+      logger.debug("<<< Exiting countIssueGroupByPriorities(owner={},repository={},condition={})", owner, repository, condition)
       .toMap
   }
 
@@ -196,6 +217,8 @@ trait IssuesService {
     searchOption: IssueSearchOption,
     offset: Int,
     limit: Int,
+    logger.debug(">>> Entering searchIssue(condition={},searchOption={},offset={},limit={},repos={})", condition, searchOption, offset, limit, repos)
+    logger.debug("<<< Exiting searchIssue(condition={},searchOption={},offset={},limit={},repos={})", condition, searchOption, offset, limit, repos)
     repos: (String, String)*
   )(implicit s: Session): List[IssueInfo] = {
     // get issues and comment count and labels
@@ -226,6 +249,7 @@ trait IssuesService {
           t8.map(_.assigneeUserName)
         )
       }
+      logger.debug("searchIssue(condition={},searchOption={},offset={},limit={},repos={}): result → {}", condition, searchOption, offset, limit, repos, result)
       .list
       .splitWith { (c1, c2) =>
         c1._1.userName == c2._1.userName && c1._1.repositoryName == c2._1.repositoryName && c1._1.issueId == c2._1.issueId
@@ -256,6 +280,8 @@ trait IssuesService {
    * @return (issue, issueUser, Seq(assigneeUsers))
    */
   def searchIssueByApi(condition: IssueSearchCondition, offset: Int, limit: Int, repos: (String, String)*)(implicit
+  logger.debug(">>> Entering searchIssueByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
+  logger.debug("<<< Exiting searchIssueByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
     s: Session
   ): List[(Issue, Account, List[Account])] = {
     // get issues and comment count and labels
@@ -275,6 +301,7 @@ trait IssuesService {
       .map { case (_, values) =>
         (values.head._1, values.head._2, values.flatMap(_._3))
       }
+      logger.debug("<<< Exiting searchIssueQueryBase(condition={},searchOption={},offset={},limit={},repos={})", condition, searchOption, offset, limit, repos)
       .toList
   }
 
@@ -284,6 +311,7 @@ trait IssuesService {
   def searchPullRequestByApi(condition: IssueSearchCondition, offset: Int, limit: Int, repos: (String, String)*)(
     implicit s: Session
   ): List[(Issue, Account, Int, PullRequest, Repository, Account, List[Account])] = {
+    logger.debug(">>> Entering searchPullRequestByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
     // get issues and comment count and labels
     searchIssueQueryBase(condition, IssueSearchOption.PullRequests, offset, limit, repos)
       .join(PullRequests)
@@ -315,6 +343,7 @@ trait IssuesService {
           values.flatMap(_._7)
         )
       }
+      logger.debug("<<< Exiting searchPullRequestByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
       .toList
   }
 
@@ -323,6 +352,7 @@ trait IssuesService {
     searchOption: IssueSearchOption,
     offset: Int,
     limit: Int,
+    logger.debug("<<< Exiting searchIssueQueryBase(condition={},searchOption={},offset={},limit={},repos={})", condition, searchOption, offset, limit, repos)
     repos: Seq[(String, String)]
   )(implicit s: Session) =
     searchIssueQuery(repos, condition, searchOption)
@@ -330,6 +360,7 @@ trait IssuesService {
       .on { (t1, t2) =>
         t1.byIssue(t2.userName, t2.repositoryName, t2.issueId)
       }
+      logger.debug("<<< Exiting searchIssueQueryBase(condition={},searchOption={},offset={},limit={},repos={})", condition, searchOption, offset, limit, repos)
       .sortBy { case (t1, t2) => t1.issueId desc }
       .sortBy { case (t1, t2) =>
         condition.sort match {
@@ -369,6 +400,7 @@ trait IssuesService {
   )(implicit
     s: Session
   ) = {
+    logger.debug(">>> Entering searchIssueQuery(repos={},condition={},searchOption={})", repos, condition, searchOption)
     val query = Issues filter { t1 =>
       (if (repos.sizeIs == 1) {
          t1.byRepository(repos.head._1, repos.head._2)
@@ -454,10 +486,13 @@ trait IssuesService {
         )
     }
 
+    logger.debug("<<< Exiting searchIssueQuery(repos={},condition={},searchOption={})", repos, condition, searchOption)
     condition.others.foldLeft(query) { case (query, cond) =>
       def condQuery(f: Rep[String] => Rep[Boolean]): Query[Profile.Issues, Issue, Seq] = {
+        logger.debug(">>> Entering condQuery(f={})", f)
         query.filter { t1 =>
           IssueCustomFields
+          logger.debug("<<< Exiting condQuery(f={})", f)
             .join(CustomFields)
             .on { (t2, t3) =>
               t2.userName === t3.userName && t2.repositoryName === t3.repositoryName && t2.fieldId === t3.fieldId
@@ -510,10 +545,13 @@ trait IssuesService {
           isPullRequest
         )
 
+        logger.debug(">>> Entering insertIssue(owner={},repository={},loginUser={},title={},content={},milestoneId={},priorityId={},isPullRequest={})", owner, repository, loginUser, title, content, milestoneId, priorityId, isPullRequest)
         // increment issue id
         IssueId
           .filter(_.byPrimaryKey(owner, repository))
           .map(_.issueId)
+        logger.info("insertIssue(owner,repository,loginUser,title,content,milestoneId,priorityId,isPullRequest)={},{},{},{},{},{},{},{}: find query executed in {} ms", owner, repository, loginUser, title, content, milestoneId, priorityId, isPullRequest, (System.currentTimeMillis() - __logStart))
+        logger.debug("<<< Exiting insertIssue(owner={},repository={},loginUser={},title={},content={},milestoneId={},priorityId={},isPullRequest={})", owner, repository, loginUser, title, content, milestoneId, priorityId, isPullRequest)
           .update(id) > 0
       } get
   }
@@ -521,6 +559,10 @@ trait IssuesService {
   def registerIssueLabel(owner: String, repository: String, issueId: Int, labelId: Int, insertComment: Boolean = false)(
     implicit
     context: Context,
+    logger.debug(">>> Entering registerIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={})", owner, repository, issueId, labelId, insertComment)
+    logger.debug("registerIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={}): commentedUserName → {}", owner, repository, issueId, labelId, insertComment, commentedUserName)
+    logger.debug("registerIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={}): repositoryName → {}", owner, repository, issueId, labelId, insertComment, repositoryName)
+    logger.debug("registerIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={}): action → {}", owner, repository, issueId, labelId, insertComment, action)
     s: Session
   ): Int = {
     if (insertComment) {
@@ -541,6 +583,10 @@ trait IssuesService {
   def deleteIssueLabel(owner: String, repository: String, issueId: Int, labelId: Int, insertComment: Boolean = false)(
     implicit
     context: Context,
+    logger.debug(">>> Entering deleteIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={})", owner, repository, issueId, labelId, insertComment)
+    logger.debug("deleteIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={}): commentedUserName → {}", owner, repository, issueId, labelId, insertComment, commentedUserName)
+    logger.debug("deleteIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={}): repositoryName → {}", owner, repository, issueId, labelId, insertComment, repositoryName)
+    logger.debug("deleteIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={}): action → {}", owner, repository, issueId, labelId, insertComment, action)
     s: Session
   ): Int = {
     if (insertComment) {
@@ -560,6 +606,10 @@ trait IssuesService {
 
   def deleteAllIssueLabels(owner: String, repository: String, issueId: Int, insertComment: Boolean = false)(implicit
     context: Context,
+  logger.debug(">>> Entering deleteAllIssueLabels(owner={},repository={},issueId={},insertComment={})", owner, repository, issueId, insertComment)
+  logger.debug("deleteAllIssueLabels(owner={},repository={},issueId={},insertComment={}): commentedUserName → {}", owner, repository, issueId, insertComment, commentedUserName)
+  logger.debug("deleteAllIssueLabels(owner={},repository={},issueId={},insertComment={}): repositoryName → {}", owner, repository, issueId, insertComment, repositoryName)
+  logger.debug("deleteAllIssueLabels(owner={},repository={},issueId={},insertComment={}): action → {}", owner, repository, issueId, insertComment, action)
     s: Session
   ): Int = {
     if (insertComment) {
@@ -583,6 +633,9 @@ trait IssuesService {
     loginUser: String,
     issueId: Int,
     content: String,
+    logger.debug(">>> Entering createComment(owner={},repository={},loginUser={},issueId={},content={},action={})", owner, repository, loginUser, issueId, content, action)
+    logger.debug("<<< Exiting createComment(owner={},repository={},loginUser={},issueId={},content={},action={})", owner, repository, loginUser, issueId, content, action)
+    logger.debug("createComment(owner={},repository={},loginUser={},issueId={},content={},action={}): userName → {}", owner, repository, loginUser, issueId, content, action, userName)
     action: String
   )(implicit s: Session): Int = {
     Issues.filter(_.byPrimaryKey(owner, repository, issueId)).map(_.updatedDate).update(currentDate)
@@ -599,6 +652,8 @@ trait IssuesService {
   }
 
   def updateIssue(owner: String, repository: String, issueId: Int, title: String, content: Option[String])(implicit
+  logger.debug(">>> Entering updateIssue(owner={},repository={},issueId={},title={},content={})", owner, repository, issueId, title, content)
+  logger.debug("<<< Exiting updateIssue(owner={},repository={},issueId={},title={},content={})", owner, repository, issueId, title, content)
     s: Session
   ): Int = {
     Issues
@@ -610,17 +665,21 @@ trait IssuesService {
   }
 
   def changeIssueToPullRequest(owner: String, repository: String, issueId: Int)(implicit s: Session): Int = {
+    logger.debug(">>> Entering changeIssueToPullRequest(owner={},repository={},issueId={})", owner, repository, issueId)
     Issues
       .filter(_.byPrimaryKey(owner, repository, issueId))
       .map { t =>
         t.pullRequest
       }
+      logger.debug("<<< Exiting changeIssueToPullRequest(owner={},repository={},issueId={})", owner, repository, issueId)
       .update(true)
   }
 
   def getIssueAssignees(owner: String, repository: String, issueId: Int)(implicit
     s: Session
   ): List[IssueAssignee] = {
+    logger.debug(">>> Entering getIssueAssignees(owner={},repository={},issueId={})", owner, repository, issueId)
+    logger.debug("<<< Exiting getIssueAssignees(owner={},repository={},issueId={})", owner, repository, issueId)
     IssueAssignees.filter(_.byIssue(owner, repository, issueId)).sortBy(_.assigneeUserName).list
   }
 
@@ -629,6 +688,13 @@ trait IssuesService {
     repository: String,
     issueId: Int,
     assigneeUserName: String,
+    logger.debug(">>> Entering registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={})", owner, repository, issueId, assigneeUserName, insertComment)
+    logger.debug("registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): updatedDate → {}", owner, repository, issueId, assigneeUserName, insertComment, updatedDate)
+    logger.debug("registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): repositoryName → {}", owner, repository, issueId, assigneeUserName, insertComment, repositoryName)
+    logger.debug("registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): action → {}", owner, repository, issueId, assigneeUserName, insertComment, action)
+    logger.debug("registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): commentedUserName → {}", owner, repository, issueId, assigneeUserName, insertComment, commentedUserName)
+    logger.debug("registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): content → {}", owner, repository, issueId, assigneeUserName, insertComment, content)
+    logger.debug("registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): registeredDate → {}", owner, repository, issueId, assigneeUserName, insertComment, registeredDate)
     insertComment: Boolean = false
   )(implicit
     context: Context,
@@ -636,6 +702,7 @@ trait IssuesService {
   ): Int = {
     val assigner = context.loginAccount.map(_.userName)
     if (insertComment) {
+      logger.debug("registerIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): assigner → {}", owner, repository, issueId, assigneeUserName, insertComment, assigner)
       IssueComments insert IssueComment(
         userName = owner,
         repositoryName = repository,
@@ -658,6 +725,13 @@ trait IssuesService {
     repository: String,
     issueId: Int,
     assigneeUserName: String,
+    logger.debug(">>> Entering deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={})", owner, repository, issueId, assigneeUserName, insertComment)
+    logger.debug("deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): updatedDate → {}", owner, repository, issueId, assigneeUserName, insertComment, updatedDate)
+    logger.debug("deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): repositoryName → {}", owner, repository, issueId, assigneeUserName, insertComment, repositoryName)
+    logger.debug("deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): action → {}", owner, repository, issueId, assigneeUserName, insertComment, action)
+    logger.debug("deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): commentedUserName → {}", owner, repository, issueId, assigneeUserName, insertComment, commentedUserName)
+    logger.debug("deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): content → {}", owner, repository, issueId, assigneeUserName, insertComment, content)
+    logger.debug("deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): registeredDate → {}", owner, repository, issueId, assigneeUserName, insertComment, registeredDate)
     insertComment: Boolean = false
   )(implicit
     context: Context,
@@ -665,6 +739,7 @@ trait IssuesService {
   ): Int = {
     val assigner = context.loginAccount.map(_.userName)
     if (insertComment) {
+      logger.debug("deleteIssueAssignee(owner={},repository={},issueId={},assigneeUserName={},insertComment={}): assigner → {}", owner, repository, issueId, assigneeUserName, insertComment, assigner)
       IssueComments insert IssueComment(
         userName = owner,
         repositoryName = repository,
@@ -684,10 +759,18 @@ trait IssuesService {
 
   def deleteAllIssueAssignees(owner: String, repository: String, issueId: Int, insertComment: Boolean = false)(implicit
     context: Context,
+  logger.debug(">>> Entering deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={})", owner, repository, issueId, insertComment)
+  logger.debug("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): updatedDate → {}", owner, repository, issueId, insertComment, updatedDate)
+  logger.debug("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): repositoryName → {}", owner, repository, issueId, insertComment, repositoryName)
+  logger.debug("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): action → {}", owner, repository, issueId, insertComment, action)
+  logger.debug("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): commentedUserName → {}", owner, repository, issueId, insertComment, commentedUserName)
+  logger.debug("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): content → {}", owner, repository, issueId, insertComment, content)
+  logger.debug("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): registeredDate → {}", owner, repository, issueId, insertComment, registeredDate)
     s: Session
   ): Int = {
     val assigner = context.loginAccount.map(_.userName)
     if (insertComment) {
+      logger.debug("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): assigner → {}", owner, repository, issueId, insertComment, assigner)
       IssueComments insert IssueComment(
         userName = owner,
         repositoryName = repository,
@@ -710,6 +793,11 @@ trait IssuesService {
     repository: String,
     issueId: Int,
     milestoneId: Option[Int],
+    logger.debug(">>> Entering updateMilestoneId(owner={},repository={},issueId={},milestoneId={},insertComment={})", owner, repository, issueId, milestoneId, insertComment)
+    logger.debug("updateMilestoneId(owner={},repository={},issueId={},milestoneId={},insertComment={}): content → {}", owner, repository, issueId, milestoneId, insertComment, content)
+    logger.debug("updateMilestoneId(owner={},repository={},issueId={},milestoneId={},insertComment={}): commentedUserName → {}", owner, repository, issueId, milestoneId, insertComment, commentedUserName)
+    logger.debug("updateMilestoneId(owner={},repository={},issueId={},milestoneId={},insertComment={}): repositoryName → {}", owner, repository, issueId, milestoneId, insertComment, repositoryName)
+    logger.debug("updateMilestoneId(owner={},repository={},issueId={},milestoneId={},insertComment={}): action → {}", owner, repository, issueId, milestoneId, insertComment, action)
     insertComment: Boolean = false
   )(implicit context: Context, s: Session): Int = {
     if (insertComment) {
@@ -717,6 +805,7 @@ trait IssuesService {
         .map(getMilestone(owner, repository, _).map(_.title).getOrElse("Unknown milestone"))
         .getOrElse("No milestone")
       val milestoneName = milestoneId
+      logger.debug("updateMilestoneId(owner={},repository={},issueId={},milestoneId={},insertComment={}): oldMilestoneName → {}", owner, repository, issueId, milestoneId, insertComment, oldMilestoneName)
         .map(getMilestone(owner, repository, _).map(_.title).getOrElse("Unknown milestone"))
         .getOrElse("No milestone")
       IssueComments insert IssueComment(
@@ -743,11 +832,14 @@ trait IssuesService {
     priorityId: Option[Int],
     insertComment: Boolean = false
   )(implicit context: Context, s: Session): Int = {
+    logger.debug(">>> Entering updatePriorityId(owner={},repository={},issueId={},priorityId={},insertComment={})", owner, repository, issueId, priorityId, insertComment)
+    logger.debug("updatePriorityId(owner={},repository={},issueId={},priorityId={},insertComment={}): content → {}", owner, repository, issueId, priorityId, insertComment, content)
     if (insertComment) {
       val oldPriorityName = getIssue(owner, repository, s"${issueId}").get.priorityId
         .map(getPriority(owner, repository, _).map(_.priorityName).getOrElse("Unknown priority"))
         .getOrElse("No priority")
       val priorityName = priorityId
+      logger.debug("updatePriorityId(owner={},repository={},issueId={},priorityId={},insertComment={}): oldPriorityName → {}", owner, repository, issueId, priorityId, insertComment, oldPriorityName)
         .map(getPriority(owner, repository, _).map(_.priorityName).getOrElse("Unknown priority"))
         .getOrElse("No priority")
       IssueComments insert IssueComment(
@@ -758,24 +850,37 @@ trait IssuesService {
         commentedUserName = context.loginAccount.map(_.userName).getOrElse("Unknown user"),
         content = s"${oldPriorityName}:${priorityName}",
         registeredDate = currentDate,
+        logger.debug("updatePriorityId(owner={},repository={},issueId={},priorityId={},insertComment={}): commentedUserName → {}", owner, repository, issueId, priorityId, insertComment, commentedUserName)
         updatedDate = currentDate
       )
     }
+    logger.debug("updatePriorityId(owner={},repository={},issueId={},priorityId={},insertComment={}): repositoryName → {}", owner, repository, issueId, priorityId, insertComment, repositoryName)
     Issues
       .filter(_.byPrimaryKey(owner, repository, issueId))
       .map(t => (t.priorityId ?, t.updatedDate))
+      logger.debug("updatePriorityId(owner={},repository={},issueId={},priorityId={},insertComment={}): action → {}", owner, repository, issueId, priorityId, insertComment, action)
       .update(priorityId, currentDate)
   }
 
   def updateComment(owner: String, repository: String, issueId: Int, commentId: Int, content: String)(implicit
     s: Session
   ): Int = {
+    logger.debug(">>> Entering updateComment(owner={},repository={},issueId={},commentId={},content={})", owner, repository, issueId, commentId, content)
     Issues.filter(_.byPrimaryKey(owner, repository, issueId)).map(_.updatedDate).update(currentDate)
+    logger.debug("<<< Exiting updateComment(owner={},repository={},issueId={},commentId={},content={})", owner, repository, issueId, commentId, content)
     IssueComments.filter(_.byPrimaryKey(commentId)).map(t => (t.content, t.updatedDate)).update(content, currentDate)
   }
 
   def deleteComment(owner: String, repository: String, issueId: Int, commentId: Int)(implicit
     context: Context,
+  logger.debug(">>> Entering deleteComment(owner={},repository={},issueId={},commentId={})", owner, repository, issueId, commentId)
+  logger.debug("<<< Exiting deleteComment(owner={},repository={},issueId={},commentId={})", owner, repository, issueId, commentId)
+  logger.debug("deleteComment(owner={},repository={},issueId={},commentId={}): updatedDate → {}", owner, repository, issueId, commentId, updatedDate)
+  logger.debug("deleteComment(owner={},repository={},issueId={},commentId={}): registeredDate → {}", owner, repository, issueId, commentId, registeredDate)
+  logger.debug("deleteComment(owner={},repository={},issueId={},commentId={}): content → {}", owner, repository, issueId, commentId, content)
+  logger.debug("deleteComment(owner={},repository={},issueId={},commentId={}): commentedUserName → {}", owner, repository, issueId, commentId, commentedUserName)
+  logger.debug("deleteComment(owner={},repository={},issueId={},commentId={}): action → {}", owner, repository, issueId, commentId, action)
+  logger.debug("deleteComment(owner={},repository={},issueId={},commentId={}): repositoryName → {}", owner, repository, issueId, commentId, repositoryName)
     s: Session
   ): Int = {
     Issues.filter(_.byPrimaryKey(owner, repository, issueId)).map(_.updatedDate).update(currentDate)
@@ -800,9 +905,11 @@ trait IssuesService {
   }
 
   def updateClosed(owner: String, repository: String, issueId: Int, closed: Boolean)(implicit s: Session): Int = {
+    logger.debug(">>> Entering updateClosed(owner={},repository={},issueId={},closed={})", owner, repository, issueId, closed)
     Issues
       .filter(_.byPrimaryKey(owner, repository, issueId))
       .map(t => (t.closed, t.updatedDate))
+      logger.debug("<<< Exiting updateClosed(owner={},repository={},issueId={},closed={})", owner, repository, issueId, closed)
       .update(closed, currentDate)
   }
 
@@ -815,11 +922,14 @@ trait IssuesService {
    * @return issues with comment count and matched content of issue or comment
    */
   def searchIssuesByKeyword(owner: String, repository: String, query: String, pullRequest: Boolean)(implicit
+  logger.debug(">>> Entering searchIssuesByKeyword(owner={},repository={},query={},pullRequest={})", owner, repository, query, pullRequest)
+  logger.debug("<<< Exiting searchIssuesByKeyword(owner={},repository={},query={},pullRequest={})", owner, repository, query, pullRequest)
     s: Session
   ): List[(Issue, Int, String)] = {
     // import slick.driver.JdbcDriver.likeEncode
     val keywords = splitWords(query.toLowerCase)
 
+    logger.debug("searchIssuesByKeyword(owner={},repository={},query={},pullRequest={}): keywords → {}", owner, repository, query, pullRequest, keywords)
     // Search Issue
     val issues = Issues
       .filter { t =>
@@ -882,6 +992,8 @@ trait IssuesService {
   }
 
   def closeIssuesFromMessage(message: String, userName: String, owner: String, repository: String)(implicit
+  logger.debug(">>> Entering closeIssuesFromMessage(message={},userName={},owner={},repository={})", message, userName, owner, repository)
+  logger.debug("<<< Exiting closeIssuesFromMessage(message={},userName={},owner={},repository={})", message, userName, owner, repository)
     s: Session
   ): Seq[Int] = {
     extractCloseId(message).flatMap { issueId =>
@@ -896,13 +1008,16 @@ trait IssuesService {
   def createReferComment(owner: String, repository: String, fromIssue: Issue, message: String, loginAccount: Account)(
     implicit s: Session
   ): Unit = {
+    logger.debug(">>> Entering createReferComment(owner={},repository={},fromIssue={},message={},loginAccount={})", owner, repository, fromIssue, message, loginAccount)
     extractGlobalIssueId(message).foreach { case (_referredOwner, _referredRepository, referredIssueId) =>
       val referredOwner = _referredOwner.getOrElse(owner)
       val referredRepository = _referredRepository.getOrElse(repository)
       getRepository(referredOwner, referredRepository).foreach { repo =>
         if (isReadable(repo.repository, Option(loginAccount))) {
+        logger.debug("<<< Exiting createReferComment(owner={},repository={},fromIssue={},message={},loginAccount={})", owner, repository, fromIssue, message, loginAccount)
           getIssue(referredOwner, referredRepository, referredIssueId.get).foreach { _ =>
             val (content, action) = if (owner == referredOwner && repository == referredRepository) {
+            logger.debug("createReferComment(owner={},repository={},fromIssue={},message={},loginAccount={}): referredRepository → {}", owner, repository, fromIssue, message, loginAccount, referredRepository)
               (s"${fromIssue.issueId}:${fromIssue.title}", "refer")
             } else {
               (s"${fromIssue.issueId}:${owner}:${repository}:${fromIssue.title}", "refer_global")
@@ -931,8 +1046,10 @@ trait IssuesService {
   }
 
   def createIssueComment(owner: String, repository: String, commit: CommitInfo)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering createIssueComment(owner={},repository={},commit={})", owner, repository, commit)
     extractIssueId(commit.fullMessage).foreach { issueId =>
       if (getIssue(owner, repository, issueId).isDefined) {
+      logger.debug("<<< Exiting createIssueComment(owner={},repository={},commit={})", owner, repository, commit)
         val userName =
           getAccountByMailAddress(commit.committerEmailAddress).map(_.userName).getOrElse(commit.committerName)
         createComment(owner, repository, userName, issueId.toInt, commit.fullMessage + " " + commit.id, "commit")
@@ -941,6 +1058,7 @@ trait IssuesService {
   }
 
   def getAssignableUserNames(owner: String, repository: String)(implicit s: Session): List[String] = {
+    logger.debug(">>> Entering getAssignableUserNames(owner={},repository={})", owner, repository)
     (getCollaboratorUserNames(owner, repository, Seq(Role.ADMIN, Role.DEVELOPER)) :::
       (getAccountByUserName(owner) match {
         case Some(x) if x.isGroupAccount =>
@@ -948,6 +1066,7 @@ trait IssuesService {
         case Some(_) =>
           List(owner)
         case None =>
+          logger.debug("<<< Exiting getAssignableUserNames(owner={},repository={})", owner, repository)
           Nil
       })).distinct.sorted
   }
@@ -1060,7 +1179,10 @@ object IssuesService {
     private val SupportedOperators = Seq("eq", "lt", "gt", "lte", "gte")
 
     private def param(request: HttpServletRequest, name: String, allow: Seq[String] = Nil): Option[String] = {
+      logger.debug(">>> Entering param(request={},name={},allow={})", request, name, allow)
       val value = request.getParameter(name)
+      logger.debug("<<< Exiting param(request={},name={},allow={})", request, name, allow)
+      logger.debug("param(request={},name={},allow={}): value → {}", request, name, allow, value)
       if (value == null || value.isEmpty || (allow.nonEmpty && !allow.contains(value))) None else Some(value)
     }
 
@@ -1068,6 +1190,7 @@ object IssuesService {
      * Restores IssueSearchCondition instance from filter query.
      */
     def apply(filter: String): IssueSearchCondition = {
+      logger.debug(">>> Entering apply(filter={})", filter)
       val conditions = filter
         .split("[ 　\t]+")
         .collect {
@@ -1130,6 +1253,9 @@ object IssuesService {
         conditions.get("visibility").flatMap(_.headOption),
         conditions.get("group").map(_.toSet).getOrElse(Set.empty),
         others
+      logger.debug(">>> Entering apply(request={})", request)
+      logger.debug("<<< Exiting apply(filter={})", filter)
+      logger.debug("<<< Exiting apply(request={})", request)
       )
     }
 
@@ -1137,8 +1263,10 @@ object IssuesService {
      * Restores IssueSearchCondition instance from request parameters.
      */
     def apply(request: HttpServletRequest): IssueSearchCondition = {
+      logger.debug(">>> Entering apply(request={})", request)
       val others = request.getParameterMap.asScala
         .collect {
+          logger.debug("<<< Exiting apply(filter={})", filter)
           // custom.<field_name> = <operator>:<value>
           case (key, values) if key.startsWith("custom.") && values.nonEmpty && values.head.indexOf(":") > 0 =>
             val name = key.stripPrefix("custom.")
@@ -1183,6 +1311,8 @@ object IssuesService {
     }
 
     def page(request: HttpServletRequest): Int = {
+      logger.debug(">>> Entering page(request={})", request)
+      logger.debug("<<< Exiting page(request={})", request)
       PaginationHelper.page(param(request, "page"))
     }
   }

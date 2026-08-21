@@ -28,9 +28,12 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
   override def destroy(): Unit = {}
 
   def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain): Unit = {
+    logger.debug(">>> Entering doFilter(req={},res={},chain={})", req, res, chain)
     val request = req.asInstanceOf[HttpServletRequest]
     val response = res.asInstanceOf[HttpServletResponse]
+    logger.debug("doFilter(req={},res={},chain={}): response → {}", req, res, chain, response)
 
+    logger.debug("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
     val wrappedResponse = new HttpServletResponseWrapper(response) {
       override def setCharacterEncoding(encoding: String) = {}
     }
@@ -82,6 +85,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
       } else {
         AuthUtil.requireAuth(response)
       }
+    logger.debug("<<< Exiting pluginRepository(request={},response={},chain={},settings={},isUpdating={},filter={})", request, response, chain, settings, isUpdating, filter)
     }
   }
 
@@ -142,6 +146,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
         }
     }
 
+    logger.debug("<<< Exiting defaultRepository(request={},response={},chain={},settings={},isUpdating={})", request, response, chain, settings, isUpdating)
     action()
   }
 
@@ -157,6 +162,8 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
    * @return an account or none
    */
   private def authenticateByHeader(authorizationHeader: String, settings: SystemSettings)(implicit
+  logger.debug(">>> Entering authenticateByHeader(authorizationHeader=<redacted>,settings={})", settings)
+  logger.debug("<<< Exiting authenticateByHeader(authorizationHeader=<redacted>,settings={})", settings)
     s: Session
   ): Option[Account] = {
     val Array(username, password) = AuthUtil.decodeAuthHeader(authorizationHeader).split(":", 2)

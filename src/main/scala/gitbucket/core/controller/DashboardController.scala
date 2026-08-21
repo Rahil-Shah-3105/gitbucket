@@ -28,6 +28,7 @@ class DashboardController
     with RequestCache
 
 trait DashboardControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: IssuesService & PullRequestService & RepositoryService & AccountService & CommitStatusService &
     UsersAuthenticator =>
 
@@ -92,24 +93,33 @@ trait DashboardControllerBase extends ControllerBase {
   })
 
   private def getOrCreateCondition(filter: String, userName: String) = {
+    logger.debug(">>> Entering getOrCreateCondition(filter={},userName={})", filter, userName)
     val condition = IssueSearchCondition(request)
 
+    logger.debug("<<< Exiting getOrCreateCondition(filter={},userName={})", filter, userName)
     filter match {
       case "assigned"  => condition.copy(assigned = Some(Some(userName)), author = None, mentioned = None)
       case "mentioned" => condition.copy(assigned = None, author = None, mentioned = Some(userName))
       case _           => condition.copy(assigned = None, author = Some(userName), mentioned = None)
+    logger.debug("getOrCreateCondition(filter={},userName={}): condition → {}", filter, userName, condition)
     }
   }
 
   private def searchIssues(loginAccount: Account, filter: String) = {
+    logger.debug(">>> Entering searchIssues(loginAccount={},filter={})", loginAccount, filter)
     import IssuesService.*
 
     val userName = loginAccount.userName
+    logger.debug("searchIssues(loginAccount={},filter={}): userName → {}", loginAccount, filter, userName)
     val condition = getOrCreateCondition(filter, userName)
     val userRepos = getUserRepositories(userName, withoutPhysicalInfo = true).map(repo => repo.owner -> repo.name)
     val page = IssueSearchCondition.page(request)
     val issues = searchIssue(condition, IssueSearchOption.Issues, (page - 1) * IssueLimit, IssueLimit, userRepos*)
 
+    logger.debug("searchIssues(loginAccount={},filter={}): condition → {}", loginAccount, filter, condition)
+    logger.debug("searchIssues(loginAccount={},filter={}): userRepos → {}", loginAccount, filter, userRepos)
+    logger.debug("searchIssues(loginAccount={},filter={}): page → {}", loginAccount, filter, page)
+    logger.debug("searchIssues(loginAccount={},filter={}): issues → {}", loginAccount, filter, issues)
     html.issues(
       issues.map(issue => (issue, None)),
       page,
@@ -127,16 +137,20 @@ trait DashboardControllerBase extends ControllerBase {
         None,
         withoutPhysicalInfo = true,
         limit = context.settings.basicBehavior.limitVisibleRepositories
+        logger.info("searchIssues(loginAccount={},filter={}): limit → {}", loginAccount, filter, limit)
       ),
       isNewsFeedEnabled
     )
   }
+  logger.debug("searchIssues(loginAccount={},filter={}): withoutPhysicalInfo → {}", loginAccount, filter, withoutPhysicalInfo)
 
   private def searchPullRequests(loginAccount: Account, filter: String) = {
+    logger.debug(">>> Entering searchPullRequests(loginAccount={},filter={})", loginAccount, filter)
     import IssuesService.*
     import PullRequestService.*
 
     val userName = loginAccount.userName
+    logger.debug("searchPullRequests(loginAccount={},filter={}): userName → {}", loginAccount, filter, userName)
     val condition = getOrCreateCondition(filter, userName)
     val allRepos = getAllRepositories(userName)
     val page = IssueSearchCondition.page(request)
@@ -150,9 +164,13 @@ trait DashboardControllerBase extends ControllerBase {
     val status = issues.map { issue =>
       issue.commitId.flatMap { commitId =>
         getCommitStatusWithSummary(issue.issue.userName, issue.issue.repositoryName, commitId)
+      logger.debug("searchPullRequests(loginAccount={},filter={}): condition → {}", loginAccount, filter, condition)
+      logger.debug("searchPullRequests(loginAccount={},filter={}): allRepos → {}", loginAccount, filter, allRepos)
+      logger.debug("searchPullRequests(loginAccount={},filter={}): page → {}", loginAccount, filter, page)
       }
     }
 
+    logger.debug("<<< Exiting searchPullRequests(loginAccount={},filter={})", loginAccount, filter)
     html.pulls(
       issues.zip(status),
       page,
@@ -170,9 +188,11 @@ trait DashboardControllerBase extends ControllerBase {
         None,
         withoutPhysicalInfo = true,
         limit = context.settings.basicBehavior.limitVisibleRepositories
+        logger.info("searchPullRequests(loginAccount={},filter={}): limit → {}", loginAccount, filter, limit)
       ),
       isNewsFeedEnabled
     )
+  logger.debug("searchPullRequests(loginAccount={},filter={}): withoutPhysicalInfo → {}", loginAccount, filter, withoutPhysicalInfo)
   }
 
 }

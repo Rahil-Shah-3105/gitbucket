@@ -29,6 +29,7 @@ case class Table(name: String, columns: Seq[Column])
 case class Column(name: String, primaryKey: Boolean)
 
 trait SystemSettingsControllerBase extends AccountManagementControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService & RepositoryService & AdminAuthenticator =>
 
   private val form = mapping(
@@ -562,8 +563,11 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
 
   private def multiLineText(constraints: Constraint*): SingleValueType[Seq[String]] =
     new SingleValueType[Seq[String]](constraints*) {
+      logger.debug(">>> Entering multiLineText(constraints={})", constraints)
       def convert(value: String, messages: Messages): Seq[String] = {
+        logger.debug(">>> Entering convert(value={},messages={})", value, messages)
         if (value == null) {
+          logger.debug("<<< Exiting convert(value={},messages={})", value, messages)
           Nil
         } else {
           value.split("\n").toIndexedSeq.map(_.trim)
@@ -586,7 +590,9 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
   protected def disableByNotYourself(paramName: String): Constraint =
     new Constraint() {
       override def validate(name: String, value: String, messages: Messages): Option[String] = {
+        logger.debug(">>> Entering validate(name={},value={},messages={})", name, value, messages)
         for {
+          logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
           userName <- params.get(paramName)
           loginAccount <- context.loginAccount
           if userName == loginAccount.userName && params.get("removed").contains("true")

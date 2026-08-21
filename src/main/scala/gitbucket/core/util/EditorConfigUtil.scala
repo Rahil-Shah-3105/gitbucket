@@ -20,10 +20,15 @@ object EditorConfigUtil {
     private def removeInitialSlash(path: Ec4jPath) = Ec4jPath.Ec4jPaths.root.relativize(path).toString
 
     def this(git: Git, revStr: String, path: String) = {
+      private val logger = LoggerFactory.getLogger(getClass)
+      logger.debug(">>> Entering this(git={},revStr={},path={})", git, revStr, path)
+      logger.debug(">>> Entering this(repo={},revStr={},path={})", repo, revStr, path)
+      logger.debug("<<< Exiting this(repo={},revStr={},path={})", repo, revStr, path)
       this(git.getRepository, revStr, Ec4jPath.Ec4jPaths.of(if (path.startsWith("/")) path else "/" + path))
     }
 
     def this(repo: Repository, revStr: String, path: String) = {
+      logger.debug("<<< Exiting this(repo={},revStr={},path={})", repo, revStr, path)
       this(repo, revStr, Ec4jPath.Ec4jPaths.of(if (path.startsWith("/")) path else "/" + path))
     }
 
@@ -37,12 +42,17 @@ object EditorConfigUtil {
     }
 
     override def exists(): Boolean = {
+      logger.debug(">>> Entering exists()")
       Using.resource(repo.newObjectReader()) { (reader: ObjectReader) =>
         try {
+        logger.debug("<<< Exiting exists()")
           val treeWalk = Option(TreeWalk.forPath(reader, removeInitialSlash(path), getRevTree))
+          logger.debug("exists(): treeWalk → {}", treeWalk)
           treeWalk.isDefined
         } catch {
-          case e: IOException => false
+          case e: IOException =>
+            logger.error("Exception in exists(): {}", e.getMessage, e)
+            false
         }
       }
     }
@@ -56,13 +66,17 @@ object EditorConfigUtil {
     }
 
     override def openRandomReader(): Resource.RandomReader = {
+      logger.debug(">>> Entering openRandomReader()")
+      logger.debug("<<< Exiting openRandomReader()")
       StringRandomReader.ofReader(openReader())
     }
 
     override def openReader(): Reader = {
+      logger.debug(">>> Entering openReader()")
       Using.resource(repo.newObjectReader) { (reader: ObjectReader) =>
         val treeWalk = TreeWalk.forPath(reader, removeInitialSlash(path), getRevTree)
         new InputStreamReader(reader.open(treeWalk.getObjectId(0)).openStream, StandardCharsets.UTF_8)
+      logger.debug("<<< Exiting openReader()")
       }
     }
   }
@@ -82,18 +96,22 @@ object EditorConfigUtil {
     }
 
     override def relativize(resource: Resource): Resource = {
+      logger.debug(">>> Entering relativize(resource={})", resource)
       resource match {
         case r: JGitResource =>
           new JGitResource(repo, revStr, path.relativize(r.getPath).toString)
+      logger.debug("<<< Exiting relativize(resource={})", resource)
       }
     }
 
     override def resolve(name: String): Resource = {
+      logger.debug(">>> Entering resolve(name={})", name)
       Option(path)
         .map { p =>
           new JGitResource(repo, revStr, p.resolve(name))
         }
         .getOrElse {
+          logger.debug("<<< Exiting resolve(name={})", name)
           new JGitResource(repo, revStr, name)
         }
     }
@@ -101,6 +119,9 @@ object EditorConfigUtil {
 
   private object JGitResourcePath {
     def RootDirectory(git: Git, revStr: String) =
+      logger.debug(">>> Entering RootDirectory(git={},revStr={})", git, revStr)
+      logger.debug("RootDirectory(git={},revStr={}): NewLineModeDefault → {}", git, revStr, NewLineModeDefault)
+      logger.debug("<<< Exiting RootDirectory(git={},revStr={})", git, revStr)
       new JGitResourcePath(git.getRepository, revStr, Ec4jPath.Ec4jPaths.of("/"))
   }
 
@@ -115,7 +136,9 @@ object EditorConfigUtil {
   )
 
   def getEditorConfigInfo(git: Git, rev: String, path: String): EditorConfigInfo = {
+    logger.debug(">>> Entering getEditorConfigInfo(git={},rev={},path={})", git, rev, path)
     try {
+      logger.debug("<<< Exiting getEditorConfigInfo(git={},rev={},path={})", git, rev, path)
       val resourcePropertiesService = ResourcePropertiesService
         .builder()
         .configFileName(EditorConfigConstants.EDITORCONFIG)
@@ -128,7 +151,11 @@ object EditorConfigUtil {
       EditorConfigInfo(
         tabSize = props.getValue[Integer](PropertyType.tab_width, TabSizeDefault, false),
         newLineMode = props.getValue[EndOfLineValue](PropertyType.end_of_line, null, false) match {
-          case EndOfLineValue.cr   => "cr"
+          logger.debug("getEditorConfigInfo(git={},rev={},path={}): props → {}", git, rev, path, props)
+          case EndOfLineValue.cr   =>
+            logger.debug("getEditorConfigInfo(git={},rev={},path={}): tabSize → {}", git, rev, path, tabSize)
+            logger.debug("getEditorConfigInfo(git={},rev={},path={}): newLineMode → {}", git, rev, path, newLineMode)
+            "cr"
           case EndOfLineValue.lf   => "lf"
           case EndOfLineValue.crlf => "crlf"
           case _                   => "auto"
@@ -142,6 +169,7 @@ object EditorConfigUtil {
     } catch {
       case e: ParseException => EditorConfigInfo(TabSizeDefault, NewLineModeDefault, UseSoftTabsDefault)
       case e: IOException    => EditorConfigInfo(TabSizeDefault, NewLineModeDefault, UseSoftTabsDefault)
+    logger.error("Exception in getEditorConfigInfo(git={},rev={},path={}): {}", git, rev, path, e.getMessage, e)
     }
   }
 }

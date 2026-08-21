@@ -74,6 +74,9 @@ object GitBucketCoreModule
         "4.34.0",
         new Migration() {
           override def migrate(moduleId: String, version: String, context: java.util.Map[String, AnyRef]): Unit = {
+            logger.debug(">>> Entering migrate(moduleId={},version={},context={})", moduleId, version, context)
+            logger.debug("migrate(moduleId={},version={},context={}): formats → {}", moduleId, version, context, formats)
+            val __logStart = System.currentTimeMillis()
             implicit val formats: Formats = Serialization.formats(NoTypeHints)
             import JDBCUtil._
 
@@ -87,12 +90,20 @@ object GitBucketCoreModule
                 activityType = rs.getString("ACTIVITY_TYPE"),
                 message = rs.getString("MESSAGE"),
                 additionalInfo = {
+                  logger.debug("migrate(moduleId={},version={},context={}): activityDate → {}", moduleId, version, context, activityDate)
                   val additionalInfo = rs.getString("ADDITIONAL_INFO")
                   if (rs.wasNull()) None else Some(additionalInfo)
                 },
                 activityDate = rs.getTimestamp("ACTIVITY_DATE")
               )
             }
+            logger.info("migrate(moduleId,version,context)={},{},{}: find query executed in {} ms", moduleId, version, context, (System.currentTimeMillis() - __logStart))
+            logger.debug("migrate(moduleId={},version={},context={}): activityId → {}", moduleId, version, context, activityId)
+            logger.debug("migrate(moduleId={},version={},context={}): userName → {}", moduleId, version, context, userName)
+            logger.debug("migrate(moduleId={},version={},context={}): repositoryName → {}", moduleId, version, context, repositoryName)
+            logger.debug("migrate(moduleId={},version={},context={}): activityUserName → {}", moduleId, version, context, activityUserName)
+            logger.debug("migrate(moduleId={},version={},context={}): activityType → {}", moduleId, version, context, activityType)
+            logger.debug("migrate(moduleId={},version={},context={}): message → {}", moduleId, version, context, message)
             Using.resource(new FileOutputStream(ActivityLog, true)) { out =>
               list.foreach { activity =>
                 out.write((write(activity) + "\n").getBytes(StandardCharsets.UTF_8))

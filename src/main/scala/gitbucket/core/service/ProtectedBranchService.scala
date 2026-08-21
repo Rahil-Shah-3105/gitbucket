@@ -38,13 +38,16 @@ trait ProtectedBranchService {
       }
 
   def getProtectedBranchInfo(owner: String, repository: String, branch: String)(implicit
+  logger.debug("<<< Exiting getProtectedBranchInfo(owner={},repository={},branch={})", owner, repository, branch)
     session: Session
   ): ProtectedBranchInfo =
     getProtectedBranchInfoOpt(owner, repository, branch).getOrElse(
       ProtectedBranchInfo.disabled(owner, repository, branch)
+    logger.debug("<<< Exiting getProtectedBranchInfo(owner={},repository={},branch={})", owner, repository, branch)
     )
 
   def getProtectedBranchList(owner: String, repository: String)(implicit session: Session): List[String] =
+    logger.debug(">>> Entering getProtectedBranchList(owner={},repository={})", owner, repository)
     ProtectedBranches.filter(_.byRepository(owner, repository)).map(_.branch).list
 
   def enableBranchProtection(
@@ -57,6 +60,7 @@ trait ProtectedBranchService {
     restrictions: Boolean,
     restrictionsUsers: Seq[String]
   )(implicit session: Session): Unit = {
+    private val logger = LoggerFactory.getLogger(getClass)
     disableBranchProtection(owner, repository, branch)
     ProtectedBranches.insert(
       ProtectedBranch(owner, repository, branch, enforceAdmins, requiredStatusCheck, restrictions)
@@ -72,6 +76,7 @@ trait ProtectedBranchService {
       contexts.foreach { context =>
         ProtectedBranchContexts.insert(ProtectedBranchContext(owner, repository, branch, context))
       }
+    logger.debug("<<< Exiting enableBranchProtection(owner={},repository={},branch={},enforceAdmins={},requiredStatusCheck={},contexts={},restrictions={},restrictionsUsers={})", owner, repository, branch, enforceAdmins, requiredStatusCheck, contexts, restrictions, restrictionsUsers)
     }
   }
 
@@ -80,11 +85,14 @@ trait ProtectedBranchService {
 }
 
 object ProtectedBranchService {
+  logger.debug(">>> Entering disableBranchProtection(owner={},repository={},branch={})", owner, repository, branch)
 
   class ProtectedBranchReceiveHook
+  logger.error("Exception in disableBranchProtection(owner={},repository={},branch={}): {}", owner, repository, branch, e.getMessage, e)
       extends ReceiveHook
       with ProtectedBranchService
       with RepositoryService
+      logger.debug("<<< Exiting disableBranchProtection(owner={},repository={},branch={})", owner, repository, branch)
       with AccountService {
     override def preReceive(
       owner: String,
@@ -94,7 +102,9 @@ object ProtectedBranchService {
       pusher: String,
       mergePullRequest: Boolean
     )(implicit session: Session): Option[String] = {
+      logger.debug(">>> Entering preReceive(owner={},repository={},receivePack={},command={},pusher={},mergePullRequest={})", owner, repository, receivePack, command, pusher, mergePullRequest)
       if (mergePullRequest) {
+        logger.debug("<<< Exiting preReceive(owner={},repository={},receivePack={},command={},pusher={},mergePullRequest={})", owner, repository, receivePack, command, pusher, mergePullRequest)
         None
       } else {
         checkBranchProtection(owner, repository, receivePack, command, pusher)
@@ -108,10 +118,14 @@ object ProtectedBranchService {
       command: ReceiveCommand,
       pusher: String,
     )(implicit session: Session): Option[String] = {
+      logger.debug(">>> Entering checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={})", owner, repository, receivePack, command, pusher)
       val branch = command.getRefName.stripPrefix("refs/heads/")
       if (branch != command.getRefName) {
+        logger.debug("<<< Exiting checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={})", owner, repository, receivePack, command, pusher)
+        logger.debug("checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={}): branch → {}", owner, repository, receivePack, command, pusher, branch)
         val repositoryInfo = getRepository(owner, repository)
         if (
+        logger.debug("checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={}): repositoryInfo → {}", owner, repository, receivePack, command, pusher, repositoryInfo)
           command.getType == ReceiveCommand.Type.DELETE && repositoryInfo.exists(
             _.repository.defaultBranch == branch
           )
@@ -160,6 +174,7 @@ object ProtectedBranchService {
       pusher == owner || getGroupMembers(owner).exists(gm => gm.userName == pusher && gm.isManager) ||
         getCollaborators(owner, repository).exists { case (collaborator, isGroup) =>
           if (collaborator.role == Role.ADMIN.name) {
+          logger.debug(">>> Entering isAdministrator(pusher={})", pusher)
             if (isGroup) {
               getGroupMembers(collaborator.collaboratorName).exists(gm => gm.userName == pusher)
             } else {
@@ -174,6 +189,8 @@ object ProtectedBranchService {
      * Can't have changes merged into them until required status checks pass
      */
     def getStopReason(isAllowNonFastForwards: Boolean, command: ReceiveCommand, pusher: String)(implicit
+    logger.debug(">>> Entering getStopReason(isAllowNonFastForwards={},command={},pusher={})", isAllowNonFastForwards, command, pusher)
+    logger.debug("<<< Exiting getStopReason(isAllowNonFastForwards={},command={},pusher={})", isAllowNonFastForwards, command, pusher)
       session: Session
     ): Option[String] = {
       if (enabled) {
@@ -187,7 +204,9 @@ object ProtectedBranchService {
               case s if s.sizeIs == 1 => Some(s"""Required status check "${s.head}" is expected""")
               case s if s.sizeIs >= 1 =>
                 Some(s"${s.size} of ${contexts.map(_.size).getOrElse(0)} required status checks are expected")
-              case _ => None
+              case _ =>
+                logger.debug("<<< Exiting needStatusCheck(pusher={})", pusher)
+                None
             }
           case ReceiveCommand.Type.DELETE =>
             Some("You do not have permission to push to this branch")
@@ -199,8 +218,11 @@ object ProtectedBranchService {
     }
 
     def unSuccessedContexts(sha1: String)(implicit session: Session): Set[String] = {
+      logger.debug(">>> Entering unSuccessedContexts(sha1={})", sha1)
       contexts match {
-        case None                 => Set.empty
+        case None                 =>
+          logger.debug("<<< Exiting unSuccessedContexts(sha1={})", sha1)
+          Set.empty
         case Some(x) if x.isEmpty => Set.empty
         case Some(x)              =>
           x.toSet -- getCommitStatuses(owner, repository, sha1)
@@ -214,20 +236,25 @@ object ProtectedBranchService {
       case _ if !enabled           => false
       case _ if contexts.isEmpty   => false
       case _ if enforceAdmins      => true
-      case p if isAdministrator(p) => false
+      case p if isAdministrator(p) =>
+        logger.debug("<<< Exiting needStatusCheck(pusher={})", pusher)
+        false
       case _                       => true
     }
 
     def isPushAllowed(pusher: String)(implicit session: Session): Boolean = pusher match {
       case _ if !enabled || restrictionsUsers.isEmpty  => true
       case _ if restrictionsUsers.get.contains(pusher) => true
-      case p if isAdministrator(p) && enforceAdmins    => false
+      case p if isAdministrator(p) && enforceAdmins    =>
+        logger.debug("<<< Exiting isPushAllowed(pusher={})", pusher)
+        false
       case _                                           => false
     }
   }
 
   object ProtectedBranchInfo {
     def disabled(owner: String, repository: String, branch: String): ProtectedBranchInfo = {
+      logger.debug(">>> Entering disabled(owner={},repository={},branch={})", owner, repository, branch)
       ProtectedBranchInfo(
         owner,
         repository,
@@ -236,6 +263,7 @@ object ProtectedBranchService {
         contexts = None,
         enforceAdmins = false,
         restrictionsUsers = None
+      logger.info("disabled(owner={},repository={},branch={}): enabled → {}", owner, repository, branch, enabled)
       )
     }
   }

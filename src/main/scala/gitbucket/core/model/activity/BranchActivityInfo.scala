@@ -13,6 +13,7 @@ final case class PushInfo(
   branchName: String,
   commits: List[CommitInfo]
 ) extends BaseActivityInfo {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   override def toActivity: Activity =
     Activity(
@@ -30,6 +31,8 @@ final case class PushInfo(
     commits
       .take(5)
       .map(commit => s"${commit.id}:${commit.shortMessage}")
+      logger.debug(">>> Entering buildCommitSummary(commits={})", commits)
+      logger.debug("<<< Exiting buildCommitSummary(commits={})", commits)
       .mkString("\n")
 }
 

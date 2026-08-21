@@ -47,9 +47,11 @@ object JsonFormat {
     ApiBranchProtectionResponse.enforcementLevelSerializer
 
   def apiPathSerializer(c: Context) =
+    logger.debug(">>> Entering apiPathSerializer(c={})", c)
     new CustomSerializer[ApiPath](_ =>
       (
         {
+          private val logger = LoggerFactory.getLogger(getClass)
           case JString(s) if s.startsWith(c.baseUrl) => ApiPath(s.substring(c.baseUrl.length))
           case JString(s)                            => throw new MappingException("Can't convert " + s + " to ApiPath")
         },
@@ -60,6 +62,7 @@ object JsonFormat {
     )
 
   def sshPathSerializer(c: Context) =
+    logger.debug(">>> Entering sshPathSerializer(c={})", c)
     new CustomSerializer[SshPath](_ =>
       (
         {
@@ -79,6 +82,8 @@ object JsonFormat {
    * convert object to json string
    */
   def apply(obj: AnyRef)(implicit c: Context): String =
+    logger.debug(">>> Entering apply(obj={})", obj)
+    logger.debug("<<< Exiting apply(obj={})", obj)
     Serialization.write(obj)(jsonFormats + apiPathSerializer(c) + sshPathSerializer(c))
 
 }

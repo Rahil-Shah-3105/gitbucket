@@ -12,6 +12,8 @@ case class ApiReleaseAsset(name: String, size: Long)(tag: String, fileName: Stri
 
 object ApiReleaseAsset {
   def apply(asset: ReleaseAsset, repositoryName: RepositoryName): ApiReleaseAsset =
+    logger.debug(">>> Entering apply(asset={},repositoryName={})", asset, repositoryName)
+    logger.debug("<<< Exiting apply(release={},assets={},author={},repositoryName={})", release, assets, author, repositoryName)
     ApiReleaseAsset(asset.label, asset.size)(asset.tag, asset.fileName, repositoryName)
 }
 
@@ -24,6 +26,7 @@ case class ApiRelease(
 )
 
 object ApiRelease {
+  private val logger = LoggerFactory.getLogger(getClass)
   def apply(
     release: ReleaseTag,
     assets: Seq[ReleaseAsset],

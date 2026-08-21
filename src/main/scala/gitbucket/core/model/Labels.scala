@@ -6,6 +6,7 @@ trait LabelComponent extends TemplateComponent { self: Profile =>
   lazy val Labels = TableQuery[Labels]
 
   class Labels(tag: Tag) extends Table[Label](tag, "LABEL") with LabelTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     override val labelId = column[Int]("LABEL_ID", O AutoInc)
     override val labelName = column[String]("LABEL_NAME")
     val color = column[String]("COLOR")
@@ -13,6 +14,8 @@ trait LabelComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(owner: String, repository: String, labelId: Int) = byLabel(owner, repository, labelId)
     def byPrimaryKey(userName: Rep[String], repositoryName: Rep[String], labelId: Rep[Int]) =
+      logger.debug(">>> Entering byPrimaryKey(userName={},repositoryName={},labelId={})", userName, repositoryName, labelId)
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},labelId={})", userName, repositoryName, labelId)
       byLabel(userName, repositoryName, labelId)
   }
 }
@@ -27,6 +30,7 @@ case class Label(userName: String, repositoryName: String, labelId: Int = 0, lab
     if (Integer.parseInt(r, 16) + Integer.parseInt(g, 16) + Integer.parseInt(b, 16) > 408) {
       "000000"
     } else {
+      logger.debug("byPrimaryKey(userName={},repositoryName={},labelId={}): r → {}", userName, repositoryName, labelId, r)
       "ffffff"
     }
   }

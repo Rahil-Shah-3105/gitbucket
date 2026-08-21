@@ -29,12 +29,15 @@ case class ApiCommit(
 
 object ApiCommit {
   def apply(git: Git, repositoryName: RepositoryName, commit: CommitInfo): ApiCommit = {
+    private val logger = LoggerFactory.getLogger(getClass)
     val diffs = JGitUtil.getDiffs(git = git, from = None, to = commit.id, fetchContent = false, makePatch = false)
     ApiCommit(
       id = commit.id,
       message = commit.fullMessage,
       timestamp = commit.commitTime,
       added = diffs.collect {
+       logger.debug(">>> Entering apply(git={},repositoryName={},commit={})", git, repositoryName, commit)
+       logger.debug("<<< Exiting apply(git={},repositoryName={},commit={})", git, repositoryName, commit)
         case x if x.changeType == DiffEntry.ChangeType.ADD => x.newPath
       },
       removed = diffs.collect {
@@ -45,6 +48,7 @@ object ApiCommit {
       },
       author = ApiPersonIdent.author(commit),
       committer = ApiPersonIdent.committer(commit)
+    logger.debug("apply(git={},repositoryName={},commit={}): message → {}", git, repositoryName, commit, message)
     )(repositoryName)
   }
 }

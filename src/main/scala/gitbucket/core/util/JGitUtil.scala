@@ -52,6 +52,7 @@ object JGitUtil {
    */
   case class RepositoryInfo(owner: String, name: String, branchList: List[String], tags: List[TagInfo]) {
     def this(owner: String, name: String) = this(owner, name, Nil, Nil)
+   logger.debug(">>> Entering this(owner={},name={})", owner, name)
   }
 
   /**
@@ -114,6 +115,8 @@ object JGitUtil {
     w.flush()
     os.write('\n')
 
+    val __logStart = System.currentTimeMillis()
+    logger.info("getSignTarget(rev)={}: database query executed in {} ms", rev, (System.currentTimeMillis() - __logStart))
     os.write("committer ".getBytes(ascii))
     w.write(rev.getCommitterIdent.toExternalString)
     w.flush()
@@ -131,6 +134,7 @@ object JGitUtil {
       w.write(rev.getFullMessage)
       w.flush()
     }
+    logger.debug("<<< Exiting getSignTarget(rev={})", rev)
     os.toByteArray
   }
 
@@ -177,6 +181,7 @@ object JGitUtil {
         rev.getCommitterIdent.getEmailAddress,
         Option(rev.getRawGpgSignature).map { s =>
           GpgSignInfo(s, getSignTarget(rev))
+         logger.debug("<<< Exiting this(rev={})", rev)
         },
         None
       )
@@ -292,6 +297,7 @@ object JGitUtil {
    * @return the RevCommit for the specified commit or tag
    */
   def getRevCommitFromId(git: Git, objectId: ObjectId): RevCommit = {
+    logger.debug(">>> Entering getRevCommitFromId(git={},objectId={})", git, objectId)
     logger.debug(s"getRevCommitFromId(${git}, ${objectId})")
 
     val revWalk = new RevWalk(git.getRepository)
@@ -300,6 +306,7 @@ object JGitUtil {
       case _         => revWalk.parseCommit(objectId)
     }
     revWalk.dispose()
+    logger.debug("<<< Exiting getRevCommitFromId(git={},objectId={})", git, objectId)
     revCommit
   }
 
@@ -321,8 +328,10 @@ object JGitUtil {
   } else null
 
   def removeCache(git: Git): Unit = {
+    logger.debug(">>> Entering removeCache(git={})", git)
     logger.debug(s"removeCache(${git})")
 
+    logger.debug("<<< Exiting removeCache(git={})", git)
     if (isCacheEnabled) {
       val dir = git.getRepository.getDirectory
       val keyPrefix = dir.getAbsolutePath + "@"
@@ -340,15 +349,19 @@ object JGitUtil {
    * If the specified branch has over 10000 commits, this method returns 100001.
    */
   def getCommitCount(git: Git, branch: String, max: Int = 10001): Int = {
+    logger.debug(">>> Entering getCommitCount(git={},branch={},max={})", git, branch, max)
     logger.debug(s"getCommitCount(${git}, ${branch}, ${max})")
 
     val dir = git.getRepository.getDirectory
 
+    logger.debug("<<< Exiting getCommitCount(git={},branch={},max={})", git, branch, max)
     if (isCacheEnabled) {
       val key = dir.getAbsolutePath + "@" + branch
       val entry = cache.getEntry(key)
 
       if (entry == null) {
+        val __logStart = System.currentTimeMillis()
+        logger.info("getCommitCount(git,branch,max)={},{},{}: find query executed in {} ms", git, branch, max, (System.currentTimeMillis() - __logStart))
         val commitId = git.getRepository.resolve(branch)
         val commitCount = git.log.add(commitId).call.iterator.asScala.take(max).size
         cache.put(key, commitCount)
@@ -367,8 +380,10 @@ object JGitUtil {
    * Returns the repository information. It contains branch names and tag names.
    */
   def getRepositoryInfo(owner: String, repository: String): RepositoryInfo = {
+    logger.debug(">>> Entering getRepositoryInfo(owner={},repository={})", owner, repository)
     logger.debug(s"getRepositoryInfo(${owner}, ${repository})")
 
+    logger.debug("<<< Exiting getRepositoryInfo(owner={},repository={})", owner, repository)
     Using.resource(Git.open(getRepositoryDir(owner, repository))) { git =>
       try {
         RepositoryInfo(
@@ -394,6 +409,7 @@ object JGitUtil {
                 )
               } catch {
                 case _: IncorrectObjectTypeException =>
+                  logger.error("Exception in getRepositoryInfo(owner={},repository={}): {}", owner, repository, e.getMessage, e)
                   None
               }
             }
@@ -426,22 +442,30 @@ object JGitUtil {
     commitCount: Int = 0,
     maxFiles: Int = 5
   ): List[FileInfo] = {
+    logger.debug(">>> Entering getFileList(git={},revision={},path={},baseUrl={},commitCount={},maxFiles={})", git, revision, path, baseUrl, commitCount, maxFiles)
     logger.debug(
       s"getFileList(${git}, ${revision}, ${path}, ${baseUrl}, ${commitCount}, ${maxFiles})"
     )
 
+    logger.debug("<<< Exiting getFileList(git={},revision={},path={},baseUrl={},commitCount={},maxFiles={})", git, revision, path, baseUrl, commitCount, maxFiles)
+    val __logStart = System.currentTimeMillis()
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
       val objectId = git.getRepository.resolve(revision)
       if (objectId == null) return Nil
+      logger.debug("getFileList(git={},revision={},path={},baseUrl={},commitCount={},maxFiles={}): objectId → {}", git, revision, path, baseUrl, commitCount, maxFiles, objectId)
+      logger.info("getFileList(git,revision,path,baseUrl,commitCount,maxFiles)={},{},{},{},{},{}: find query executed in {} ms", git, revision, path, baseUrl, commitCount, maxFiles, (System.currentTimeMillis() - __logStart))
       val revCommit = revWalk.parseCommit(objectId)
 
       def useTreeWalk(rev: RevCommit)(f: TreeWalk => Any): Unit =
         if (path == ".") {
+          logger.debug(">>> Entering useTreeWalk(rev={})", rev)
           val treeWalk = new TreeWalk(git.getRepository)
           treeWalk.addTree(rev.getTree)
+          logger.debug("<<< Exiting useTreeWalk(rev={})", rev)
           Using.resource(treeWalk)(f)
         } else {
           val treeWalk = TreeWalk.forPath(git.getRepository, path, rev.getTree)
+          logger.debug("useTreeWalk(rev={}): treeWalk → {}", rev, treeWalk)
           if (treeWalk != null) {
             treeWalk.enterSubtree()
             Using.resource(treeWalk)(f)
@@ -450,6 +474,7 @@ object JGitUtil {
 
       @tailrec
       def simplifyPath(
+      logger.debug("<<< Exiting simplifyPath(tuple={})", tuple)
         tuple: (ObjectId, FileMode, String, String, Option[String], Option[RevCommit])
       ): (ObjectId, FileMode, String, String, Option[String], Option[RevCommit]) =
         tuple match {
@@ -479,10 +504,14 @@ object JGitUtil {
         }
 
       def appendLastCommits(
+      logger.debug(">>> Entering appendLastCommits(fileList={})", fileList)
+      logger.debug("<<< Exiting appendLastCommits(fileList={})", fileList)
         fileList: List[(ObjectId, FileMode, String, String, Option[String])]
       ): List[(ObjectId, FileMode, String, String, Option[String], Option[RevCommit])] = {
+        logger.debug(">>> Entering appendLastCommits(fileList={})", fileList)
         fileList.map { case (id, mode, name, path, opt) =>
           if (maxFiles > 0 && fileList.size >= maxFiles) {
+          logger.debug("<<< Exiting appendLastCommits(fileList={})", fileList)
             // Don't attempt to get the last commit if the number of files is very large.
             (id, mode, name, path, opt, None)
           } else if (commitCount < 10000) {
@@ -491,10 +520,12 @@ object JGitUtil {
             // Use in-memory cache if the commit count is too big.
             val cached = objectCommitCache.getEntry(id)
             if (cached == null) {
+             logger.debug("appendLastCommits(fileList={}): cached → {}", fileList, cached)
               val commit = getCommit(path)
               objectCommitCache.put(id, commit)
               (id, mode, name, path, opt, Some(commit))
             } else {
+              logger.debug("appendLastCommits(fileList={}): commit → {}", fileList, commit)
               (id, mode, name, path, opt, Some(cached.getValue))
             }
           } else {
@@ -505,6 +536,7 @@ object JGitUtil {
       }
 
       def getCommit(path: String): RevCommit = {
+        logger.debug(">>> Entering getCommit(path={})", path)
         logger.debug(s"getCommit(${path})")
 
         git
@@ -514,6 +546,7 @@ object JGitUtil {
           .setMaxCount(1)
           .call()
           .iterator()
+          logger.debug("<<< Exiting getCommit(path={})", path)
           .next()
       }
 
@@ -566,10 +599,12 @@ object JGitUtil {
    * Returns the first line of the commit message.
    */
   private def getSummaryMessage(fullMessage: String, shortMessage: String): String = {
+    logger.debug(">>> Entering getSummaryMessage(fullMessage={},shortMessage={})", fullMessage, shortMessage)
     logger.debug(s"getSummaryMessage(${fullMessage}, ${shortMessage})")
 
     val i = fullMessage.trim.indexOf('\n')
     val firstLine = if (i >= 0) fullMessage.trim.substring(0, i).trim else fullMessage
+    logger.debug("<<< Exiting getSummaryMessage(fullMessage={},shortMessage={})", fullMessage, shortMessage)
     if (firstLine.length > shortMessage.length) shortMessage else firstLine
   }
 
@@ -577,11 +612,15 @@ object JGitUtil {
    * get all file list by revision. only file.
    */
   def getTreeId(git: Git, revision: String): Option[String] = {
+    logger.debug(">>> Entering getTreeId(git={},revision={})", git, revision)
     logger.debug(s"getTreeId(${git}, ${revision})")
 
+    logger.debug("<<< Exiting getTreeId(git={},revision={})", git, revision)
+    val __logStart = System.currentTimeMillis()
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
       val objectId = git.getRepository.resolve(revision)
       if (objectId == null) {
+       logger.info("getTreeId(git,revision)={},{}: find query executed in {} ms", git, revision, (System.currentTimeMillis() - __logStart))
         None
       } else {
         val revCommit = revWalk.parseCommit(objectId)
@@ -594,14 +633,17 @@ object JGitUtil {
    * get all file list by tree object id.
    */
   def getAllFileListByTreeId(git: Git, treeId: String): List[String] = {
+    logger.debug(">>> Entering getAllFileListByTreeId(git={},treeId={})", git, treeId)
     logger.debug(s"getAllFileListByTreeId(${git}, ${treeId})")
 
     val objectId = git.getRepository.resolve(treeId + "^{tree}")
     if (objectId == null) return Nil
+    logger.info("getAllFileListByTreeId(git,treeId)={},{}: find query executed in {} ms", git, treeId, (System.currentTimeMillis() - __logStart))
     Using.resource(new TreeWalk(git.getRepository)) { treeWalk =>
       treeWalk.addTree(objectId)
       treeWalk.setRecursive(true)
       var ret: List[String] = Nil
+      logger.debug("<<< Exiting getAllFileListByTreeId(git={},treeId={})", git, treeId)
       if (treeWalk != null) {
         while (treeWalk.next()) {
           ret +:= treeWalk.getPathString
@@ -628,6 +670,7 @@ object JGitUtil {
     limit: Int = 0,
     path: String = ""
   ): Either[String, (List[CommitInfo], Boolean)] = {
+    logger.debug(">>> Entering getCommitLog(git={},revision={},page={},limit={},path={})", git, revision, page, limit, path)
     logger.debug(s"getCommitLog(${git}, ${revision}, ${page}, ${limit}, ${path})")
 
     val fixedPage = if (page <= 0) 1 else page
@@ -639,13 +682,16 @@ object JGitUtil {
       logs: List[CommitInfo]
     ): (List[CommitInfo], Boolean) =
       if (i.hasNext && (limit <= 0 || logs.size < limit)) {
+        logger.debug(">>> Entering getCommitLog(i={},count={},logs={})", i, count, logs)
         val commit = i.next
+        logger.debug("<<< Exiting getCommitLog(git={},revision={},page={},limit={},path={})", git, revision, page, limit, path)
         getCommitLog(
           i,
           count + 1,
           if (limit <= 0 || (fixedPage - 1) * limit <= count) logs :+ new CommitInfo(commit) else logs
         )
       } else {
+        logger.debug("<<< Exiting getCommitLog(i={},count={},logs={})", i, count, logs)
         (logs, i.hasNext)
       }
 
@@ -660,17 +706,24 @@ object JGitUtil {
         }
         Right(getCommitLog(revWalk.iterator, 0, Nil))
       }
+    logger.debug(">>> Entering getCommitLog(i={},logs={})", i, logs)
+    logger.debug("<<< Exiting getCommitLog(i={},logs={})", i, logs)
     }
   }
 
   def getCommitLogs(git: Git, begin: String, includesLastCommit: Boolean = false)(
+  logger.debug(">>> Entering getCommitLogs(git={},begin={},includesLastCommit={})", git, begin, includesLastCommit)
+  logger.debug("<<< Exiting getCommitLogs(git={},begin={},includesLastCommit={})", git, begin, includesLastCommit)
     endCondition: RevCommit => Boolean
   ): List[CommitInfo] = {
+    logger.debug(">>> Entering getCommitLogs(git={},begin={},includesLastCommit={})", git, begin, includesLastCommit)
     logger.debug(s"getCommitLogs(${git}, ${begin}, ${includesLastCommit})")
 
+    logger.debug("<<< Exiting getCommitLogs(git={},begin={},includesLastCommit={})", git, begin, includesLastCommit)
     @scala.annotation.tailrec
     def getCommitLog(i: java.util.Iterator[RevCommit], logs: List[CommitInfo]): List[CommitInfo] =
       if (i.hasNext) {
+        logger.debug(">>> Entering getCommitLog(i={},logs={})", i, logs)
         val revCommit = i.next
         if (endCondition(revCommit)) {
           if (includesLastCommit) logs :+ new CommitInfo(revCommit) else logs
@@ -678,6 +731,7 @@ object JGitUtil {
           getCommitLog(i, logs :+ new CommitInfo(revCommit))
         }
       } else {
+        logger.debug("<<< Exiting getCommitLog(i={},logs={})", i, logs)
         logs
       }
 
@@ -701,11 +755,18 @@ object JGitUtil {
     logger.debug(s"getCommitLog(${git}, ${from}, ${to})")
 
     def resolveString(name: String): ObjectId = {
+      logger.debug(">>> Entering resolveString(name={})", name)
+      val __logStart = System.currentTimeMillis()
       val objectId = git.getRepository.resolve(name)
       git.getRepository.open(objectId).getType match {
-        case Constants.OBJ_COMMIT => objectId
+        case Constants.OBJ_COMMIT =>
+          logger.debug("<<< Exiting resolveString(name={})", name)
+          logger.debug("resolveString(name={}): objectId → {}", name, objectId)
+          logger.info("resolveString(name)={}: find query executed in {} ms", name, (System.currentTimeMillis() - __logStart))
+          objectId
         case Constants.OBJ_TAG    =>
           val ref = git.getRepository.getRefDatabase.findRef(name)
+          logger.debug("resolveString(name={}): ref → {}", name, ref)
           git.getRepository.getRefDatabase.peel(ref).getPeeledObjectId
         case _ => ObjectId.zeroId()
       }
@@ -766,20 +827,25 @@ object JGitUtil {
    * @return the list of latest commit
    */
   def getLatestCommitFromPaths(git: Git, paths: List[String], revision: String): Map[String, RevCommit] = {
+    logger.debug(">>> Entering getLatestCommitFromPaths(git={},paths={},revision={})", git, paths, revision)
     logger.debug(s"getLatestCommitFromPaths(${git}, ${paths}, ${revision})")
 
     val start = getRevCommitFromId(git, git.getRepository.resolve(revision))
     paths.flatMap { path =>
       val commit = git.log.add(start).addPath(path).setMaxCount(1).call.iterator.next
+     val __logStart = System.currentTimeMillis()
+     logger.info("getLatestCommitFromPaths(git,paths,revision)={},{},{}: find query executed in {} ms", git, paths, revision, (System.currentTimeMillis() - __logStart))
       if (commit == null) {
         None
       } else {
         Some((path, commit))
       }
+    logger.debug("<<< Exiting getLatestCommitFromPaths(git={},paths={},revision={})", git, paths, revision)
     }.toMap
   }
 
   def getPatch(git: Git, from: Option[String], to: String): String = {
+    logger.debug(">>> Entering getPatch(git={},from={},to={})", git, from, to)
     logger.debug(s"getPatch(${git}, ${from}, ${to})")
 
     val out = new ByteArrayOutputStream()
@@ -790,19 +856,26 @@ object JGitUtil {
     getDiffEntries(git, from, to)
       .foreach { entry =>
         df.format(entry)
+      logger.debug("getPatch(git={},from={},to={}): df → {}", git, from, to, df)
       }
+    logger.debug("<<< Exiting getPatch(git={},from={},to={})", git, from, to)
     new String(out.toByteArray, "UTF-8")
   }
 
   private def getDiffEntries(git: Git, from: Option[String], to: String): Seq[DiffEntry] = {
+    logger.debug(">>> Entering getDiffEntries(git={},from={},to={})", git, from, to)
     logger.debug(s"getDiffEntries(${git}, ${from}, ${to})")
 
+    logger.debug("<<< Exiting getDiffEntries(git={},from={},to={})", git, from, to)
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
       val df = new DiffFormatter(DisabledOutputStream.INSTANCE)
       df.setRepository(git.getRepository)
 
+      logger.debug("getDiffEntries(git={},from={},to={}): df → {}", git, from, to, df)
+      val __logStart = System.currentTimeMillis()
       val toCommit = revWalk.parseCommit(git.getRepository.resolve(to))
       (from match {
+       logger.info("getDiffEntries(git,from,to)={},{},{}: find query executed in {} ms", git, from, to, (System.currentTimeMillis() - __logStart))
         case None =>
           toCommit.getParentCount match {
             case 0 =>
@@ -820,8 +893,10 @@ object JGitUtil {
   }
 
   def getParentCommitId(git: Git, id: String): Option[String] = {
+    logger.debug(">>> Entering getParentCommitId(git={},id={})", git, id)
     logger.debug(s"getParentCommitId(${git}, ${id})")
 
+    logger.debug("<<< Exiting getParentCommitId(git={},id={})", git, id)
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
       val commit = revWalk.parseCommit(git.getRepository.resolve(id))
       commit.getParentCount match {
@@ -832,8 +907,15 @@ object JGitUtil {
   }
 
   def getDiff(git: Git, from: Option[String], to: String, path: String): Option[DiffInfo] = {
+    logger.debug(">>> Entering getDiff(git={},from={},to={},path={})", git, from, to, path)
+    logger.debug("getDiff(git={},from={},to={},path={}): newObjectId → {}", git, from, to, path, newObjectId)
+    logger.debug("getDiff(git={},from={},to={},path={}): oldObjectId → {}", git, from, to, path, oldObjectId)
+    logger.debug("getDiff(git={},from={},to={},path={}): newContent → {}", git, from, to, path, newContent)
+    logger.debug("getDiff(git={},from={},to={},path={}): oldContent → {}", git, from, to, path, oldContent)
+    logger.debug("getDiff(git={},from={},to={},path={}): newPath → {}", git, from, to, path, newPath)
     logger.debug(s"getDiff(${git}, ${from}, ${to}, ${path})")
 
+    logger.debug("<<< Exiting getDiff(git={},from={},to={},path={})", git, from, to, path)
     getDiffEntries(git, from, to).find(_.getNewPath == path).map { diff =>
       val oldIsImage = FileUtil.isImage(diff.getOldPath)
       val newIsImage = FileUtil.isImage(diff.getNewPath)
@@ -852,6 +934,8 @@ object JGitUtil {
         newMode = diff.getNewMode.toString,
         tooLarge = false,
         patch = None
+      logger.debug("getDiff(git={},from={},to={},path={}): changeType → {}", git, from, to, path, changeType)
+      logger.debug("getDiff(git={},from={},to={},path={}): oldPath → {}", git, from, to, path, oldPath)
       )
     }
   }
@@ -865,13 +949,17 @@ object JGitUtil {
     maxFiles: Int = 100,
     maxLines: Int = 1000
   ): List[DiffInfo] = {
+    logger.debug(">>> Entering getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={})", git, from, to, fetchContent, makePatch, maxFiles, maxLines)
     logger.debug(
       s"getDiffs(${git}, ${from.getOrElse("")}, ${to}, ${fetchContent}, ${makePatch}, ${maxFiles}, ${maxLines})"
     )
 
+    logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): changeType → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, changeType)
     val diffs = getDiffEntries(git, from, to)
     diffs.map { diff =>
       if (maxFiles > 0 && diffs.size > maxFiles) { // Don't show diff if there are more than maxFiles
+     logger.debug("<<< Exiting getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={})", git, from, to, fetchContent, makePatch, maxFiles, maxLines)
+     logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): diffs → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, diffs)
         DiffInfo(
           changeType = diff.getChangeType,
           oldPath = diff.getOldPath,
@@ -888,11 +976,18 @@ object JGitUtil {
           patch = None
         )
       } else {
+        logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): oldPath → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, oldPath)
+        logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): newPath → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, newPath)
+        logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): oldContent → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, oldContent)
+        logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): newContent → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, newContent)
+        logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): oldObjectId → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, oldObjectId)
         val oldIsImage = FileUtil.isImage(diff.getOldPath)
         val newIsImage = FileUtil.isImage(diff.getNewPath)
         val patch =
           if (oldIsImage || newIsImage) None else Some(makePatchFromDiffEntry(git, diff)) // TODO use DiffFormatter
         val tooLarge = maxLines > 0 &&
+        logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): newObjectId → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, newObjectId)
+        logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): oldMode → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, oldMode)
           patch.exists(_.count(_ == '\n') > maxLines) // Don't show diff if the file has more than maxLines of diff
         val includeContent = tooLarge || !fetchContent || oldIsImage || newIsImage
         DiffInfo(
@@ -910,16 +1005,19 @@ object JGitUtil {
           tooLarge = tooLarge,
           patch = if (makePatch) patch else None
         )
+      logger.debug("getDiffs(git={},from={},to={},fetchContent={},makePatch={},maxFiles={},maxLines={}): newMode → {}", git, from, to, fetchContent, makePatch, maxFiles, maxLines, newMode)
       }
     }.toList
   }
 
   private def getTextContent(git: Git, objectId: ObjectId): Option[String] = {
+    logger.debug(">>> Entering getTextContent(git={},objectId={})", git, objectId)
     logger.debug(s"getTextContent(${git}, ${objectId})")
 
     JGitUtil
       .getContentFromId(git, objectId, fetchLargeFile = false)
       .filter(FileUtil.isText)
+      logger.debug("<<< Exiting getTextContent(git={},objectId={})", git, objectId)
       .map(convertFromByteArray)
   }
 
@@ -931,6 +1029,7 @@ object JGitUtil {
       formatter.setRepository(git.getRepository)
       formatter.format(diff)
       val patch = new String(out.toByteArray) // TODO charset???
+      logger.debug("<<< Exiting makePatchFromDiffEntry(git={},diff={})", git, diff)
       patch.split("\n").drop(4).mkString("\n")
     }
   }
@@ -942,15 +1041,20 @@ object JGitUtil {
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
       val commit = revWalk.parseCommit(git.getRepository.resolve(commitId + "^0"))
       git.getRepository.getRefDatabase
+      logger.debug(">>> Entering getBranchesOfCommit(git={},commitId={})", git, commitId)
+      val __logStart = System.currentTimeMillis()
         .getRefsByPrefix(Constants.R_HEADS)
         .asScala
         .filter { e =>
           revWalk.isMergedInto(commit, revWalk.parseCommit(e.getObjectId))
         }
+        logger.info("getBranchesOfCommit(git,commitId)={},{}: find query executed in {} ms", git, commitId, (System.currentTimeMillis() - __logStart))
+        logger.debug("getBranchesOfCommit(git={},commitId={}): commit → {}", git, commitId, commit)
         .map { e =>
           e.getName.substring(Constants.R_HEADS.length)
         }
         .toList
+        logger.debug("<<< Exiting getBranchesOfCommit(git={},commitId={})", git, commitId)
         .sorted
     }
 
@@ -958,11 +1062,14 @@ object JGitUtil {
    * Returns the list of tags which pointed on the specified commit.
    */
   def getTagsOnCommit(git: Git, commitId: String): List[String] = {
+    logger.debug(">>> Entering getTagsOnCommit(git={},commitId={})", git, commitId)
     logger.debug(s"getTagsOnCommit(${git}, ${commitId})")
 
+    val __logStart = System.currentTimeMillis()
     git.getRepository.getAllRefsByPeeledObjectId.asScala
       .get(git.getRepository.resolve(commitId + "^0"))
       .map {
+        logger.info("getTagsOnCommit(git,commitId)={},{}: find query executed in {} ms", git, commitId, (System.currentTimeMillis() - __logStart))
         _.asScala
           .collect {
             case x if x.getName.startsWith(Constants.R_TAGS) =>
@@ -972,6 +1079,7 @@ object JGitUtil {
           .sorted
       }
       .getOrElse {
+        logger.debug("<<< Exiting getTagsOnCommit(git={},commitId={})", git, commitId)
         List.empty
       }
   }
@@ -983,38 +1091,48 @@ object JGitUtil {
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
       val commit = revWalk.parseCommit(git.getRepository.resolve(commitId + "^0"))
       git.getRepository.getRefDatabase
+      logger.debug(">>> Entering getTagsOfCommit(git={},commitId={})", git, commitId)
+      val __logStart = System.currentTimeMillis()
         .getRefsByPrefix(Constants.R_TAGS)
         .asScala
         .filter { e =>
           revWalk.isMergedInto(commit, revWalk.parseCommit(e.getObjectId))
         }
+        logger.info("getTagsOfCommit(git,commitId)={},{}: find query executed in {} ms", git, commitId, (System.currentTimeMillis() - __logStart))
         .map { e =>
           e.getName.substring(Constants.R_TAGS.length)
         }
         .toList
         .sorted
+        logger.debug("<<< Exiting getTagsOfCommit(git={},commitId={})", git, commitId)
         .reverse
     }
 
   def initRepository(dir: java.io.File, defaultBranch: String): Unit =
     Using.resource(new RepositoryBuilder().setGitDir(dir).setBare().setInitialBranch(defaultBranch).build) {
+      logger.debug(">>> Entering initRepository(dir={},defaultBranch={})", dir, defaultBranch)
       repository =>
         repository.create(true)
+        logger.debug("<<< Exiting initRepository(dir={},defaultBranch={})", dir, defaultBranch)
         setReceivePack(repository)
     }
 
   def cloneRepository(from: java.io.File, to: java.io.File): Unit =
     Using.resource(Git.cloneRepository.setURI(from.toURI.toString).setDirectory(to).setBare(true).call) { git =>
+      logger.debug(">>> Entering cloneRepository(from={},to={})", from, to)
       setReceivePack(git.getRepository)
     }
 
   def isEmpty(git: Git): Boolean = git.getRepository.resolve(Constants.HEAD) == null
 
   private def setReceivePack(repository: org.eclipse.jgit.lib.Repository): Unit = {
+    logger.debug(">>> Entering setReceivePack(repository={})", repository)
     logger.debug(s"setReceivePack(${repository})")
 
     val config = repository.getConfig
     config.setBoolean("http", null, "receivepack", true)
+    logger.debug("<<< Exiting setReceivePack(repository={})", repository)
+    logger.info("setReceivePack(repository={}): config → {}", repository, config)
     config.save()
   }
 
@@ -1023,20 +1141,26 @@ object JGitUtil {
     repository: RepositoryService.RepositoryInfo,
     revstr: String = ""
   ): Option[(ObjectId, String)] = {
+    logger.debug(">>> Entering getDefaultBranch(git={},repository={},revstr={})", git, repository, revstr)
     logger.debug(s"getDefaultBranch(${git}, ${repository})")
 
+    logger.debug("<<< Exiting getDefaultBranch(git={},repository={},revstr={})", git, repository, revstr)
     Seq(
       Some(if (revstr.isEmpty) repository.repository.defaultBranch else revstr),
       repository.branchList.headOption
     ).flatMap {
+      val __logStart = System.currentTimeMillis()
+      logger.info("getDefaultBranch(git,repository,revstr)={},{},{}: find query executed in {} ms", git, repository, revstr, (System.currentTimeMillis() - __logStart))
       case Some(rev) => Some((git.getRepository.resolve(rev), rev))
       case None      => None
     }.find(_._1 != null)
   }
 
   def createTag(git: Git, name: String, message: Option[String], commitId: String): Either[String, String] = {
+    logger.debug(">>> Entering createTag(git={},name={},message={},commitId={})", git, name, message, commitId)
     logger.debug(s"createTag(${git}, ${message}, ${commitId})")
 
+    logger.debug("<<< Exiting createTag(git={},name={},message={},commitId={})", git, name, message, commitId)
     try {
       val objectId: ObjectId = git.getRepository.resolve(commitId)
       Using.resource(new RevWalk(git.getRepository)) { walk =>
@@ -1044,6 +1168,7 @@ object JGitUtil {
         message.foreach { message =>
           tagCommand.setMessage(message)
         }
+        logger.debug("createTag(git={},name={},message={},commitId={}): tagCommand → {}", git, name, message, commitId, tagCommand)
         tagCommand.call()
       }
       Right("Tag added.")
@@ -1052,18 +1177,22 @@ object JGitUtil {
       case _: InvalidTagNameException      => Left("Sorry, that name is invalid.")
       case _: NoHeadException              => Left("Sorry, this repo doesn't have HEAD reference")
       case _: GitAPIException              => Left("Sorry, some Git operation error occurs.")
+    logger.error("Exception in createTag(git={},name={},message={},commitId={}): {}", git, name, message, commitId, e.getMessage, e)
     }
   }
 
   def createBranch(git: Git, fromBranch: String, newBranch: String): Either[String, String] = {
+    logger.debug(">>> Entering createBranch(git={},fromBranch={},newBranch={})", git, fromBranch, newBranch)
     logger.debug(s"createBranch(${git}, ${fromBranch}, ${newBranch})")
 
+    logger.debug("<<< Exiting createBranch(git={},fromBranch={},newBranch={})", git, fromBranch, newBranch)
     try {
       git.branchCreate().setStartPoint(fromBranch).setName(newBranch).call()
       Right("Branch created.")
     } catch {
       case _: RefAlreadyExistsException => Left("Sorry, that branch already exists.")
       // JGitInternalException occurs when new branch name is 'a' and the branch whose name is 'a/*' exists.
+      logger.error("Exception in createBranch(git={},fromBranch={},newBranch={}): {}", git, fromBranch, newBranch, e.getMessage, e)
       case _: InvalidRefNameException | _: JGitInternalException => Left("Sorry, that name is invalid.")
     }
   }
@@ -1074,6 +1203,8 @@ object JGitUtil {
     val entry = new DirCacheEntry(path)
     entry.setFileMode(mode)
     entry.setObjectId(objectId)
+    logger.debug("createDirCacheEntry(path={},mode={},objectId={}): entry → {}", path, mode, objectId, entry)
+    logger.debug("<<< Exiting createDirCacheEntry(path={},mode={},objectId={})", path, mode, objectId)
     entry
   }
 
@@ -1087,6 +1218,7 @@ object JGitUtil {
     mailAddress: String,
     message: String
   ): ObjectId = {
+    logger.debug(">>> Entering createNewCommit(git={},inserter={},headId={},treeId={},ref={},fullName={},mailAddress={},message={})", git, inserter, headId, treeId, ref, fullName, mailAddress, message)
     logger.debug(
       s"createNewCommit(${git}, ${inserter}, ${headId}, ${treeId}, ${ref}, ${fullName}, ${mailAddress}, ${message})"
     )
@@ -1096,6 +1228,7 @@ object JGitUtil {
     newCommit.setAuthor(new PersonIdent(fullName, mailAddress))
     newCommit.setMessage(message)
     if (headId != null) {
+     logger.debug("createNewCommit(git={},inserter={},headId={},treeId={},ref={},fullName={},mailAddress={},message={}): newCommit → {}", git, inserter, headId, treeId, ref, fullName, mailAddress, message, newCommit)
       newCommit.setParentIds(List(headId).asJava)
     }
     newCommit.setTreeId(treeId)
@@ -1104,12 +1237,16 @@ object JGitUtil {
     inserter.flush()
     inserter.close()
 
+    val __logStart = System.currentTimeMillis()
     val refUpdate = git.getRepository.updateRef(ref)
     refUpdate.setNewObjectId(newHeadId)
     refUpdate.update()
 
+    logger.info("createNewCommit(git,inserter,headId,treeId,ref,fullName,mailAddress,message)={},{},{},{},{},{},{},{}: find query executed in {} ms", git, inserter, headId, treeId, ref, fullName, mailAddress, message, (System.currentTimeMillis() - __logStart))
+    logger.debug("createNewCommit(git={},inserter={},headId={},treeId={},ref={},fullName={},mailAddress={},message={}): refUpdate → {}", git, inserter, headId, treeId, ref, fullName, mailAddress, message, refUpdate)
     removeCache(git)
 
+    logger.debug("<<< Exiting createNewCommit(git={},inserter={},headId={},treeId={},ref={},fullName={},mailAddress={},message={})", git, inserter, headId, treeId, ref, fullName, mailAddress, message)
     newHeadId
   }
 
@@ -1117,8 +1254,10 @@ object JGitUtil {
    * Read submodule information from .gitmodules
    */
   def getSubmodules(git: Git, tree: RevTree, baseUrl: Option[String]): List[SubmoduleInfo] = {
+    logger.debug(">>> Entering getSubmodules(git={},tree={},baseUrl={})", git, tree, baseUrl)
     logger.debug(s"getSubmodules(${git}, ${tree}, ${baseUrl}")
 
+    logger.debug("<<< Exiting getSubmodules(git={},tree={},baseUrl={})", git, tree, baseUrl)
     val repository = git.getRepository
     getContentFromPath(git, tree, ".gitmodules", fetchLargeFile = true).map { bytes =>
       (try {
@@ -1133,6 +1272,8 @@ object JGitUtil {
           logger.error("Failed to load .gitmodules file for " + repository.getDirectory, e)
           Nil
       }).toList
+    logger.debug(">>> Entering getContentFromPath(git={},revTree={},path={},fetchLargeFile={})", git, revTree, path, fetchLargeFile)
+    logger.debug("<<< Exiting getContentFromPath(git={},revTree={},path={},fetchLargeFile={})", git, revTree, path, fetchLargeFile)
     } getOrElse Nil
   }
 
@@ -1146,14 +1287,18 @@ object JGitUtil {
    * @return the byte array of content or None if object does not exist
    */
   def getContentFromPath(git: Git, revTree: RevTree, path: String, fetchLargeFile: Boolean): Option[Array[Byte]] = {
+    logger.debug(">>> Entering getContentFromPath(git={},revTree={},path={},fetchLargeFile={})", git, revTree, path, fetchLargeFile)
     logger.debug(s"getContentFromPath(${git}, ${revTree}, ${path}, ${fetchLargeFile})")
 
+    logger.debug("<<< Exiting getContentFromPath(git={},revTree={},path={},fetchLargeFile={})", git, revTree, path, fetchLargeFile)
     @scala.annotation.tailrec
     def getPathObjectId(path: String, walk: TreeWalk): Option[ObjectId] =
       walk.next match {
         case true if walk.getPathString == path => Some(walk.getObjectId(0))
         case true                               => getPathObjectId(path, walk)
-        case false                              => None
+        case false                              =>
+          logger.debug("<<< Exiting getPathObjectId(path={},walk={})", path, walk)
+          None
       }
 
     Using.resource(new TreeWalk(git.getRepository)) { treeWalk =>
@@ -1166,7 +1311,9 @@ object JGitUtil {
   }
 
   def getLfsObjects(text: String): Map[String, String] = {
+    logger.debug(">>> Entering getLfsObjects(text={})", text)
     if (text.startsWith("version https://git-lfs.github.com/spec/v1")) {
+      logger.debug("<<< Exiting getLfsObjects(text={})", text)
       // LFS objects
       text
         .split("\n")
@@ -1177,12 +1324,17 @@ object JGitUtil {
         .toMap
     } else {
       Map.empty
+    logger.debug(">>> Entering getContentFromId(git={},id={},fetchLargeFile={})", git, id, fetchLargeFile)
+    logger.debug("<<< Exiting getContentFromId(git={},id={},fetchLargeFile={})", git, id, fetchLargeFile)
+    logger.error("Exception in getContentFromId(git={},id={},fetchLargeFile={}): {}", git, id, fetchLargeFile, e.getMessage, e)
     }
   }
 
   def getContentSize(loader: ObjectLoader): Long = {
+    logger.debug(">>> Entering getContentSize(loader={})", loader)
     logger.debug(s"getContentSize(${loader})")
 
+    logger.debug("<<< Exiting getContentSize(loader={})", loader)
     if (loader.isLarge) {
       loader.getSize
     } else {
@@ -1198,15 +1350,19 @@ object JGitUtil {
   }
 
   def isLfsPointer(loader: ObjectLoader): Boolean = {
+    logger.debug(">>> Entering isLfsPointer(loader={})", loader)
     logger.debug(s"isLfsPointer(${loader})")
 
+    logger.debug("<<< Exiting isLfsPointer(loader={})", loader)
     !loader.isLarge && new String(loader.getBytes(), "UTF-8").startsWith("version https://git-lfs.github.com/spec/v1")
   }
 
   def getContentInfo(git: Git, path: String, objectId: ObjectId, safeMode: Boolean): ContentInfo = {
+    logger.debug(">>> Entering getContentInfo(git={},path={},objectId={},safeMode={})", git, path, objectId, safeMode)
     logger.debug(s"getContentInfo(${git}, ${path}, ${objectId}, ${safeMode})")
 
     // Viewer
+    logger.debug("<<< Exiting getContentInfo(git={},path={},objectId={},safeMode={})", git, path, objectId, safeMode)
     Using.resource(git.getRepository.getObjectDatabase) { db =>
       val loader = db.open(objectId)
       val isLfs = isLfsPointer(loader)
@@ -1246,16 +1402,21 @@ object JGitUtil {
    */
   def getContentFromId(git: Git, id: ObjectId, fetchLargeFile: Boolean): Option[Array[Byte]] =
     try {
+      logger.debug(">>> Entering getContentFromId(git={},id={},fetchLargeFile={})", git, id, fetchLargeFile)
       Using.resource(git.getRepository.getObjectDatabase) { db =>
         val loader = db.open(id)
         if (loader.isLarge || (!fetchLargeFile && FileUtil.isLarge(loader.getSize))) {
+         logger.debug("getContentFromId(git={},id={},fetchLargeFile={}): loader → {}", git, id, fetchLargeFile, loader)
           None
         } else {
           Some(loader.getBytes)
         }
       }
     } catch {
-      case _: MissingObjectException => None
+      logger.debug("<<< Exiting getContentFromId(git={},id={},fetchLargeFile={})", git, id, fetchLargeFile)
+      case _: MissingObjectException =>
+        logger.error("Exception in getContentFromId(git={},id={},fetchLargeFile={}): {}", git, id, fetchLargeFile, e.getMessage, e)
+        None
     }
 
   /**
@@ -1268,11 +1429,15 @@ object JGitUtil {
    */
   def getObjectLoaderFromId[A](git: Git, id: ObjectId)(f: ObjectLoader => A): Option[A] =
     try {
+      logger.debug(">>> Entering getObjectLoaderFromId(git={},id={})", git, id)
       Using.resource(git.getRepository.getObjectDatabase) { db =>
         Some(f(db.open(id)))
+      logger.debug("<<< Exiting getObjectLoaderFromId(git={},id={})", git, id)
+      logger.error("Exception in getObjectLoaderFromId(git={},id={}): {}", git, id, e.getMessage, e)
       }
     } catch {
-      case _: MissingObjectException => None
+      case _: MissingObjectException =>
+        None
     }
 
   /**
@@ -1280,10 +1445,13 @@ object JGitUtil {
    */
   def getAllCommitIds(git: Git): Seq[String] =
     if (isEmpty(git)) {
+      logger.debug(">>> Entering getAllCommitIds(git={})", git)
+      logger.debug("<<< Exiting getAllCommitIds(git={})", git)
       Nil
     } else {
       val existIds = new scala.collection.mutable.ListBuffer[String]()
       val i = git.log.all.call.iterator
+      logger.debug("getAllCommitIds(git={}): existIds → {}", git, existIds)
       while (i.hasNext) {
         existIds += i.next.name
       }
@@ -1291,8 +1459,10 @@ object JGitUtil {
     }
 
   def processTree[T](git: Git, id: ObjectId)(f: (String, CanonicalTreeParser) => T): Seq[T] = {
+    logger.debug(">>> Entering processTree(git={},id={})", git, id)
     logger.debug(s"processTree(${git}, ${id})")
 
+    logger.debug("<<< Exiting processTree(git={},id={})", git, id)
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
       Using.resource(new TreeWalk(git.getRepository)) { treeWalk =>
         val index = treeWalk.addTree(revWalk.parseTree(id))
@@ -1319,6 +1489,7 @@ object JGitUtil {
     requestRepositoryName: String,
     requestBranch: String
   ): String = {
+    logger.debug(">>> Entering getForkedCommitId(oldGit={},newGit={},userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={})", oldGit, newGit, userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch)
     logger.debug(
       s"getForkedCommitId(${oldGit}, ${newGit}, ${userName}, ${repositoryName}, ${branch}, ${requestUserName}, ${requestRepositoryName}, ${requestBranch})"
     )
@@ -1326,6 +1497,7 @@ object JGitUtil {
     val existIds = getAllCommitIds(oldGit)
     getCommitLogs(newGit, requestBranch, includesLastCommit = true) { commit =>
       existIds.contains(commit.name) && getBranchesOfCommit(oldGit, commit.getName).contains(branch)
+    logger.debug("<<< Exiting getForkedCommitId(oldGit={},newGit={},userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={})", oldGit, newGit, userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch)
     }.head.id
   }
 
@@ -1347,11 +1519,14 @@ object JGitUtil {
       Git.open(Directory.getRepositoryDir(requestUserName, requestRepositoryName))
     ) { (oldGit, newGit) =>
       oldGit.fetch
+      logger.debug(">>> Entering updatePullRequest(userName={},repositoryName={},branch={},issueId={},requestUserName={},requestRepositoryName={},requestBranch={})", userName, repositoryName, branch, issueId, requestUserName, requestRepositoryName, requestBranch)
         .setRemote(Directory.getRepositoryDir(requestUserName, requestRepositoryName).toURI.toString)
         .setRefSpecs(new RefSpec(s"refs/heads/$requestBranch:refs/pull/$issueId/head").setForceUpdate(true))
+        val __logStart = System.currentTimeMillis()
         .call
 
       val commitIdTo = oldGit.getRepository.resolve(s"refs/pull/$issueId/head").getName
+      logger.debug("<<< Exiting updatePullRequest(userName={},repositoryName={},branch={},issueId={},requestUserName={},requestRepositoryName={},requestBranch={})", userName, repositoryName, branch, issueId, requestUserName, requestRepositoryName, requestBranch)
       val commitIdFrom = getForkedCommitId(
         oldGit,
         newGit,
@@ -1362,6 +1537,8 @@ object JGitUtil {
         requestRepositoryName,
         requestBranch
       )
+      logger.info("updatePullRequest(userName,repositoryName,branch,issueId,requestUserName,requestRepositoryName,requestBranch)={},{},{},{},{},{},{}: find query executed in {} ms", userName, repositoryName, branch, issueId, requestUserName, requestRepositoryName, requestBranch, (System.currentTimeMillis() - __logStart))
+      logger.debug("updatePullRequest(userName={},repositoryName={},branch={},issueId={},requestUserName={},requestRepositoryName={},requestBranch={}): commitIdTo → {}", userName, repositoryName, branch, issueId, requestUserName, requestRepositoryName, requestBranch, commitIdTo)
       (commitIdTo, commitIdFrom)
     }
 
@@ -1376,14 +1553,17 @@ object JGitUtil {
   def getLastModifiedCommit(git: Git, startCommit: RevCommit, path: String): RevCommit = {
     logger.debug(s"getLastModifiedCommit(${git}, ${startCommit}, ${path})")
 
+    logger.debug("<<< Exiting getLastModifiedCommit(git={},startCommit={},path={})", git, startCommit, path)
     git.log.add(startCommit).addPath(path).setMaxCount(1).call.iterator.next
   }
 
   def getBranchesNoMergeInfo(git: Git): Seq[BranchInfoSimple] = {
+    logger.debug(">>> Entering getBranchesNoMergeInfo(git={})", git)
     logger.debug(s"getBranchesNoMergeInfo(${git})")
 
     val repo = git.getRepository
 
+    logger.debug("<<< Exiting getBranchesNoMergeInfo(git={})", git)
     git.branchList.call.asScala.map { ref =>
       val walk = new RevWalk(repo)
       try {
@@ -1400,11 +1580,13 @@ object JGitUtil {
   }
 
   def getBranches(git: Git, defaultBranch: String, origin: Boolean): Seq[BranchInfo] = {
+    logger.debug(">>> Entering getBranches(git={},defaultBranch={},origin={})", git, defaultBranch, origin)
     logger.debug(s"getBranches(${git}, ${defaultBranch}, ${origin})")
 
     val repo = git.getRepository
     val defaultObject = repo.resolve(defaultBranch)
 
+    logger.debug("<<< Exiting getBranches(git={},defaultBranch={},origin={})", git, defaultBranch, origin)
     git.branchList.call.asScala.map { ref =>
       val walk = new RevWalk(repo)
       try {
@@ -1432,16 +1614,20 @@ object JGitUtil {
             )
           )
         }
+        logger.debug("getBranches(git={},defaultBranch={},origin={}): walk → {}", git, defaultBranch, origin, walk)
         BranchInfo(branchName, committer, when, committerEmail, mergeInfo, ref.getObjectId.name)
       } finally {
+        logger.debug("getBranches(git={},defaultBranch={},origin={}): isMerged → {}", git, defaultBranch, origin, isMerged)
         walk.dispose()
       }
     }.toSeq
   }
 
   def getBlame(git: Git, id: String, path: String): Iterable[BlameInfo] = {
+    logger.debug(">>> Entering getBlame(git={},id={},path={})", git, id, path)
     logger.debug(s"getBlame(${git}, ${id}, ${path})")
 
+    val __logStart = System.currentTimeMillis()
     Option(git.getRepository.resolve(id))
       .map { commitId =>
         val blamer = new org.eclipse.jgit.api.BlameCommand(git.getRepository)
@@ -1453,6 +1639,7 @@ object JGitUtil {
         0.until(blame.getResultContents.size()).foreach { i =>
           val c = blame.getSourceCommit(i)
           if (!blameMap.contains(c.name)) {
+           logger.info("getBlame(git,id,path)={},{},{}: find query executed in {} ms", git, id, path, (System.currentTimeMillis() - __logStart))
             blameMap += c.name -> JGitUtil.BlameInfo(
               c.name,
               c.getAuthorIdent.getName,
@@ -1474,6 +1661,7 @@ object JGitUtil {
           b.copy(lines = limeMap(b.id))
         }
       }
+      logger.debug("<<< Exiting getBlame(git={},id={},path={})", git, id, path)
       .getOrElse(Seq.empty)
   }
 
@@ -1486,16 +1674,21 @@ object JGitUtil {
    * @return sha1
    */
   def getShaByRef(owner: String, name: String, revstr: String): Option[String] = {
+    logger.debug(">>> Entering getShaByRef(owner={},name={},revstr={})", owner, name, revstr)
     logger.debug(s"getShaByRef(${owner}, ${name}, ${revstr})")
 
+    logger.debug("<<< Exiting getShaByRef(owner={},name={},revstr={})", owner, name, revstr)
+    val __logStart = System.currentTimeMillis()
     Using.resource(Git.open(getRepositoryDir(owner, name))) { git =>
       Option(git.getRepository.resolve(revstr)).map(ObjectId.toString)
+    logger.info("getShaByRef(owner,name,revstr)={},{},{}: find query executed in {} ms", owner, name, revstr, (System.currentTimeMillis() - __logStart))
     }
   }
 
   private def openFile[T](git: Git, repository: RepositoryService.RepositoryInfo, treeWalk: TreeWalk)(
     f: InputStream => T
   ): T = {
+    logger.debug(">>> Entering openFile(git={},repository={},treeWalk={})", git, repository, treeWalk)
     logger.debug(s"openFile(${git}, ${repository}, ${treeWalk})")
 
     val attrs = treeWalk.getAttributes
@@ -1503,12 +1696,14 @@ object JGitUtil {
     if (attrs.containsKey("filter") && attrs.get("filter").getValue == "lfs") {
       val lfsAttrs = getLfsAttributes(loader)
       if (lfsAttrs.nonEmpty) {
+       logger.debug("<<< Exiting openFile(git={},repository={},treeWalk={})", git, repository, treeWalk)
         val oid = lfsAttrs("oid").split(":")(1)
 
         Using.resource(new FileInputStream(FileUtil.getLfsFilePath(repository.owner, repository.name, oid))) { in =>
           f(in)
         }
       } else {
+        logger.warn("Throwing NoSuchElementException from openFile(git={},repository={},treeWalk={})", git, repository, treeWalk)
         throw new NoSuchElementException("LFS attribute is empty.")
       }
     } else {
@@ -1529,11 +1724,13 @@ object JGitUtil {
   }
 
   private def getLfsAttributes(loader: ObjectLoader): Map[String, String] = {
+    logger.debug(">>> Entering getLfsAttributes(loader={})", loader)
     logger.debug(s"getLfsAttributes(${loader})")
 
     val bytes = loader.getCachedBytes
     val text = new String(bytes, "UTF-8")
 
+    logger.debug("<<< Exiting getLfsAttributes(loader={})", loader)
     JGitUtil.getLfsObjects(text)
   }
 

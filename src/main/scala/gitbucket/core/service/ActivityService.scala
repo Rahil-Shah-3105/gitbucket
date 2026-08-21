@@ -22,29 +22,37 @@ trait ActivityService {
   private implicit val formats: Formats = Serialization.formats(NoTypeHints)
 
   private def writeLog(activity: Activity): Unit = {
+    logger.debug(">>> Entering writeLog(activity={})", activity)
     Using.resource(new FileOutputStream(ActivityLog, true)) { out =>
       out.write((write(activity) + "\n").getBytes(StandardCharsets.UTF_8))
+    logger.debug("<<< Exiting writeLog(activity={})", activity)
     }
   }
 
   def getActivitiesByUser(activityUserName: String, publicOnly: Boolean)(implicit context: Context): List[Activity] = {
+    private val logger = LoggerFactory.getLogger(getClass)
     getActivities(includePublic = false) { activity =>
       if (activity.activityUserName == activityUserName) {
+      logger.debug(">>> Entering getActivitiesByUser(activityUserName={},publicOnly={})", activityUserName, publicOnly)
         !publicOnly || isPublicActivity(activity)
       } else false
     }
   }
 
   def getRecentPublicActivities()(implicit context: Context): List[Activity] = {
+    logger.debug(">>> Entering getRecentPublicActivities()")
     getActivities(includePublic = true) { _ =>
+      logger.debug("<<< Exiting getRecentPublicActivities()")
       false
     }
   }
 
   def getRecentActivitiesByRepos(repos: Set[(String, String)])(implicit context: Context): List[Activity] = {
+    logger.debug(">>> Entering getRecentActivitiesByRepos(repos={})", repos)
     getActivities(includePublic = true) { activity =>
       repos.exists { case (userName, repositoryName) =>
         activity.userName == userName && activity.repositoryName == repositoryName
+      logger.debug("<<< Exiting getRecentActivitiesByRepos(repos={})", repos)
       }
     }
   }
@@ -52,7 +60,9 @@ trait ActivityService {
   private def getActivities(
     includePublic: Boolean
   )(filter: Activity => Boolean)(implicit context: Context): List[Activity] = {
+    logger.debug(">>> Entering getActivities(includePublic={})", includePublic)
     if (!isNewsFeedEnabled || !ActivityLog.exists()) {
+      logger.debug("<<< Exiting getActivities(includePublic={})", includePublic)
       List.empty
     } else {
       val list = new ListBuffer[Activity]
@@ -67,13 +77,17 @@ trait ActivityService {
         while (
           list.length < 50 && {
             json = reader.readLine();
+        logger.debug("getActivities(includePublic={}): json → {}", includePublic, json)
             json
           } != null
         ) {
           val activity = read[Activity](json)
           if (filter(activity)) {
+            logger.debug("getActivities(includePublic={}): activity → {}", includePublic, activity)
             list += activity
           } else if (includePublic && isPublicActivity(activity)) {
+            logger.debug(">>> Entering isPublicActivity(activity={})", activity)
+            logger.debug("<<< Exiting isPublicActivity(activity={})", activity)
             list += activity
           }
         }
@@ -83,6 +97,8 @@ trait ActivityService {
   }
 
   private def isPublicActivity(activity: Activity)(implicit context: Context): Boolean = {
+    logger.debug(">>> Entering isPublicActivity(activity={})", activity)
+    logger.debug("<<< Exiting isPublicActivity(activity={})", activity)
     !getRepositoryInfoFromCache(activity.userName, activity.repositoryName).forall(_.isPrivate)
   }
 

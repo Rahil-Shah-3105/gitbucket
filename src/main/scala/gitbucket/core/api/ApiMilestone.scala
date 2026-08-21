@@ -27,9 +27,12 @@ case class ApiMilestone(
 
 object ApiMilestone {
   def apply(
+    private val logger = LoggerFactory.getLogger(getClass)
     repository: Repository,
     milestone: Milestone,
     open_issue_count: Int = 0,
+    logger.debug("apply(repository={},milestone={},open_issue_count={},closed_issue_count={}): number → {}", repository, milestone, open_issue_count, closed_issue_count, number)
+    logger.info("apply(repository={},milestone={},open_issue_count={},closed_issue_count={}): url → {}", repository, milestone, open_issue_count, closed_issue_count, url)
     closed_issue_count: Int = 0
   ): ApiMilestone =
     ApiMilestone(
@@ -44,6 +47,7 @@ object ApiMilestone {
       open_issues = open_issue_count,
       closed_issues = closed_issue_count,
       closed_at = milestone.closedDate,
+      logger.debug("apply(repository={},milestone={},open_issue_count={},closed_issue_count={}): html_url → {}", repository, milestone, open_issue_count, closed_issue_count, html_url)
       due_on = milestone.dueDate
     )
 }

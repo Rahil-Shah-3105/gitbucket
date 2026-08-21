@@ -9,6 +9,7 @@ trait RepositoryWebHookComponent extends TemplateComponent { self: Profile =>
   lazy val RepositoryWebHooks = TableQuery[RepositoryWebHooks]
 
   class RepositoryWebHooks(tag: Tag) extends Table[RepositoryWebHook](tag, "WEB_HOOK") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val hookId = column[Int]("HOOK_ID", O AutoInc)
     val url = column[String]("URL")
     val token = column[Option[String]]("TOKEN")
@@ -17,9 +18,13 @@ trait RepositoryWebHookComponent extends TemplateComponent { self: Profile =>
       (userName, repositoryName, hookId, url, ctype, token).mapTo[RepositoryWebHook]
 
     def byRepositoryUrl(owner: String, repository: String, url: String) =
+      logger.debug(">>> Entering byRepositoryUrl(owner={},repository={},url={})", owner, repository, url)
+      logger.debug("<<< Exiting byRepositoryUrl(owner={},repository={},url={})", owner, repository, url)
       byRepository(owner, repository) && (this.url === url.bind)
 
     def byId(id: Int) =
+      logger.debug(">>> Entering byId(id={})", id)
+      logger.debug("<<< Exiting byId(id={})", id)
       (this.hookId === id.bind)
   }
 }

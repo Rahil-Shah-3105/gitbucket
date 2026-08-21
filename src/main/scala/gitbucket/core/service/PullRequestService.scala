@@ -38,10 +38,13 @@ trait PullRequestService {
     getIssue(owner, repository, issueId.toString).flatMap { issue =>
       PullRequests.filter(_.byPrimaryKey(owner, repository, issueId)).firstOption.map { pullreq =>
         (issue, pullreq)
+      logger.debug(">>> Entering getPullRequest(owner={},repository={},issueId={})", owner, repository, issueId)
+      logger.debug("<<< Exiting getPullRequest(owner={},repository={},issueId={})", owner, repository, issueId)
       }
     }
 
   def updateCommitId(owner: String, repository: String, issueId: Int, commitIdTo: String, commitIdFrom: String)(implicit
+  logger.debug("<<< Exiting updateCommitId(owner={},repository={},issueId={},commitIdTo={},commitIdFrom={})", owner, repository, issueId, commitIdTo, commitIdFrom)
     s: Session
   ): Unit =
     PullRequests
@@ -50,6 +53,7 @@ trait PullRequestService {
       .update((commitIdTo, commitIdFrom))
 
   def updateDraftToPullRequest(owner: String, repository: String, issueId: Int)(implicit
+  logger.debug("<<< Exiting updateDraftToPullRequest(owner={},repository={},issueId={})", owner, repository, issueId)
     s: Session
   ): Unit =
     PullRequests
@@ -58,8 +62,11 @@ trait PullRequestService {
       .update(false)
 
   def updateBaseBranch(owner: String, repository: String, issueId: Int, baseBranch: String, commitIdTo: String)(implicit
+  logger.debug(">>> Entering updateBaseBranch(owner={},repository={},issueId={},baseBranch={},commitIdTo={})", owner, repository, issueId, baseBranch, commitIdTo)
+  logger.debug("<<< Exiting updateBaseBranch(owner={},repository={},issueId={},baseBranch={},commitIdTo={})", owner, repository, issueId, baseBranch, commitIdTo)
     s: Session
   ): Unit = {
+    private val logger = LoggerFactory.getLogger(getClass)
     PullRequests
       .filter(_.byPrimaryKey(owner, repository, issueId))
       .map(pr => pr.branch -> pr.commitIdTo)
@@ -69,13 +76,17 @@ trait PullRequestService {
   def updateMergedCommitIds(owner: String, repository: String, issueId: Int, mergedCommitIds: Seq[String])(implicit
     s: Session
   ): Unit = {
+    logger.debug(">>> Entering updateMergedCommitIds(owner={},repository={},issueId={},mergedCommitIds={})", owner, repository, issueId, mergedCommitIds)
     PullRequests
       .filter(_.byPrimaryKey(owner, repository, issueId))
       .map(pr => pr.mergedCommitIds)
+      logger.debug("<<< Exiting updateMergedCommitIds(owner={},repository={},issueId={},mergedCommitIds={})", owner, repository, issueId, mergedCommitIds)
       .update(mergedCommitIds.mkString(","))
   }
 
   def getPullRequestCountGroupByUser(closed: Boolean, owner: Option[String], repository: Option[String])(implicit
+  logger.debug(">>> Entering getPullRequestCountGroupByUser(closed={},owner={},repository={})", closed, owner, repository)
+  logger.debug("<<< Exiting getPullRequestCountGroupByUser(closed={},owner={},repository={})", closed, owner, repository)
     s: Session
   ): List[PullRequestCount] =
     PullRequests
@@ -125,6 +136,8 @@ trait PullRequestService {
     commitIdTo: String,
     isDraft: Boolean,
     loginAccount: Account,
+    logger.debug(">>> Entering createPullRequest(originRepository={},issueId={},originBranch={},requestUserName={},requestRepositoryName={},requestBranch={},commitIdFrom={},commitIdTo={},isDraft={},loginAccount={},settings={})", originRepository, issueId, originBranch, requestUserName, requestRepositoryName, requestBranch, commitIdFrom, commitIdTo, isDraft, loginAccount, settings)
+    logger.debug("<<< Exiting createPullRequest(originRepository={},issueId={},originBranch={},requestUserName={},requestRepositoryName={},requestBranch={},commitIdFrom={},commitIdTo={},isDraft={},loginAccount={},settings={})", originRepository, issueId, originBranch, requestUserName, requestRepositoryName, requestBranch, commitIdFrom, commitIdTo, isDraft, loginAccount, settings)
     settings: SystemSettings
   )(implicit s: Session, context: Context): Unit = {
     getIssue(originRepository.owner, originRepository.name, issueId.toString).foreach { baseIssue =>
@@ -187,6 +200,8 @@ trait PullRequestService {
     PullRequests
       .join(Issues)
       .on { (t1, t2) =>
+        logger.debug(">>> Entering getPullRequestsByRequest(userName={},repositoryName={},branch={},closed={})", userName, repositoryName, branch, closed)
+        logger.debug("<<< Exiting getPullRequestsByRequest(userName={},repositoryName={},branch={},closed={})", userName, repositoryName, branch, closed)
         t1.byPrimaryKey(t2.userName, t2.repositoryName, t2.issueId)
       }
       .filter { case (t1, t2) =>
@@ -204,6 +219,8 @@ trait PullRequestService {
     PullRequests
       .join(Issues)
       .on { (t1, t2) =>
+        logger.debug(">>> Entering getPullRequestsByBranch(userName={},repositoryName={},branch={},closed={})", userName, repositoryName, branch, closed)
+        logger.debug("<<< Exiting getPullRequestsByBranch(userName={},repositoryName={},branch={},closed={})", userName, repositoryName, branch, closed)
         t1.byPrimaryKey(t2.userName, t2.repositoryName, t2.issueId)
       }
       .filter { case (t1, t2) =>
@@ -223,6 +240,8 @@ trait PullRequestService {
    * 2. return None
    */
   def getPullRequestFromBranch(userName: String, repositoryName: String, branch: String, defaultBranch: String)(implicit
+  logger.debug(">>> Entering getPullRequestFromBranch(userName={},repositoryName={},branch={},defaultBranch={})", userName, repositoryName, branch, defaultBranch)
+  logger.debug("<<< Exiting getPullRequestFromBranch(userName={},repositoryName={},branch={},defaultBranch={})", userName, repositoryName, branch, defaultBranch)
     s: Session
   ): Option[(PullRequest, Issue)] =
     PullRequests
@@ -255,6 +274,7 @@ trait PullRequestService {
     s: Session,
     c: JsonFormat.Context
   ): Unit = {
+    logger.debug(">>> Entering updatePullRequests(owner={},repository={},branch={},pusherAccount={},action={},settings={})", owner, repository, branch, pusherAccount, action, settings)
     getPullRequestsByRequest(owner, repository, branch, Some(false)).foreach { pullreq =>
       if (Repositories.filter(_.byRepository(pullreq.userName, pullreq.repositoryName)).exists.run) {
         // Update the git repository
@@ -271,6 +291,7 @@ trait PullRequestService {
         // Collect comment positions
         val positions = getCommitComments(pullreq.userName, pullreq.repositoryName, pullreq.commitIdTo, true)
           .collect {
+            logger.debug("updatePullRequests(owner={},repository={},branch={},pusherAccount={},action={},settings={}): positions → {}", owner, repository, branch, pusherAccount, action, settings, positions)
             case CommitComment(_, _, _, commentId, _, _, Some(file), None, Some(newLine), _, _, _, _, _, _) =>
               (file, commentId, Right(newLine))
             case CommitComment(_, _, _, commentId, _, _, Some(file), Some(oldLine), None, _, _, _, _, _, _) =>
@@ -289,6 +310,7 @@ trait PullRequestService {
           pullreq.requestRepositoryName,
           pullreq.commitIdTo,
           commitIdTo,
+          logger.debug("<<< Exiting updatePullRequestCommentPositions(positions={},userName={},repositoryName={},oldCommitId={},newCommitId={},settings={})", positions, userName, repositoryName, oldCommitId, newCommitId, settings)
           settings
         )
 
@@ -304,6 +326,7 @@ trait PullRequestService {
           settings
         )
       }
+    logger.debug("<<< Exiting updatePullRequests(owner={},repository={},branch={},pusherAccount={},action={},settings={})", owner, repository, branch, pusherAccount, action, settings)
     }
   }
 
@@ -320,6 +343,7 @@ trait PullRequestService {
     s: Session,
     c: JsonFormat.Context
   ): Unit = {
+    logger.debug(">>> Entering updatePullRequestsByApi(repository={},issueId={},loginAccount={},settings={},title={},body={},state={},base={})", repository, issueId, loginAccount, settings, title, body, state, base)
     getPullRequest(repository.owner, repository.name, issueId).foreach { case (issue, pr) =>
       if (Repositories.filter(_.byRepository(pr.userName, pr.repositoryName)).exists.run) {
         // Update base branch
@@ -358,6 +382,7 @@ trait PullRequestService {
         val action = (state, issue.closed) match {
           case (Some("open"), true) =>
             updateClosed(repository.owner, repository.name, issueId, closed = false)
+            logger.debug("updatePullRequestsByApi(repository={},issueId={},loginAccount={},settings={},title={},body={},state={},base={}): action → {}", repository, issueId, loginAccount, settings, title, body, state, base, action)
             "reopened"
           case (Some("closed"), false) =>
             updateClosed(repository.owner, repository.name, issueId, closed = true)
@@ -373,6 +398,7 @@ trait PullRequestService {
           settings
         )
       }
+    logger.debug("<<< Exiting updatePullRequestsByApi(repository={},issueId={},loginAccount={},settings={},title={},body={},state={},base={})", repository, issueId, loginAccount, settings, title, body, state, base)
     }
   }
 
@@ -383,7 +409,9 @@ trait PullRequestService {
     fromBranch: String,
     commitId: String
   )(implicit s: Session): Option[(PullRequest, Issue)] = {
+    logger.debug(">>> Entering getPullRequestByRequestCommit(userName={},repositoryName={},toBranch={},fromBranch={},commitId={})", userName, repositoryName, toBranch, fromBranch, commitId)
     if (toBranch == fromBranch) {
+      logger.debug("<<< Exiting getPullRequestByRequestCommit(userName={},repositoryName={},toBranch={},fromBranch={},commitId={})", userName, repositoryName, toBranch, fromBranch, commitId)
       None
     } else {
       PullRequests
@@ -484,6 +512,8 @@ trait PullRequestService {
     ) { git =>
       val newId = git.getRepository.resolve(commitId)
       JGitUtil.getDiff(git, None, newId.getName, path)
+    val __logStart = System.currentTimeMillis()
+    logger.debug("<<< Exiting getSingleDiff(userName={},repositoryName={},commitId={},path={})", userName, repositoryName, commitId, path)
     }
   }
 
@@ -514,6 +544,15 @@ trait PullRequestService {
     requestUserName: String,
     requestRepositoryName: String,
     requestCommitId: String,
+    logger.debug(">>> Entering getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={})", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings)
+    logger.info("getRequestCompareInfo(userName,repositoryName,branch,requestUserName,requestRepositoryName,requestCommitId,settings)={},{},{},{},{},{},{}: find query executed in {} ms", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, (System.currentTimeMillis() - __logStart))
+    logger.debug("<<< Exiting getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={})", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings)
+    logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): maxLines → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, maxLines)
+    logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): maxFiles → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, maxFiles)
+    logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): makePatch → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, makePatch)
+    logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): git → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, git)
+    logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): from → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, from)
+    logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): fetchContent → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, fetchContent)
     settings: SystemSettings
   ): (Seq[Seq[CommitInfo]], Seq[DiffInfo]) =
     Using.resources(
@@ -523,6 +562,7 @@ trait PullRequestService {
       val oldId = oldGit.getRepository.resolve(branch)
       val newId = newGit.getRepository.resolve(requestCommitId)
 
+      logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): oldId → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, oldId)
       val commits = newGit.log
         .addRange(oldId, newId)
         .call
@@ -531,6 +571,7 @@ trait PullRequestService {
         .map { revCommit =>
           new CommitInfo(revCommit)
         }
+        logger.debug("getRequestCompareInfo(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},settings={}): newId → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, settings, newId)
         .toList
         .splitWith { (commit1, commit2) =>
           helpers.date(commit1.commitTime) == view.helpers.date(commit2.commitTime)
@@ -550,6 +591,13 @@ trait PullRequestService {
     }
 
   def getPullRequestComments(userName: String, repositoryName: String, issueId: Int, commits: Seq[CommitInfo])(implicit
+  logger.debug(">>> Entering getPullRequestComments(userName={},repositoryName={},issueId={},commits={})", userName, repositoryName, issueId, commits)
+  logger.debug("<<< Exiting getPullRequestComments(userName={},repositoryName={},issueId={},commits={})", userName, repositoryName, issueId, commits)
+  logger.debug("getPullRequestComments(userName={},repositoryName={},issueId={},commits={}): diff → {}", userName, repositoryName, issueId, commits, diff)
+  logger.debug("getPullRequestComments(userName={},repositoryName={},issueId={},commits={}): comments → {}", userName, repositoryName, issueId, commits, comments)
+  logger.debug("getPullRequestComments(userName={},repositoryName={},issueId={},commits={}): registeredDate → {}", userName, repositoryName, issueId, commits, registeredDate)
+  logger.debug("getPullRequestComments(userName={},repositoryName={},issueId={},commits={}): fileName → {}", userName, repositoryName, issueId, commits, fileName)
+  logger.debug("getPullRequestComments(userName={},repositoryName={},issueId={},commits={}): commentedUserName → {}", userName, repositoryName, issueId, commits, commentedUserName)
     s: Session
   ): Seq[Comment] = {
     (commits.flatMap(commit => getCommitComments(userName, repositoryName, commit.id, true)) ++ getComments(
@@ -587,6 +635,8 @@ trait PullRequestService {
   }
 
   def markMergeAndClosePullRequest(userName: String, owner: String, repository: String, pull: PullRequest)(implicit
+  logger.debug(">>> Entering markMergeAndClosePullRequest(userName={},owner={},repository={},pull={})", userName, owner, repository, pull)
+  logger.debug("<<< Exiting markMergeAndClosePullRequest(userName={},owner={},repository={},pull={})", userName, owner, repository, pull)
     s: Session
   ): Unit = {
     createComment(owner, repository, userName, pull.issueId, "Merged by user", "merge")
@@ -602,9 +652,12 @@ trait PullRequestService {
    */
   def parseCompareIdentifier(value: String, defaultOwner: String): (String, String) =
     if (value.contains(':')) {
+      logger.debug(">>> Entering parseCompareIdentifier(value={},defaultOwner={})", value, defaultOwner)
       val array = value.split(":")
+      logger.debug("<<< Exiting parseCompareIdentifier(value={},defaultOwner={})", value, defaultOwner)
       (array(0), array(1))
     } else {
+      logger.debug("parseCompareIdentifier(value={},defaultOwner={}): array → {}", value, defaultOwner, array)
       (defaultOwner, value)
     }
 
@@ -614,11 +667,13 @@ trait PullRequestService {
     originId: String,
     forkedId: String
   ): (Option[ObjectId], Option[ObjectId]) = {
+    logger.debug(">>> Entering getPullRequestCommitFromTo(originRepository={},forkedRepository={},originId={},forkedId={})", originRepository, forkedRepository, originId, forkedId)
     Using.resources(
       Git.open(getRepositoryDir(originRepository.owner, originRepository.name)),
       Git.open(getRepositoryDir(forkedRepository.owner, forkedRepository.name))
     ) { case (oldGit, newGit) =>
       if (originRepository.branchList.contains(originId)) {
+        logger.debug("<<< Exiting getPullRequestCommitFromTo(originRepository={},forkedRepository={},originId={},forkedId={})", originRepository, forkedRepository, originId, forkedId)
         val forkedId2 =
           forkedRepository.tags.collectFirst { case x if x.name == forkedId => x.commitId }.getOrElse(forkedId)
 
@@ -633,6 +688,8 @@ trait PullRequestService {
           forkedId2
         )
 
+        val __logStart = System.currentTimeMillis()
+        logger.info("getPullRequestCommitFromTo(originRepository,forkedRepository,originId,forkedId)={},{},{},{}: find query executed in {} ms", originRepository, forkedRepository, originId, forkedId, (System.currentTimeMillis() - __logStart))
         (Option(oldGit.getRepository.resolve(originId2)), Option(newGit.getRepository.resolve(forkedId2)))
 
       } else {
@@ -658,22 +715,30 @@ trait PullRequestService {
     committerEmail: String,
     commitMessage: String
   ): Either[String, ObjectId] = {
+    logger.debug(">>> Entering createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={})", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage)
     try {
+      logger.debug("<<< Exiting createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={})", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage)
       val repository = git.getRepository
       val inserter = repository.newObjectInserter()
 
+      logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): repository → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, repository)
+      logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): inserter → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, inserter)
       Using.resource(new RevWalk(repository)) { revWalk =>
         // Get the target branch head
         val targetHeadId = repository.resolve(s"refs/heads/$targetBranch")
         if (targetHeadId == null) {
+          logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): targetHeadId → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, targetHeadId)
           return Left(s"Branch $targetBranch not found")
         }
         val targetHead = revWalk.parseCommit(targetHeadId)
 
+        logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): targetHead → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, targetHead)
         // Parse the commits to revert (in reverse order for proper reverting)
         val commitsToRevert = mergedCommitIds.reverse.map { commitId =>
           val objectId = repository.resolve(commitId)
           if (objectId == null) {
+            logger.warn("Throwing IllegalArgumentException from createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={})", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage)
+            logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): objectId → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, objectId)
             throw new IllegalArgumentException(s"Commit $commitId not found")
           }
           revWalk.parseCommit(objectId)
@@ -685,6 +750,7 @@ trait PullRequestService {
         // Apply reverse changes for each commit
         for (commit <- commitsToRevert) {
           val parentCommit = if (commit.getParentCount > 0) {
+            logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): parentCommit → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, parentCommit)
             revWalk.parseCommit(commit.getParent(0))
           } else {
             // This is an initial commit, revert by creating empty tree
@@ -709,19 +775,25 @@ trait PullRequestService {
         commitBuilder.setCommitter(new PersonIdent(committerName, committerEmail))
         commitBuilder.setMessage(commitMessage)
 
+        logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): commitBuilder → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, commitBuilder)
         val revertCommitId = inserter.insert(commitBuilder)
         inserter.flush()
 
+        logger.info("createRevertCommit(git,targetBranch,mergedCommitIds,committerName,committerEmail,commitMessage)={},{},{},{},{},{}: database query executed in {} ms", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, (System.currentTimeMillis() - __logStart))
+        logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): revertCommitId → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, revertCommitId)
         // Update the branch to point to the new commit
         val refUpdate = repository.updateRef(s"refs/heads/$targetBranch")
         refUpdate.setNewObjectId(revertCommitId)
         refUpdate.update()
 
+        logger.info("createRevertCommit(git,targetBranch,mergedCommitIds,committerName,committerEmail,commitMessage)={},{},{},{},{},{}: update query executed in {} ms", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, (System.currentTimeMillis() - __logStart))
+        logger.debug("createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): refUpdate → {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, refUpdate)
         Right(revertCommitId)
       }
     } catch {
       case ex: Exception =>
         Left(ex.getMessage)
+    logger.error("Exception in createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail={},commitMessage={}): {}", git, targetBranch, mergedCommitIds, committerName, committerEmail, commitMessage, e.getMessage, e)
     }
   }
 
@@ -794,6 +866,7 @@ trait PullRequestService {
     // Build the final tree
     entries.values.toSeq.sortBy(_.getPathString).foreach(builder.add)
     builder.finish()
+    logger.debug("<<< Exiting createTreeWithReverseDiff(repository={},inserter={},baseTreeId={},fromTree={},toTree={})", repository, inserter, baseTreeId, fromTree, toTree)
     dirCache.writeTree(inserter)
   }
 }

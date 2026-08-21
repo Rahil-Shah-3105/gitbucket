@@ -14,12 +14,19 @@ trait Renderer {
   /**
    * Render the given request to HTML.
    */
+   logger.debug("render(request={}): enableLineBreaks → {}", request, enableLineBreaks)
+   logger.debug("render(request={}): enableAnchor → {}", request, enableAnchor)
+   logger.debug("render(request={}): enableRefsLink → {}", request, enableRefsLink)
+   logger.debug("render(request={}): enableWikiLink → {}", request, enableWikiLink)
   def render(request: RenderRequest): Html
 
 }
 
 object MarkdownRenderer extends Renderer {
+  private val logger = LoggerFactory.getLogger(getClass)
   override def render(request: RenderRequest): Html = {
+    logger.debug(">>> Entering render(request={})", request)
+    logger.debug("render(request={}): branch → {}", request, branch)
     import request.*
     Html(
       Markdown.toHtml(
@@ -34,6 +41,8 @@ object MarkdownRenderer extends Renderer {
         hasWritePermission = hasWritePermission
       )(context)
     )
+  logger.debug("render(request={}): markdown → {}", request, markdown)
+  logger.debug("render(request={}): repository → {}", request, repository)
   }
 }
 

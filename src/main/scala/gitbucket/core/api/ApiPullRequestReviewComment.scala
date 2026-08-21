@@ -51,9 +51,12 @@ case class ApiPullRequestReviewComment(
 
 object ApiPullRequestReviewComment {
   def apply(
+    private val logger = LoggerFactory.getLogger(getClass)
     comment: CommitComment,
     commentedUser: ApiUser,
     repositoryName: RepositoryName,
+    logger.debug("apply(comment={},commentedUser={},repositoryName={},issueId={}): user → {}", comment, commentedUser, repositoryName, issueId, user)
+    logger.debug("apply(comment={},commentedUser={},repositoryName={},issueId={}): path → {}", comment, commentedUser, repositoryName, issueId, path)
     issueId: Int
   ): ApiPullRequestReviewComment =
     new ApiPullRequestReviewComment(
@@ -64,5 +67,6 @@ object ApiPullRequestReviewComment {
       body = comment.content,
       created_at = comment.registeredDate,
       updated_at = comment.updatedDate
+    logger.debug("apply(comment={},commentedUser={},repositoryName={},issueId={}): commit_id → {}", comment, commentedUser, repositoryName, issueId, commit_id)
     )(repositoryName, issueId)
 }

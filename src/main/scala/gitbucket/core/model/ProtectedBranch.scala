@@ -5,14 +5,20 @@ trait ProtectedBranchComponent extends TemplateComponent { self: Profile =>
 
   lazy val ProtectedBranches = TableQuery[ProtectedBranches]
   class ProtectedBranches(tag: Tag) extends Table[ProtectedBranch](tag, "PROTECTED_BRANCH") with BranchTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val statusCheckAdmin = column[Boolean]("STATUS_CHECK_ADMIN") // enforceAdmins
     val requiredStatusCheck = column[Boolean]("REQUIRED_STATUS_CHECK")
     val restrictions = column[Boolean]("RESTRICTIONS")
     def * =
       (userName, repositoryName, branch, statusCheckAdmin, requiredStatusCheck, restrictions).mapTo[ProtectedBranch]
     def byPrimaryKey(userName: String, repositoryName: String, branch: String): Rep[Boolean] =
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},branch={})", userName, repositoryName, branch)
       byBranch(userName, repositoryName, branch)
     def byPrimaryKey(userName: Rep[String], repositoryName: Rep[String], branch: Rep[String]): Rep[Boolean] =
+      logger.debug(">>> Entering byPrimaryKey(userName={},repositoryName={},branch={})", userName, repositoryName, branch)
+      logger.error("Exception in byPrimaryKey(userName={},repositoryName={},branch={}): {}", userName, repositoryName, branch, e.getMessage, e)
+      logger.debug(">>> Entering byPrimaryKey(userName={},repositoryName={},branch={},allowedUser={})", userName, repositoryName, branch, allowedUser)
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},branch={})", userName, repositoryName, branch)
       byBranch(userName, repositoryName, branch)
   }
 
@@ -20,8 +26,11 @@ trait ProtectedBranchComponent extends TemplateComponent { self: Profile =>
   class ProtectedBranchContexts(tag: Tag)
       extends Table[ProtectedBranchContext](tag, "PROTECTED_BRANCH_REQUIRE_CONTEXT")
       with BranchTemplate {
+        logger.debug(">>> Entering byPrimaryKey(userName={},repositoryName={},branch={})", userName, repositoryName, branch)
     val context = column[String]("CONTEXT")
     def * =
+        logger.error("Exception in byPrimaryKey(userName={},repositoryName={},branch={}): {}", userName, repositoryName, branch, e.getMessage, e)
+        logger.debug("byPrimaryKey(userName={},repositoryName={},branch={}): context → {}", userName, repositoryName, branch, context)
       (userName, repositoryName, branch, context).mapTo[ProtectedBranchContext]
   }
 
@@ -32,6 +41,7 @@ trait ProtectedBranchComponent extends TemplateComponent { self: Profile =>
     val allowedUser = column[String]("ALLOWED_USER")
     def * = (userName, repositoryName, branch, allowedUser).mapTo[ProtectedBranchRestriction]
     def byPrimaryKey(userName: String, repositoryName: String, branch: String, allowedUser: String): Rep[Boolean] =
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},branch={},allowedUser={})", userName, repositoryName, branch, allowedUser)
       this.userName === userName.bind && this.repositoryName === repositoryName.bind && this.branch === branch.bind && this.allowedUser === allowedUser.bind
   }
 }

@@ -37,6 +37,7 @@ class RepositorySettingsController
     with RequestCache
 
 trait RepositorySettingsControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & AccountService & WebHookService & ProtectedBranchService & CommitStatusService &
     DeployKeyService & CustomFieldsService & ActivityService & OwnerAuthenticator & UsersAuthenticator =>
 
@@ -100,6 +101,8 @@ trait RepositorySettingsControllerBase extends ControllerBase {
       "url" -> trim(label("url", text(required, webHook(update)))),
       "events" -> webhookEvents,
       "ctype" -> label("ctype", text()),
+      logger.debug(">>> Entering webHookForm(update={})", update)
+      logger.debug("<<< Exiting webHookForm(update={})", update)
       "token" -> optional(trim(label("token", text(maxlength(100)))))
     )((url, events, ctype, token) => WebHookForm(url, events, WebHookContentType.valueOf(ctype), token))
 
@@ -280,6 +283,8 @@ trait RepositorySettingsControllerBase extends ControllerBase {
   ajaxPost("/:owner/:repository/settings/hooks/test")(ownerOnly { repository =>
     def _headers(h: Array[org.apache.http.Header]): Array[Array[String]] =
       h.map { h =>
+        logger.debug(">>> Entering _headers(h={})", h)
+        logger.debug("<<< Exiting _headers(h={})", h)
         Array(h.getName, h.getValue)
       }
 
@@ -553,6 +558,7 @@ trait RepositorySettingsControllerBase extends ControllerBase {
             "URL had been registered already."
           })
         } else {
+          logger.debug("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
           None
         }
     }
@@ -560,14 +566,17 @@ trait RepositorySettingsControllerBase extends ControllerBase {
   private def webhookEvents =
     new ValueType[Set[WebHook.Event]] {
       def convert(name: String, params: Map[String, Seq[String]], messages: Messages): Set[WebHook.Event] = {
+        logger.debug(">>> Entering convert(name={},params={},messages={})", name, params, messages)
         WebHook.Event.values.flatMap { t =>
           params.get(name + "." + t.name).map(_ => t)
+        logger.debug("<<< Exiting convert(name={},params={},messages={})", name, params, messages)
         }.toSet
       }
       def validate(name: String, params: Map[String, Seq[String]], messages: Messages): Seq[(String, String)] =
         if (convert(name, params, messages).isEmpty) {
           Seq(name -> messages("error.required").format(name))
         } else {
+          logger.debug(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
           Nil
         }
     }
@@ -599,11 +608,13 @@ trait RepositorySettingsControllerBase extends ControllerBase {
         messages: Messages
       ): Option[String] = {
         for {
+          logger.debug("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
           repoName <- params.optionValue("repository") if repoName != value
           userName <- params.optionValue("owner")
           _ <- getRepositoryNamesOfUser(userName).find(_ == value)
         } yield {
           "Repository already exists."
+        logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
         }
       }
     }
@@ -631,6 +642,7 @@ trait RepositorySettingsControllerBase extends ControllerBase {
           case None    => Some("User does not exist.")
           case Some(x) =>
             if (x.userName == params("owner")) {
+              logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
               Some("This is current repository owner.")
             } else {
               params.get("repository").flatMap { repositoryName =>
@@ -639,6 +651,8 @@ trait RepositorySettingsControllerBase extends ControllerBase {
                 }
               }
             }
+        logger.debug(">>> Entering validate(name={},params={},messages={})", name, params, messages)
+        logger.debug("<<< Exiting validate(name={},params={},messages={})", name, params, messages)
         }
     }
 
@@ -652,8 +666,10 @@ trait RepositorySettingsControllerBase extends ControllerBase {
         params: Map[String, Seq[String]],
         messages: Messages
       ): Seq[(String, String)] = {
+        logger.debug(">>> Entering validate(name={},params={},messages={})", name, params, messages)
         val mergeOptions = params.getOrElse("mergeOptions", Nil)
         if (mergeOptions.isEmpty) {
+          logger.debug("validate(name={},params={},messages={}): mergeOptions → {}", name, params, messages, mergeOptions)
           Seq("mergeOptions" -> "At least one option must be enabled.")
         } else if (!mergeOptions.forall(x => Seq("merge-commit", "squash", "rebase").contains(x))) {
           Seq("mergeOptions" -> "mergeOptions are invalid.")

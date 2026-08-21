@@ -23,24 +23,32 @@ trait RequestCache
     with PrioritiesService {
 
   private implicit def context2Session(implicit context: Context): Session =
+    logger.debug(">>> Entering context2Session(context={})", context)
     request2Session(context.request)
 
   def getIssueFromCache(userName: String, repositoryName: String, issueId: String)(implicit
     context: Context
   ): Option[Issue] = {
+    private val logger = LoggerFactory.getLogger(getClass)
     context.cache(s"issue.${userName}/${repositoryName}#${issueId}") {
+      logger.debug(">>> Entering getIssueFromCache(userName={},repositoryName={},issueId={})", userName, repositoryName, issueId)
+      logger.debug("<<< Exiting getIssueFromCache(userName={},repositoryName={},issueId={})", userName, repositoryName, issueId)
       super.getIssue(userName, repositoryName, issueId)
     }
   }
 
   def getAccountByUserNameFromCache(userName: String)(implicit context: Context): Option[Account] = {
+    logger.debug(">>> Entering getAccountByUserNameFromCache(userName={})", userName)
     context.cache(s"account.${userName}") {
+      logger.debug("<<< Exiting getAccountByUserNameFromCache(userName={})", userName)
       super.getAccountByUserName(userName)
     }
   }
 
   def getAccountByMailAddressFromCache(mailAddress: String)(implicit context: Context): Option[Account] = {
+    logger.debug(">>> Entering getAccountByMailAddressFromCache(mailAddress={})", mailAddress)
     context.cache(s"account.${mailAddress}") {
+      logger.debug("<<< Exiting getAccountByMailAddressFromCache(mailAddress={})", mailAddress)
       super.getAccountByMailAddress(mailAddress)
     }
   }
@@ -48,7 +56,9 @@ trait RequestCache
   def getRepositoryInfoFromCache(userName: String, repositoryName: String)(implicit
     context: Context
   ): Option[Repository] = {
+    logger.debug(">>> Entering getRepositoryInfoFromCache(userName={},repositoryName={})", userName, repositoryName)
     context.cache(s"repository.${userName}/${repositoryName}") {
+      logger.debug("<<< Exiting getRepositoryInfoFromCache(userName={},repositoryName={})", userName, repositoryName)
       Repositories
         .join(Accounts)
         .on(_.userName === _.userName)
