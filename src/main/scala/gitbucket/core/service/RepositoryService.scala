@@ -40,7 +40,10 @@ trait RepositoryService {
     parentRepositoryName: Option[String] = None,
     parentUserName: Option[String] = None
   )(implicit s: Session): Unit = {
+    private val logger = LoggerFactory.getLogger(getClass)
     Repositories insert
+    logger.debug(">>> Entering insertRepository(repositoryName={},userName={},description={},isPrivate={},defaultBranch={},originRepositoryName={},originUserName={},parentRepositoryName={},parentUserName={})", repositoryName, userName, description, isPrivate, defaultBranch, originRepositoryName, originUserName, parentRepositoryName, parentUserName)
+    logger.debug("insertRepository(repositoryName={},userName={},description={},isPrivate={},defaultBranch={},originRepositoryName={},originUserName={},parentRepositoryName={},parentUserName={}): options → {}", repositoryName, userName, description, isPrivate, defaultBranch, originRepositoryName, originUserName, parentRepositoryName, parentUserName, options)
       Repository(
         userName = userName,
         repositoryName = repositoryName,
@@ -64,12 +67,17 @@ trait RepositoryService {
           defaultMergeOption = "merge-commit",
           safeMode = true
         )
+      logger.debug("insertRepository(repositoryName={},userName={},description={},isPrivate={},defaultBranch={},originRepositoryName={},originUserName={},parentRepositoryName={},parentUserName={}): registeredDate → {}", repositoryName, userName, description, isPrivate, defaultBranch, originRepositoryName, originUserName, parentRepositoryName, parentUserName, registeredDate)
+      logger.debug("insertRepository(repositoryName={},userName={},description={},isPrivate={},defaultBranch={},originRepositoryName={},originUserName={},parentRepositoryName={},parentUserName={}): updatedDate → {}", repositoryName, userName, description, isPrivate, defaultBranch, originRepositoryName, originUserName, parentRepositoryName, parentUserName, updatedDate)
+      logger.debug("insertRepository(repositoryName={},userName={},description={},isPrivate={},defaultBranch={},originRepositoryName={},originUserName={},parentRepositoryName={},parentUserName={}): lastActivityDate → {}", repositoryName, userName, description, isPrivate, defaultBranch, originRepositoryName, originUserName, parentRepositoryName, parentUserName, lastActivityDate)
       )
 
     IssueId insert (userName, repositoryName, 0)
   }
 
   def renameRepository(oldUserName: String, oldRepositoryName: String, newUserName: String, newRepositoryName: String)(
+  logger.debug(">>> Entering renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={})", oldUserName, oldRepositoryName, newUserName, newRepositoryName)
+  logger.debug("<<< Exiting renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={})", oldUserName, oldRepositoryName, newUserName, newRepositoryName)
     implicit s: Session
   ): Unit = {
     getAccountByUserName(newUserName).foreach { _ =>
@@ -96,16 +104,19 @@ trait RepositoryService {
           // Move git repository
           val repoDir = getRepositoryDir(oldUserName, oldRepositoryName)
           if (repoDir.isDirectory) {
+            logger.debug("renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={}): repoDir → {}", oldUserName, oldRepositoryName, newUserName, newRepositoryName, repoDir)
             FileUtils.moveDirectory(repoDir, getRepositoryDir(newUserName, newRepositoryName))
           }
           // Move wiki repository
           val wikiDir = getWikiRepositoryDir(oldUserName, oldRepositoryName)
           if (wikiDir.isDirectory) {
+            logger.debug("renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={}): wikiDir → {}", oldUserName, oldRepositoryName, newUserName, newRepositoryName, wikiDir)
             FileUtils.moveDirectory(wikiDir, getWikiRepositoryDir(newUserName, newRepositoryName))
           }
           // Move files directory
           val filesDir = getRepositoryFilesDir(oldUserName, oldRepositoryName)
           if (filesDir.isDirectory) {
+            logger.debug("renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={}): filesDir → {}", oldUserName, oldRepositoryName, newUserName, newRepositoryName, filesDir)
             FileUtils.moveDirectory(filesDir, getRepositoryFilesDir(newUserName, newRepositoryName))
           }
           // Delete parent directory
@@ -123,7 +134,9 @@ trait RepositoryService {
   }
 
   def deleteRepository(repository: Repository)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering deleteRepository(repository={})", repository)
     LockUtil.lock(s"${repository.userName}/${repository.repositoryName}") {
+      logger.debug("<<< Exiting deleteRepository(repository={})", repository)
       deleteRepositoryOnModel(repository.userName, repository.repositoryName)
 
       FileUtil.deleteRecursively(getRepositoryDir(repository.userName, repository.repositoryName))
@@ -138,6 +151,7 @@ trait RepositoryService {
   }
 
   private def deleteRepositoryOnModel(userName: String, repositoryName: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering deleteRepositoryOnModel(userName={},repositoryName={})", userName, repositoryName)
 //    Activities.filter(_.byRepository(userName, repositoryName)).delete
     Collaborators.filter(_.byRepository(userName, repositoryName)).delete
     CommitComments.filter(_.byRepository(userName, repositoryName)).delete
@@ -155,6 +169,7 @@ trait RepositoryService {
     DeployKeys.filter(_.byRepository(userName, repositoryName)).delete
     ReleaseAssets.filter(_.byRepository(userName, repositoryName)).delete
     ReleaseTags.filter(_.byRepository(userName, repositoryName)).delete
+    logger.debug("<<< Exiting deleteRepositoryOnModel(userName={},repositoryName={})", userName, repositoryName)
     Repositories.filter(_.byRepository(userName, repositoryName)).delete
   }
 
@@ -165,6 +180,8 @@ trait RepositoryService {
    * @return the list of repository names
    */
   def getRepositoryNamesOfUser(userName: String)(implicit s: Session): List[String] =
+    logger.debug(">>> Entering getRepositoryNamesOfUser(userName={})", userName)
+    logger.debug("<<< Exiting getRepositoryNamesOfUser(userName={})", userName)
     Repositories filter (_.userName === userName.bind) map (_.repositoryName) list
 
   /**
@@ -175,10 +192,12 @@ trait RepositoryService {
    * @return the repository information
    */
   def getRepository(userName: String, repositoryName: String)(implicit s: Session): Option[RepositoryInfo] = {
+    logger.debug(">>> Entering getRepository(userName={},repositoryName={})", userName, repositoryName)
     (Repositories
       .join(Accounts)
       .on(_.userName === _.userName)
       .filter { case (t1, t2) =>
+        logger.debug("<<< Exiting getRepository(userName={},repositoryName={})", userName, repositoryName)
         t1.byRepository(userName, repositoryName) && t2.removed === false.bind
       } firstOption) map { case (repository, account) =>
       // for getting issue count and pull request count
@@ -196,6 +215,7 @@ trait RepositoryService {
         issues.count(_ == true),
         getForkedCount(
           repository.originUserName.getOrElse(repository.userName),
+        logger.debug("<<< Exiting getForkedCount(userName={},repositoryName={})", userName, repositoryName)
           repository.originRepositoryName.getOrElse(repository.repositoryName)
         ),
         getOpenMilestones(repository.userName, repository.repositoryName),
@@ -205,9 +225,11 @@ trait RepositoryService {
   }
 
   def getRepositoryById(repositoryId: Long)(implicit s: Session): Option[RepositoryInfo] =
+    logger.debug(">>> Entering getRepositoryById(repositoryId={})", repositoryId)
     Repositories
       .filter(_.repositoryId === repositoryId.bind)
       .firstOption
+      logger.debug("<<< Exiting getRepositoryById(repositoryId={})", repositoryId)
       .flatMap(r => getRepository(r.userName, r.repositoryName))
 
   /**
@@ -218,6 +240,7 @@ trait RepositoryService {
    * @return the repository information list
    */
   def getAllRepositories(userName: String)(implicit s: Session): List[(String, String)] = {
+    logger.debug(">>> Entering getAllRepositories(userName={})", userName)
     Repositories
       .filter { t1 =>
         (t1.isPrivate === false.bind) ||
@@ -235,6 +258,7 @@ trait RepositoryService {
       .map { t =>
         (t.userName, t.repositoryName)
       }
+      logger.debug("<<< Exiting getAllRepositories(userName={})", userName)
       .list
   }
 
@@ -244,12 +268,14 @@ trait RepositoryService {
    * @return the repository information list
    */
   def getPublicRepositories(withoutPhysicalInfo: Boolean = false)(implicit s: Session): List[RepositoryInfo] = {
+    logger.debug(">>> Entering getPublicRepositories(withoutPhysicalInfo={})", withoutPhysicalInfo)
     Repositories
       .filter { t1 =>
         t1.isPrivate === false.bind
       }
       .sortBy(_.lastActivityDate desc)
       .list
+      logger.debug("<<< Exiting getPublicRepositories(withoutPhysicalInfo={})", withoutPhysicalInfo)
       .map(createRepositoryInfo(_, withoutPhysicalInfo))
   }
 
@@ -260,6 +286,7 @@ trait RepositoryService {
   def getUserRepositories(userName: String, withoutPhysicalInfo: Boolean = false)(implicit
     s: Session
   ): List[RepositoryInfo] = {
+    logger.debug(">>> Entering getUserRepositories(userName={},withoutPhysicalInfo={})", userName, withoutPhysicalInfo)
     Repositories
       .filter { t1 =>
         (t1.userName === userName.bind) || (t1.userName in (GroupMembers
@@ -274,6 +301,7 @@ trait RepositoryService {
       }
       .sortBy(_.lastActivityDate desc)
       .list
+      logger.debug("<<< Exiting getUserRepositories(userName={},withoutPhysicalInfo={})", userName, withoutPhysicalInfo)
       .map(createRepositoryInfo(_, withoutPhysicalInfo))
   }
 
@@ -310,6 +338,9 @@ trait RepositoryService {
     loginAccount: Option[Account],
     repositoryUserName: Option[String],
     withoutPhysicalInfo: Boolean,
+    logger.debug(">>> Entering getVisibleRepositories(loginAccount={},repositoryUserName={},withoutPhysicalInfo={},limit={})", loginAccount, repositoryUserName, withoutPhysicalInfo, limit)
+    logger.debug("<<< Exiting getVisibleRepositories(loginAccount={},repositoryUserName={},withoutPhysicalInfo={},limit={})", loginAccount, repositoryUserName, withoutPhysicalInfo, limit)
+    logger.debug("<<< Exiting getVisibleRepositories(loginAccount={},repositoryUserName={},withoutPhysicalInfo={})", loginAccount, repositoryUserName, withoutPhysicalInfo)
     limit: Boolean
   )(implicit s: Session): List[RepositoryInfo] = {
     (loginAccount match {
@@ -352,6 +383,8 @@ trait RepositoryService {
   }
 
   private def createRepositoryInfo(repository: Repository, withoutPhysicalInfo: Boolean = false)(implicit
+  logger.debug(">>> Entering createRepositoryInfo(repository={},withoutPhysicalInfo={})", repository, withoutPhysicalInfo)
+  logger.debug("<<< Exiting createRepositoryInfo(repository={},withoutPhysicalInfo={})", repository, withoutPhysicalInfo)
     s: Session
   ): RepositoryInfo = {
     new RepositoryInfo(
@@ -366,6 +399,7 @@ trait RepositoryService {
       } else {
         getForkedCount(
           repository.originUserName.getOrElse(repository.userName),
+        logger.debug(">>> Entering getForkedCount(userName={},repositoryName={})", userName, repositoryName)
           repository.originRepositoryName.getOrElse(repository.repositoryName)
         )
       },
@@ -381,7 +415,9 @@ trait RepositoryService {
    * TODO It seems to be able to improve performance. For example, RequestCache can be used for getAccountByUserName call.
    */
   private def getRepositoryManagers(userName: String, repositoryName: String)(implicit s: Session): Seq[String] = {
+    logger.debug(">>> Entering getRepositoryManagers(userName={},repositoryName={})", userName, repositoryName)
     (if (getAccountByUserName(userName).exists(_.isGroupAccount)) {
+       logger.debug("<<< Exiting getRepositoryManagers(userName={},repositoryName={})", userName, repositoryName)
        getGroupMembers(userName).collect { case x if (x.isManager) => x.userName }
      } else {
        Seq(userName)
@@ -392,6 +428,8 @@ trait RepositoryService {
    * Updates the last activity date of the repository.
    */
   def updateLastActivityDate(userName: String, repositoryName: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering updateLastActivityDate(userName={},repositoryName={})", userName, repositoryName)
+    logger.debug("<<< Exiting updateLastActivityDate(userName={},repositoryName={})", userName, repositoryName)
     Repositories.filter(_.byRepository(userName, repositoryName)).map(_.lastActivityDate).update(currentDate)
   }
 
@@ -410,6 +448,8 @@ trait RepositoryService {
     allowFork: Boolean,
     mergeOptions: Seq[String],
     defaultMergeOption: String,
+    logger.debug(">>> Entering saveRepositoryOptions(userName={},repositoryName={},description={},isPrivate={},issuesOption={},externalIssuesUrl={},wikiOption={},externalWikiUrl={},allowFork={},mergeOptions={},defaultMergeOption={},safeMode={})", userName, repositoryName, description, isPrivate, issuesOption, externalIssuesUrl, wikiOption, externalWikiUrl, allowFork, mergeOptions, defaultMergeOption, safeMode)
+    logger.debug("<<< Exiting saveRepositoryOptions(userName={},repositoryName={},description={},isPrivate={},issuesOption={},externalIssuesUrl={},wikiOption={},externalWikiUrl={},allowFork={},mergeOptions={},defaultMergeOption={},safeMode={})", userName, repositoryName, description, isPrivate, issuesOption, externalIssuesUrl, wikiOption, externalWikiUrl, allowFork, mergeOptions, defaultMergeOption, safeMode)
     safeMode: Boolean
   )(implicit s: Session): Unit = {
 
@@ -446,6 +486,8 @@ trait RepositoryService {
   }
 
   def saveRepositoryDefaultBranch(userName: String, repositoryName: String, defaultBranch: String)(implicit
+  logger.debug(">>> Entering saveRepositoryDefaultBranch(userName={},repositoryName={},defaultBranch={})", userName, repositoryName, defaultBranch)
+  logger.debug("<<< Exiting saveRepositoryDefaultBranch(userName={},repositoryName={},defaultBranch={})", userName, repositoryName, defaultBranch)
     s: Session
   ): Unit =
     Repositories
@@ -459,6 +501,7 @@ trait RepositoryService {
    * Add collaborator (user or group) to the repository.
    */
   def addCollaborator(userName: String, repositoryName: String, collaboratorName: String, role: String)(implicit
+  logger.debug("<<< Exiting addCollaborator(userName={},repositoryName={},collaboratorName={},role={})", userName, repositoryName, collaboratorName, role)
     s: Session
   ): Unit =
     Collaborators insert Collaborator(userName, repositoryName, collaboratorName, role)
@@ -467,6 +510,7 @@ trait RepositoryService {
    * Remove specified collaborator from the repository.
    */
   def removeCollaborator(userName: String, repositoryName: String, collaboratorName: String)(implicit
+  logger.debug("<<< Exiting removeCollaborator(userName={},repositoryName={},collaboratorName={})", userName, repositoryName, collaboratorName)
     s: Session
   ): Unit =
     Collaborators.filter(_.byPrimaryKey(userName, repositoryName, collaboratorName)).delete
@@ -475,6 +519,8 @@ trait RepositoryService {
    * Remove all collaborators from the repository.
    */
   def removeCollaborators(userName: String, repositoryName: String)(implicit s: Session): Unit =
+    logger.debug(">>> Entering removeCollaborators(userName={},repositoryName={})", userName, repositoryName)
+    logger.debug("<<< Exiting removeCollaborators(userName={},repositoryName={})", userName, repositoryName)
     Collaborators.filter(_.byRepository(userName, repositoryName)).delete
 
   /**
@@ -496,6 +542,7 @@ trait RepositoryService {
   def getCollaboratorUserNames(userName: String, repositoryName: String, filter: Seq[Role] = Nil)(implicit
     s: Session
   ): List[String] = {
+    logger.debug(">>> Entering getCollaboratorUserNames(userName={},repositoryName={},filter={})", userName, repositoryName, filter)
     val q1 = Collaborators
       .join(Accounts)
       .on { case (t1, t2) => (t1.collaboratorName === t2.userName) && (t2.groupAccount === false.bind) }
@@ -515,12 +562,16 @@ trait RepositoryService {
       .filter { x =>
         filter.isEmpty || filter.exists(_.name == x._2)
       }
+      logger.debug("<<< Exiting getCollaboratorUserNames(userName={},repositoryName={},filter={})", userName, repositoryName, filter)
       .map(_._1)
   }
 
   def hasOwnerRole(owner: String, repository: String, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.debug(">>> Entering hasOwnerRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     loginAccount match {
-      case Some(a) if a.isAdmin                                                                         => true
+      case Some(a) if a.isAdmin                                                                         =>
+        logger.debug("<<< Exiting hasOwnerRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+        true
       case Some(a) if a.userName == owner                                                               => true
       case Some(a) if getGroupMembers(owner).exists(_.userName == a.userName)                           => true
       case Some(a) if getCollaboratorUserNames(owner, repository, Seq(Role.ADMIN)).contains(a.userName) => true
@@ -529,6 +580,8 @@ trait RepositoryService {
   }
 
   def hasDeveloperRole(owner: String, repository: String, loginAccount: Option[Account])(implicit
+  logger.debug(">>> Entering hasDeveloperRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+  logger.debug("<<< Exiting hasDeveloperRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     s: Session
   ): Boolean = {
     loginAccount match {
@@ -543,8 +596,11 @@ trait RepositoryService {
   }
 
   def hasGuestRole(owner: String, repository: String, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.debug(">>> Entering hasGuestRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     loginAccount match {
-      case Some(a) if a.isAdmin                                               => true
+      case Some(a) if a.isAdmin                                               =>
+        logger.debug("<<< Exiting hasGuestRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+        true
       case Some(a) if a.userName == owner                                     => true
       case Some(a) if getGroupMembers(owner).exists(_.userName == a.userName) => true
       case Some(a)
@@ -556,7 +612,9 @@ trait RepositoryService {
   }
 
   def isReadable(repository: Repository, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.debug(">>> Entering isReadable(repository={},loginAccount={})", repository, loginAccount)
     if (!repository.isPrivate) {
+      logger.debug("<<< Exiting isReadable(repository={},loginAccount={})", repository, loginAccount)
       true
     } else {
       loginAccount match {
@@ -571,8 +629,11 @@ trait RepositoryService {
   }
 
   def isWritable(repository: Repository, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.debug(">>> Entering isWritable(repository={},loginAccount={})", repository, loginAccount)
     loginAccount match {
-      case Some(x) if x.isAdmin                                                             => true
+      case Some(x) if x.isAdmin                                                             =>
+        logger.debug("<<< Exiting isWritable(repository={},loginAccount={})", repository, loginAccount)
+        true
       case Some(x) if repository.userName == x.userName                                     => true
       case Some(x) if getGroupMembers(repository.userName).exists(_.userName == x.userName) => true
       case Some(x)
@@ -585,15 +646,18 @@ trait RepositoryService {
 
   private def getForkedCount(userName: String, repositoryName: String)(implicit s: Session): Int =
     Query(Repositories.filter { t =>
+      logger.debug(">>> Entering getForkedCount(userName={},repositoryName={})", userName, repositoryName)
       (t.originUserName === userName.bind) && (t.originRepositoryName === repositoryName.bind)
     }.length).first
 
   private def getOpenMilestones(userName: String, repositoryName: String)(implicit s: Session): Int =
     Query(
       Milestones
+    logger.debug(">>> Entering getOpenMilestones(userName={},repositoryName={})", userName, repositoryName)
         .filter(_.byRepository(userName, repositoryName))
         .filter(_.closedDate.isEmpty)
         .length
+    logger.debug("<<< Exiting getOpenMilestones(userName={},repositoryName={})", userName, repositoryName)
     ).first
 
   def getForkedRepositories(
@@ -601,10 +665,12 @@ trait RepositoryService {
     repositoryName: String,
     order: ForkedRepositoryOrder = ForkedRepositoryOrder.ByOwner
   )(implicit s: Session): List[Repository] = {
+    logger.debug(">>> Entering getForkedRepositories(userName={},repositoryName={},order={})", userName, repositoryName, order)
     val query = Repositories.filter { t =>
       (t.originUserName === userName.bind) && (t.originRepositoryName === repositoryName.bind)
     }
 
+    logger.debug("<<< Exiting getForkedRepositories(userName={},repositoryName={},order={})", userName, repositoryName, order)
     order match {
       case ForkedRepositoryOrder.ByOwner => query.sortBy(_.userName asc).list
       case ForkedRepositoryOrder.Oldest  => query.sortBy(t => (t.registeredDate.asc, t.repositoryId.asc)).list
@@ -622,11 +688,15 @@ trait RepositoryService {
    * @return The content of template if the repository has it, otherwise empty string.
    */
   def getContentTemplate(repository: RepositoryInfo, fileBaseName: String)(implicit s: Session): String = {
+    logger.debug(">>> Entering getContentTemplate(repository={},fileBaseName={})", repository, fileBaseName)
     val withExtFilenames = templateExtensions.map(extension => s"${fileBaseName.toLowerCase()}.${extension}")
 
+    logger.debug("<<< Exiting getContentTemplate(repository={},fileBaseName={})", repository, fileBaseName)
     def choiceTemplate(files: List[FileInfo]): Option[FileInfo] =
       files
         .find { f =>
+          logger.debug(">>> Entering choiceTemplate(files={})", files)
+          logger.debug("<<< Exiting choiceTemplate(files={})", files)
           f.name.toLowerCase() == fileBaseName
         }
         .orElse {
@@ -693,6 +763,8 @@ object RepositoryService {
         milestoneCount,
         repo.branchList,
         repo.tags,
+        logger.debug(">>> Entering this(repo={},model={},forkedCount={},managers={})", repo, model, forkedCount, managers)
+        logger.debug("<<< Exiting this(repo={},model={},issueCount={},pullCount={},forkedCount={},milestoneCount={},managers={})", repo, model, issueCount, pullCount, forkedCount, milestoneCount, managers)
         managers
       )
 
@@ -706,25 +778,34 @@ object RepositoryService {
     def sshUrl(implicit context: Context): Option[String] = RepositoryService.sshUrl(owner, name)
 
     def splitPath(path: String): (String, String) = {
+      logger.debug(">>> Entering splitPath(path={})", path)
       val names = (branchList ++ tags.map(_.name)).sortBy(_.length).reverse
 
+      logger.debug("splitPath(path={}): names → {}", path, names)
       val id = names.collectFirst {
         case name if (path == name || path.startsWith(name + "/")) => name
       } getOrElse {
+        logger.debug("splitPath(path={}): id → {}", path, id)
         path.split("/")(0)
       }
 
+      logger.debug("<<< Exiting splitPath(path={})", path)
       (id, path.substring(id.length).stripPrefix("/"))
     }
   }
 
   def httpUrl(owner: String, name: String)(implicit context: Context): String =
+    logger.debug(">>> Entering httpUrl(owner={},name={})", owner, name)
+    logger.debug("<<< Exiting httpUrl(owner={},name={})", owner, name)
     s"${context.baseUrl}/git/${owner}/${name}.git"
 
   def sshUrl(owner: String, name: String)(implicit context: Context): Option[String] =
+    logger.debug(">>> Entering sshUrl(owner={},name={})", owner, name)
     context.settings.sshUrl(owner, name)
 
   def openRepoUrl(openUrl: String)(implicit context: Context): String =
+    logger.debug(">>> Entering openRepoUrl(openUrl={})", openUrl)
+    logger.debug("<<< Exiting openRepoUrl(openUrl={})", openUrl)
     s"github-${context.platform}://openRepo/${openUrl}"
 
   def readmeFiles: Seq[String] =

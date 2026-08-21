@@ -13,16 +13,22 @@ import scala.jdk.CollectionConverters._
 
 trait GpgKeyService {
   def getGpgPublicKeys(userName: String)(implicit s: Session): List[GpgKey] =
+    logger.debug(">>> Entering getGpgPublicKeys(userName={})", userName)
     GpgKeys.filter(_.userName === userName.bind).sortBy(_.gpgKeyId).list
 
   def addGpgPublicKey(userName: String, title: String, publicKey: String)(implicit s: Session): Unit = {
+    private val logger = LoggerFactory.getLogger(getClass)
     val pubKeyOf = new BcPGPObjectFactory(new ArmoredInputStream(new ByteArrayInputStream(publicKey.getBytes)))
     pubKeyOf.iterator().asScala.foreach { case keyRing: PGPPublicKeyRing =>
       val key = keyRing.getPublicKey()
       GpgKeys.insert(GpgKey(userName = userName, gpgKeyId = key.getKeyID, title = title, publicKey = publicKey))
+    logger.debug(">>> Entering addGpgPublicKey(userName={},title={},publicKey={})", userName, title, publicKey)
+    logger.debug("<<< Exiting addGpgPublicKey(userName={},title={},publicKey={})", userName, title, publicKey)
     }
   }
 
   def deleteGpgPublicKey(userName: String, keyId: Int)(implicit s: Session): Unit =
+    logger.debug(">>> Entering deleteGpgPublicKey(userName={},keyId={})", userName, keyId)
+    logger.debug("<<< Exiting deleteGpgPublicKey(userName={},keyId={})", userName, keyId)
     GpgKeys.filter(_.byPrimaryKey(userName, keyId)).delete
 }

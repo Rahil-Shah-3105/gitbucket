@@ -50,6 +50,7 @@ trait SuggestionProvider {
    * Each element can be accessed as `option` in `template()` or `replace()` method.
    */
   def values(repository: RepositoryInfo): Seq[String] = Nil
+  logger.debug(">>> Entering values(repository={})", repository)
 
   /**
    * If this suggestion provider has static proposal list, override this method to return it.
@@ -58,6 +59,7 @@ trait SuggestionProvider {
    * The first element of tuple is used as a value, and the second element is used as a label.
    *
    * The returned sequence is rendered as follows:
+   private val logger = LoggerFactory.getLogger(getClass)
    * <pre>
    * [
    *   {
@@ -72,8 +74,11 @@ trait SuggestionProvider {
    * </pre>
    *
    * Each element can be accessed as `option` in `template()` or `replace()` method.
+   logger.debug("<<< Exiting values(repository={})", repository)
    */
   def options(repository: RepositoryInfo): Seq[(String, String)] = values(repository).map { value =>
+    logger.debug(">>> Entering options(repository={})", repository)
+    logger.debug("<<< Exiting options(repository={})", repository)
     (value, value)
   }
 
@@ -81,20 +86,27 @@ trait SuggestionProvider {
    * JavaScript fragment to generate a label of completion proposal. The default is: `option.label`.
    */
   def template(implicit context: Context): String = "option.label"
+  logger.debug(">>> Entering template(context={})", context)
 
   /**
    * JavaScript fragment to generate a replaced value of completion proposal. The default is: `option.value`
+   logger.debug("<<< Exiting template(context={})", context)
    */
   def replace(implicit context: Context): String = "option.value"
+  logger.debug(">>> Entering replace(context={})", context)
 
   /**
    * If this suggestion provider needs some additional process to assemble the proposal list (e.g. It need to use Ajax
    * to get a proposal list from the server), then override this method and return any JavaScript code.
    */
+  logger.debug("<<< Exiting replace(context={})", context)
   def additionalScript(repository: RepositoryInfo)(implicit context: Context): String = ""
 
 }
 
+logger.debug("replace(context={}): context → {}", context, context)
+logger.debug("replace(context={}): prefix → {}", context, prefix)
+logger.debug("replace(context={}): id → {}", context, id)
 class UserNameSuggestionProvider extends SuggestionProvider {
   override val id: String = "user"
   override val prefix: String = "@"
@@ -104,9 +116,14 @@ class UserNameSuggestionProvider extends SuggestionProvider {
 }
 
 class IssueSuggestionProvider extends SuggestionProvider {
+  logger.debug(">>> Entering additionalScript(repository={})", repository)
+  logger.debug("additionalScript(repository={}): id → {}", repository, id)
+  logger.debug("additionalScript(repository={}): prefix → {}", repository, prefix)
+  logger.debug("additionalScript(repository={}): context → {}", repository, context)
   override val id: String = "issue"
   override val prefix: String = "#"
   override val context: Seq[String] = Seq("issues")
   override def additionalScript(repository: RepositoryInfo)(implicit context: Context): String =
+    logger.debug("<<< Exiting additionalScript(repository={})", repository)
     s"""$$.get('${context.path}/${repository.owner}/${repository.name}/_issue/proposals', function (data) { issue = data.options; });"""
 }

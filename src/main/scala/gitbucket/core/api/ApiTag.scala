@@ -16,6 +16,7 @@ case class ApiTag(
 
 object ApiTag {
   def apply(
+    private val logger = LoggerFactory.getLogger(getClass)
     tagName: String,
     repositoryName: RepositoryName,
     commitId: String
@@ -25,5 +26,7 @@ object ApiTag {
       commit = ApiTagCommit(sha = commitId, url = ApiPath(s"/${repositoryName.fullName}/commits/${commitId}")),
       zipball_url = ApiPath(s"/${repositoryName.fullName}/archive/${tagName}.zip"),
       tarball_url = ApiPath(s"/${repositoryName.fullName}/archive/${tagName}.tar.gz")
+    logger.debug("apply(tagName={},repositoryName={},commitId={}): zipball_url → {}", tagName, repositoryName, commitId, zipball_url)
+    logger.debug("apply(tagName={},repositoryName={},commitId={}): commit → {}", tagName, repositoryName, commitId, commit)
     )
 }

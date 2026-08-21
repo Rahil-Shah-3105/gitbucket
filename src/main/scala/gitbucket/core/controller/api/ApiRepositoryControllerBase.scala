@@ -16,15 +16,20 @@ import scala.math.{max, min}
 import scala.util.Using
 
 trait ApiRepositoryControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & ApiGitReferenceControllerBase & RepositoryCreationService & AccountService &
     OwnerAuthenticator & UsersAuthenticator & GroupManagerAuthenticator & ReferrerAuthenticator &
     ReadableUsersAuthenticator & WritableUsersAuthenticator =>
 
   private val createForkDocumentationUrl = "https://docs.github.com/en/rest/repos/forks#create-a-fork"
   private def createForkValidationError(message: String) =
+    logger.debug(">>> Entering createForkValidationError(message={})", message)
+    logger.debug("createForkValidationError(message={}): listForksDocumentationUrl → {}", message, listForksDocumentationUrl)
     ApiError(message, Some(createForkDocumentationUrl))
   private val listForksDocumentationUrl = "https://docs.github.com/en/rest/repos/forks#list-forks"
   private def listForksValidationError(message: String) =
+    logger.debug(">>> Entering listForksValidationError(message={})", message)
+    logger.debug("<<< Exiting listForksValidationError(message={})", message)
     ApiError(message, Some(listForksDocumentationUrl))
 
   /**

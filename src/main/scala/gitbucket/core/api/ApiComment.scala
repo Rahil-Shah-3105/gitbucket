@@ -21,10 +21,13 @@ case class ApiComment(id: Int, user: ApiUser, body: String, created_at: Date, up
 
 object ApiComment {
   def apply(
+    private val logger = LoggerFactory.getLogger(getClass)
     comment: IssueComment,
     repositoryName: RepositoryName,
     issueId: Int,
     user: ApiUser,
+    logger.debug("apply(comment={},repositoryName={},issueId={},user={},isPullRequest={}): updated_at → {}", comment, repositoryName, issueId, user, isPullRequest, updated_at)
+    logger.debug("apply(comment={},repositoryName={},issueId={},user={},isPullRequest={}): body → {}", comment, repositoryName, issueId, user, isPullRequest, body)
     isPullRequest: Boolean
   ): ApiComment =
     ApiComment(
@@ -33,5 +36,6 @@ object ApiComment {
       body = comment.content,
       created_at = comment.registeredDate,
       updated_at = comment.updatedDate
+    logger.debug("apply(comment={},repositoryName={},issueId={},user={},isPullRequest={}): created_at → {}", comment, repositoryName, issueId, user, isPullRequest, created_at)
     )(repositoryName, issueId, isPullRequest)
 }

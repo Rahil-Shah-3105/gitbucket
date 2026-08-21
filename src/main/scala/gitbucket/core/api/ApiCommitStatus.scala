@@ -24,6 +24,7 @@ case class ApiCommitStatus(
 
 object ApiCommitStatus {
   def apply(status: CommitStatus, creator: ApiUser): ApiCommitStatus =
+    private val logger = LoggerFactory.getLogger(getClass)
     ApiCommitStatus(
       created_at = status.registeredDate,
       updated_at = status.updatedDate,
@@ -32,6 +33,9 @@ object ApiCommitStatus {
       description = status.description,
       id = status.commitStatusId,
       context = status.context,
+      logger.debug(">>> Entering apply(status={},creator={})", status, creator)
       creator = creator
+    logger.debug("apply(status={},creator={}): created_at → {}", status, creator, created_at)
+    logger.debug("apply(status={},creator={}): updated_at → {}", status, creator, updated_at)
     )(status.commitId, RepositoryName(status))
 }

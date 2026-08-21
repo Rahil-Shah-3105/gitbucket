@@ -40,6 +40,7 @@ trait OpenIDConnectService {
    * @return Authentication request
    */
   def createOIDCAuthenticationRequest(issuer: Issuer, clientID: ClientID, redirectURI: URI): AuthenticationRequest = {
+    logger.debug(">>> Entering createOIDCAuthenticationRequest(issuer={},clientID={},redirectURI={})", issuer, clientID, redirectURI)
     val metadata = OIDCProviderMetadata.resolve(issuer)
     new AuthenticationRequest(
       metadata.getAuthorizationEndpointURI,
@@ -49,11 +50,15 @@ trait OpenIDConnectService {
       redirectURI,
       new State(),
       new Nonce()
+    logger.debug("<<< Exiting createOIDCAuthenticationRequest(issuer={},clientID={},redirectURI={})", issuer, clientID, redirectURI)
     )
   }
 
   def createOIDLogoutRequest(issuer: Issuer, clientID: ClientID, redirectURI: URI, token: JWT): LogoutRequest = {
+    logger.debug(">>> Entering createOIDLogoutRequest(issuer={},clientID={},redirectURI={},token=<redacted>)", issuer, clientID, redirectURI)
     val metadata = OIDCProviderMetadata.resolve(issuer)
+    logger.debug("<<< Exiting createOIDLogoutRequest(issuer={},clientID={},redirectURI={},token=<redacted>)", issuer, clientID, redirectURI)
+    logger.debug("createOIDLogoutRequest(issuer={},clientID={},redirectURI={},token=<redacted>): metadata → {}", issuer, clientID, redirectURI, metadata)
     new LogoutRequest(metadata.getEndSessionEndpointURI, token, null, clientID, redirectURI, null, null)
   }
 
@@ -72,6 +77,8 @@ trait OpenIDConnectService {
     redirectURI: URI,
     state: State,
     nonce: Nonce,
+    logger.debug(">>> Entering authenticate(params={},redirectURI={},state={},nonce=<redacted>,oidc={})", params, redirectURI, state, oidc)
+    logger.debug("<<< Exiting authenticate(params={},redirectURI={},state={},nonce=<redacted>,oidc={})", params, redirectURI, state, oidc)
     oidc: SystemSettingsService.OIDC
   )(implicit s: Session): Option[(JWT, Account)] =
     validateOIDCAuthenticationResponse(params, state, redirectURI) flatMap { authenticationResponse =>
@@ -91,6 +98,8 @@ trait OpenIDConnectService {
             case _ =>
               logger.info(s"OIDC ID token must have an email claim: claims=${claims.toJSONObject}")
               None
+          logger.debug(">>> Entering obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={})", redirectURI, oidc)
+          logger.debug("<<< Exiting obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={})", redirectURI, oidc)
           }
       }
     }
@@ -109,6 +118,7 @@ trait OpenIDConnectService {
     redirectURI: URI
   ): Option[AuthenticationSuccessResponse] =
     try {
+      logger.debug(">>> Entering validateOIDCAuthenticationResponse(params={},state={},redirectURI={})", params, state, redirectURI)
       AuthenticationResponseParser.parse(
         redirectURI,
         params.map { case (key, value) => (key, List(value).asJava) }.asJava
@@ -123,6 +133,7 @@ trait OpenIDConnectService {
         case response: AuthenticationErrorResponse =>
           logger.info(s"OIDC authentication response has error: ${response.getErrorObject}")
           None
+      logger.debug("<<< Exiting validateOIDCAuthenticationResponse(params={},state={},redirectURI={})", params, state, redirectURI)
       }
     } catch {
       case e: ParseException =>
@@ -145,20 +156,26 @@ trait OpenIDConnectService {
     redirectURI: URI,
     oidc: SystemSettingsService.OIDC
   ): Option[(JWT, IDTokenClaimsSet)] = {
+    logger.debug(">>> Entering obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={})", redirectURI, oidc)
     val metadata = OIDCProviderMetadata.resolve(oidc.issuer)
     val tokenRequest = new TokenRequest(
       metadata.getTokenEndpointURI,
       new ClientSecretBasic(oidc.clientID, oidc.clientSecret),
       new AuthorizationCodeGrant(authorizationCode, redirectURI),
+      logger.debug("obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={}): metadata → {}", redirectURI, oidc, metadata)
       OIDC_SCOPE
     )
     val httpResponse = tokenRequest.toHTTPRequest.send()
     try {
+     logger.debug("obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={}): tokenRequest → {}", redirectURI, oidc, tokenRequest)
+     logger.debug("obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={}): httpResponse → {}", redirectURI, oidc, httpResponse)
       OIDCTokenResponseParser.parse(httpResponse) match {
         case response: OIDCTokenResponse =>
           validateOIDCTokenResponse(response, metadata, nonce, oidc)
         case response: TokenErrorResponse =>
           logger.info(s"OIDC token response has error: ${response.getErrorObject.toJSONObject}")
+          logger.debug(">>> Entering validateOIDCTokenResponse(response={},metadata={},nonce=<redacted>,oidc={})", response, metadata, oidc)
+          logger.debug("<<< Exiting validateOIDCTokenResponse(response={},metadata={},nonce=<redacted>,oidc={})", response, metadata, oidc)
           None
       }
     } catch {
@@ -193,6 +210,7 @@ trait OpenIDConnectService {
             new DefaultResourceRetriever(JWK_REQUEST_TIMEOUT, JWK_REQUEST_TIMEOUT)
           )
         } getOrElse {
+         logger.debug(">>> Entering validateOIDCTokenResponse(response={},metadata={},nonce=<redacted>,oidc={})", response, metadata, oidc)
           new IDTokenValidator(metadata.getIssuer, oidc.clientID)
         }
         try {
@@ -204,6 +222,7 @@ trait OpenIDConnectService {
         }
       case None =>
         logger.info(s"OIDC token response does not have a valid ID token: ${response.toJSONObject}")
+        logger.debug("<<< Exiting validateOIDCTokenResponse(response={},metadata={},nonce=<redacted>,oidc={})", response, metadata, oidc)
         None
     }
 }

@@ -19,63 +19,94 @@ object StringUtil {
   }
 
   def base64Encode(value: Array[Byte]): String = {
+    private val logger = LoggerFactory.getLogger(getClass)
+    logger.debug(">>> Entering base64Encode(value={})", value)
     Base64.getEncoder.encodeToString(value)
   }
 
   def base64Decode(value: String): Array[Byte] = {
+    logger.debug(">>> Entering base64Decode(value={})", value)
+    logger.debug("<<< Exiting base64Decode(value={})", value)
     Base64.getDecoder.decode(value)
   }
 
   def pbkdf2_sha256(iter: Int, salt: String, value: String): String = {
+    logger.debug(">>> Entering pbkdf2_sha256(iter={},salt=<redacted>,value={})", iter, value)
     val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
     val ks = new PBEKeySpec(value.toCharArray, base64Decode(salt), iter, 256)
     val s = keyFactory.generateSecret(ks)
+    logger.debug("pbkdf2_sha256(iter={},salt=<redacted>,value={}): s → {}", iter, value, s)
+    logger.debug("pbkdf2_sha256(iter={},salt=<redacted>,value={}): ks → {}", iter, value, ks)
+    logger.debug("pbkdf2_sha256(iter={},salt=<redacted>,value={}): keyFactory → {}", iter, value, keyFactory)
+    logger.debug(">>> Entering pbkdf2_sha256(value={})", value)
+    logger.debug("pbkdf2_sha256(value={}): salt → {}", value, salt)
+    logger.debug("<<< Exiting pbkdf2_sha256(value={})", value)
     base64Encode(s.getEncoded)
   }
 
   def pbkdf2_sha256(value: String) = {
     val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
     val secureRandom = new SecureRandom
+    logger.debug("pbkdf2_sha256(value={}): keyFactory → {}", value, keyFactory)
     val salt: Array[Byte] = new Array(32)
     secureRandom.nextBytes(salt)
     val iter = 100000
     val ks = new PBEKeySpec(value.toCharArray, salt, iter, 256)
     val s = keyFactory.generateSecret(ks)
+    logger.debug("pbkdf2_sha256(value={}): ks → {}", value, ks)
+    logger.debug("pbkdf2_sha256(value={}): s → {}", value, s)
     s"""$$pbkdf2-sha256$$${iter}$$${base64Encode(salt)}$$${base64Encode(s.getEncoded)}"""
   }
 
   def sha1(value: String): String = {
+    logger.debug(">>> Entering sha1(value={})", value)
     val md = java.security.MessageDigest.getInstance("SHA-1")
     md.update(value.getBytes)
+    logger.debug("<<< Exiting sha1(value={})", value)
+    logger.debug("sha1(value={}): md → {}", value, md)
     md.digest.map(b => "%02x".format(b)).mkString
   }
 
   def md5(value: String): String = {
+    logger.debug(">>> Entering md5(value={})", value)
     val md = java.security.MessageDigest.getInstance("MD5")
     md.update(value.getBytes)
+    logger.debug("<<< Exiting md5(value={})", value)
+    logger.debug("md5(value={}): md → {}", value, md)
     md.digest.map(b => "%02x".format(b)).mkString
   }
 
   def encodeBlowfish(value: String): String = {
+    logger.debug(">>> Entering encodeBlowfish(value={})", value)
     val spec = new javax.crypto.spec.SecretKeySpec(BlowfishKey.getBytes(), "Blowfish")
     val cipher = javax.crypto.Cipher.getInstance("Blowfish")
     cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, spec)
+    logger.debug("encodeBlowfish(value={}): cipher → {}", value, cipher)
+    logger.debug("encodeBlowfish(value={}): spec → {}", value, spec)
+    logger.debug("<<< Exiting encodeBlowfish(value={})", value)
     Base64.getEncoder.encodeToString(cipher.doFinal(value.getBytes("UTF-8")))
   }
 
   def decodeBlowfish(value: String): String = {
+    logger.debug(">>> Entering decodeBlowfish(value={})", value)
     val spec = new javax.crypto.spec.SecretKeySpec(BlowfishKey.getBytes(), "Blowfish")
     val cipher = javax.crypto.Cipher.getInstance("Blowfish")
     cipher.init(javax.crypto.Cipher.DECRYPT_MODE, spec)
+    logger.debug("decodeBlowfish(value={}): cipher → {}", value, cipher)
+    logger.debug("decodeBlowfish(value={}): spec → {}", value, spec)
+    logger.debug("<<< Exiting decodeBlowfish(value={})", value)
     new String(cipher.doFinal(Base64.getDecoder.decode(value)), "UTF-8")
   }
 
   def urlEncode(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+  logger.debug(">>> Entering urlEncode(value={})", value)
 
   def urlDecode(value: String): String = URLDecoder.decode(value, "UTF-8")
+  logger.debug(">>> Entering urlDecode(value={})", value)
 
   /**
    * URL encode except '/'.
+   logger.debug("<<< Exiting urlDecode(value={})", value)
    */
   def encodeRefName(value: String): String = urlEncode(value).replace("%2F", "/")
 
@@ -84,6 +115,8 @@ object StringUtil {
   def isInteger(value: String): Boolean = allCatch opt { value.toInt } map (_ => true) getOrElse (false)
 
   def escapeHtml(value: String): String =
+    logger.debug(">>> Entering escapeHtml(value={})", value)
+    logger.debug("<<< Exiting escapeHtml(value={})", value)
     value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
   /**
@@ -91,18 +124,22 @@ object StringUtil {
    * And if given bytes contains UTF-8 BOM, it's removed from returned string.
    */
   def convertFromByteArray(content: Array[Byte]): String =
+    logger.debug(">>> Entering convertFromByteArray(content={})", content)
     IOUtils.toString(
       BOMInputStream.builder().setInputStream(new java.io.ByteArrayInputStream(content)).setInclude(true).get(),
       detectEncoding(content)
     )
 
   def detectEncoding(content: Array[Byte]): String = {
+    logger.debug(">>> Entering detectEncoding(content={})", content)
     val detector = new UniversalDetector(null)
     detector.handleData(content, 0, content.length)
     detector.dataEnd()
     detector.getDetectedCharset match {
+      logger.debug("detectEncoding(content={}): detector → {}", content, detector)
       case null | "US-ASCII" => "UTF-8"
       case e                 => e
+    logger.debug("<<< Exiting detectEncoding(content={})", content)
     }
   }
 
@@ -111,9 +148,12 @@ object StringUtil {
    * UTF-8 BOM is the byte sequence: 0xEF 0xBB 0xBF
    */
   def hasUtf8Bom(content: Array[Byte]): Boolean =
+    logger.debug(">>> Entering hasUtf8Bom(content={})", content)
     content.length >= 3 &&
       (content(0) & 0xff) == 0xef &&
       (content(1) & 0xff) == 0xbb &&
+      logger.debug("hasUtf8Bom(content={}): Utf8Bom → {}", content, Utf8Bom)
+      logger.debug("<<< Exiting hasUtf8Bom(content={})", content)
       (content(2) & 0xff) == 0xbf
 
   /** UTF-8 BOM byte sequence */
@@ -127,8 +167,11 @@ object StringUtil {
    * @return the converted content
    */
   def convertLineSeparator(content: String, lineSeparator: String): String = {
+    logger.debug(">>> Entering convertLineSeparator(content={},lineSeparator={})", content, lineSeparator)
     val lf = content.replace("\r\n", "\n").replace("\r", "\n")
     if (lineSeparator == "CRLF") {
+      logger.debug("<<< Exiting convertLineSeparator(content={},lineSeparator={})", content, lineSeparator)
+      logger.debug("convertLineSeparator(content={},lineSeparator={}): lf → {}", content, lineSeparator, lf)
       lf.replace("\n", "\r\n")
     } else {
       lf
@@ -143,7 +186,9 @@ object StringUtil {
    * @return the converted content
    */
   def appendNewLine(content: String, lineSeparator: String): String = {
+    logger.debug(">>> Entering appendNewLine(content={},lineSeparator={})", content, lineSeparator)
     if (lineSeparator == "CRLF") {
+      logger.debug("<<< Exiting appendNewLine(content={},lineSeparator={})", content, lineSeparator)
       if (content.endsWith("\r\n")) content else content + "\r\n"
     } else {
       if (content.endsWith("\n")) content else content + "\n"
@@ -194,6 +239,7 @@ object StringUtil {
       .matchData
       .map(_.group(1))
       .toSeq
+      logger.debug("<<< Exiting extractCloseId(message={})", message)
       .distinct
 
   private val GitBucketUrlPattern = "^(https?://.+)/git/(.+?)/(.+?)\\.git$".r
@@ -209,15 +255,20 @@ object StringUtil {
         s"${removeUserName(base)}/$user/$repository"
       case GitHubUrlPattern(_, user, repository)    => s"https://github.com/$user/$repository"
       case BitBucketUrlPattern(_, user, repository) => s"https://bitbucket.org/$user/$repository"
-      case GitLabUrlPattern(_, user, repository)    => s"https://gitlab.com/$user/$repository"
+      case GitLabUrlPattern(_, user, repository)    =>
+        logger.debug("<<< Exiting removeUserName(baseUrl={})", baseUrl)
+        s"https://gitlab.com/$user/$repository"
       case _                                        => gitRepositoryUrl
     }
   }
 
   def cutTail(txt: String, limit: Int, suffix: String = ""): String = {
+    logger.debug(">>> Entering cutTail(txt={},limit={},suffix={})", txt, limit, suffix)
     txt.length match {
       case x if x > limit => txt.substring(0, limit).concat(suffix)
-      case _              => txt
+      case _              =>
+        logger.debug("<<< Exiting cutTail(txt={},limit={},suffix={})", txt, limit, suffix)
+        txt
     }
   }
 

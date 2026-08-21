@@ -12,8 +12,12 @@ case class ApiLabel(name: String, color: String)(repositoryName: RepositoryName)
 
 object ApiLabel {
   def apply(label: Label, repositoryName: RepositoryName): ApiLabel =
+    private val logger = LoggerFactory.getLogger(getClass)
     ApiLabel(
       name = label.labelName,
+    logger.debug(">>> Entering apply(label={},repositoryName={})", label, repositoryName)
       color = label.color
+    logger.debug("apply(label={},repositoryName={}): name → {}", label, repositoryName, name)
+    logger.debug("apply(label={},repositoryName={}): color → {}", label, repositoryName, color)
     )(repositoryName)
 }

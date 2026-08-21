@@ -33,6 +33,7 @@ class IssuesController
     with RequestCache
 
 trait IssuesControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: IssuesService & RepositoryService & AccountService & LabelsService & MilestonesService & ActivityService &
     HandleCommentService & IssueCreationService & CustomFieldsService & ReadableUsersAuthenticator &
     ReferrerAuthenticator & WritableUsersAuthenticator & PullRequestService & WebHookIssueCommentService &
@@ -418,6 +419,7 @@ trait IssuesControllerBase extends ControllerBase {
         executeBatch(repository) { issueId =>
           getIssue(repository.owner, repository.name, issueId.toString).foreach { issue =>
             handleComment(issue, None, repository, Some("reopen"))
+          logger.debug("<<< Exiting executeBatch(repository={})", repository)
           }
         }
         if (params("uri").nonEmpty) {
@@ -444,6 +446,8 @@ trait IssuesControllerBase extends ControllerBase {
           if (params("uri").nonEmpty) {
             redirect(params("uri"))
           }
+        logger.debug(">>> Entering executeBatch(repository={})", repository)
+        logger.debug("<<< Exiting executeBatch(repository={})", repository)
         }
       }
     } getOrElse NotFound()
@@ -517,7 +521,9 @@ trait IssuesControllerBase extends ControllerBase {
   private val priorityId: String => Option[Int] = (key: String) => params.get(key).flatMap(_.toIntOpt)
 
   private def executeBatch(repository: RepositoryService.RepositoryInfo)(execute: Int => Unit): Unit = {
+    logger.debug(">>> Entering executeBatch(repository={})", repository)
     params("checked").split(',') map (_.toInt) foreach execute
+    logger.debug("<<< Exiting executeBatch(repository={})", repository)
     params("from") match {
       case "issues" => redirect(s"/${repository.owner}/${repository.name}/issues")
       case "pulls"  => redirect(s"/${repository.owner}/${repository.name}/pulls")
@@ -526,6 +532,7 @@ trait IssuesControllerBase extends ControllerBase {
   }
 
   private def searchIssues(repository: RepositoryService.RepositoryInfo, condition: IssueSearchCondition, page: Int) = {
+    logger.debug(">>> Entering searchIssues(repository={},condition={},page={})", repository, condition, page)
     // search issues
     val issues =
       searchIssue(
@@ -534,6 +541,7 @@ trait IssuesControllerBase extends ControllerBase {
         (page - 1) * IssueLimit,
         IssueLimit,
         repository.owner -> repository.name
+      logger.debug("<<< Exiting searchIssues(repository={},condition={},page={})", repository, condition, page)
       )
 
     html.list(
@@ -557,6 +565,8 @@ trait IssuesControllerBase extends ControllerBase {
    * Tests whether an issue or a comment is editable by a logged-in user.
    */
   private def isEditableContent(owner: String, repository: String, author: String, loginAccount: Account)(implicit
+  logger.debug(">>> Entering isEditableContent(owner={},repository={},author={},loginAccount={})", owner, repository, author, loginAccount)
+  logger.debug("<<< Exiting isEditableContent(owner={},repository={},author={},loginAccount={})", owner, repository, author, loginAccount)
     context: Context
   ): Boolean = {
     hasDeveloperRole(owner, repository, context.loginAccount) || author == loginAccount.userName
@@ -568,6 +578,8 @@ trait IssuesControllerBase extends ControllerBase {
   private def isDeletableComment(owner: String, repository: String, author: String, loginAccount: Account)(implicit
     context: Context
   ): Boolean = {
+    logger.debug(">>> Entering isDeletableComment(owner={},repository={},author={},loginAccount={})", owner, repository, author, loginAccount)
+    logger.debug("<<< Exiting isDeletableComment(owner={},repository={},author={},loginAccount={})", owner, repository, author, loginAccount)
     hasOwnerRole(owner, repository, context.loginAccount) || author == loginAccount.userName
   }
 }

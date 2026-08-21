@@ -6,12 +6,15 @@ trait AccountFederationComponent { self: Profile =>
   lazy val AccountFederations = TableQuery[AccountFederations]
 
   class AccountFederations(tag: Tag) extends Table[AccountFederation](tag, "ACCOUNT_FEDERATION") {
+    private val logger = LoggerFactory.getLogger(getClass)
     val issuer = column[String]("ISSUER")
     val subject = column[String]("SUBJECT")
     val userName = column[String]("USER_NAME")
     def * = (issuer, subject, userName).mapTo[AccountFederation]
 
     def byPrimaryKey(issuer: String, subject: String): Rep[Boolean] =
+      logger.debug(">>> Entering byPrimaryKey(issuer={},subject={})", issuer, subject)
+      logger.debug("<<< Exiting byPrimaryKey(issuer={},subject={})", issuer, subject)
       (this.issuer === issuer.bind) && (this.subject === subject.bind)
   }
 }

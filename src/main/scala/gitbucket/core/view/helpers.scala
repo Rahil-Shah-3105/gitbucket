@@ -23,6 +23,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Format java.util.Date to "yyyy-MM-dd HH:mm:ss".
    */
   def datetime(date: Date): String = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date)
+  logger.debug(">>> Entering datetime(date={})", date)
 
   val timeUnits = List(
     (1000L, "second"),
@@ -33,12 +34,16 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     (1000L * 60 * 60 * 24 * 365, "year")
   ).reverse
 
+  logger.debug("<<< Exiting datetime(date={})", date)
   /**
    * Format java.util.Date to "x {seconds/minutes/hours/days/months/years} ago"
    */
   def datetimeAgo(date: Date): String = {
+    private val logger = LoggerFactory.getLogger(getClass)
     val duration = new Date().getTime - date.getTime
+    logger.debug(">>> Entering datetimeAgo(date={})", date)
     timeUnits.find(tuple => duration / tuple._1 > 0) match {
+      logger.debug("<<< Exiting datetimeAgo(date={})", date)
       case Some((unitValue, unitString)) =>
         val value = duration / unitValue
         s"${value} ${unitString}${if (value > 1) "s" else ""} ago"
@@ -51,9 +56,13 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * If duration over 1 month, format to "d MMM (yyyy)"
    */
   def datetimeAgoRecentOnly(date: Date): String = {
+    logger.debug(">>> Entering datetimeAgoRecentOnly(date={})", date)
     val duration = new Date().getTime - date.getTime
+    logger.debug("<<< Exiting datetimeAgoRecentOnly(date={})", date)
     timeUnits.find(tuple => duration / tuple._1 > 0) match {
-      case Some((_, "month"))            => s"on ${new SimpleDateFormat("d MMM", Locale.ENGLISH).format(date)}"
+      case Some((_, "month"))            =>
+        logger.debug("datetimeAgoRecentOnly(date={}): duration → {}", date, duration)
+        s"on ${new SimpleDateFormat("d MMM", Locale.ENGLISH).format(date)}"
       case Some((_, "year"))             => s"on ${new SimpleDateFormat("d MMM yyyy", Locale.ENGLISH).format(date)}"
       case Some((unitValue, unitString)) =>
         val value = duration / unitValue
@@ -66,8 +75,11 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Format java.util.Date to "yyyy-MM-dd'T'hh:mm:ss'Z'".
    */
   def datetimeRFC3339(date: Date): String = {
+    logger.debug(">>> Entering datetimeRFC3339(date={})", date)
     val sf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
     sf.setTimeZone(TimeZone.getTimeZone("UTC"))
+    logger.debug("<<< Exiting datetimeRFC3339(date={})", date)
+    logger.debug("datetimeRFC3339(date={}): sf → {}", date, sf)
     sf.format(date)
   }
 
@@ -76,6 +88,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def date(date: Date): String = new SimpleDateFormat("yyyy-MM-dd").format(date)
 
+  logger.debug(">>> Entering date(date={})", date)
   /**
    * Format java.util.Date to "yyyyMMDDHHmmss" (for url hash ex. /some/path.css?19800101010203
    */
@@ -146,6 +159,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     hasWritePermission: Boolean = false
   )(implicit context: Context): Html = {
 
+    logger.debug(">>> Entering renderMarkup(filePath={},fileContent={},branch={},repository={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={})", filePath, fileContent, branch, repository, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission)
     val fileName = filePath.last.toLowerCase
     val extension = FileUtil.getExtension(fileName)
     val renderer = PluginRegistry().getRenderer(extension)
@@ -161,8 +175,11 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
         enableLineBreaks,
         enableTaskList,
         hasWritePermission,
+        logger.debug("renderMarkup(filePath={},fileContent={},branch={},repository={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={}): extension → {}", filePath, fileContent, branch, repository, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission, extension)
         context
       )
+    logger.debug("renderMarkup(filePath={},fileContent={},branch={},repository={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={}): renderer → {}", filePath, fileContent, branch, repository, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission, renderer)
+    logger.debug("<<< Exiting renderMarkup(filePath={},fileContent={},branch={},repository={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={})", filePath, fileContent, branch, repository, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission)
     )
   }
 
@@ -170,6 +187,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Tests whether the given file is renderable. It's tested by the file extension.
    */
   def isRenderable(fileName: String): Boolean = {
+    logger.debug(">>> Entering isRenderable(fileName={})", fileName)
+    logger.debug("<<< Exiting isRenderable(fileName={})", fileName)
     PluginRegistry().renderableExtensions.exists(extension => fileName.toLowerCase.endsWith("." + extension))
   }
 
@@ -179,6 +198,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   def issueLink(owner: String, repository: String, issueId: Int, title: String)(implicit
     context: Context
   ): Html = {
+    logger.debug(">>> Entering issueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
+    logger.debug("<<< Exiting issueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
     Html(createIssueLink(owner, repository, issueId, title))
   }
 
@@ -186,6 +207,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Creates a global link to the issue or the pull request from the issue id.
    */
   def issueGlobalLink(owner: String, repository: String, issueId: Int, title: String)(implicit
+  logger.debug(">>> Entering issueGlobalLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
+  logger.debug("<<< Exiting issueGlobalLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
     context: Context
   ): Html = {
     Html(createGlobalIssueLink(owner, repository, issueId, title))
@@ -216,6 +239,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   import scala.util.matching.Regex._
   implicit class RegexReplaceString(private val s: String) extends AnyVal {
     def replaceAll(pattern: String)(replacer: Match => String): String = {
+      logger.debug(">>> Entering replaceAll(pattern={})", pattern)
+      logger.debug("<<< Exiting replaceAll(pattern={})", pattern)
       pattern.r.replaceAllIn(s, (m: Match) => replacer(m).replace("$", "\\$"))
     }
   }
@@ -229,7 +254,9 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
       message
         .replaceAll("\\[issue:([^\\s]+?)/([^\\s]+?)#((\\d+))\\]"){ m =>
           getIssueFromCache(m.group(1), m.group(2), m.group(3)) match {
+          logger.debug(">>> Entering activityMessage(message={})", message)
             case Some(issue) =>
+              logger.debug("<<< Exiting activityMessage(message={})", message)
               s"""<a href="${context.path}/${m.group(1)}/${m.group(2)}/issues/${m.group(3)}" title="${StringUtil.escapeHtml(issue.title)}">${m.group(1)}/${m.group(2)}#${m.group(3)}</a>"""
             case None =>
               s"${m.group(1)}/${m.group(2)}#${m.group(3)}"
@@ -333,6 +360,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   def assets(path: String)(implicit context: Context): String = s"${context.path}/assets${path}?${hashQuery}"
 
   def displayUserName(userName: String, mailAddress: String = "")(implicit context: Context): String = {
+    logger.debug(">>> Entering displayUserName(userName={},mailAddress={})", userName, mailAddress)
     val displayName = if (!context.settings.showFullName) {
       userName
     } else {
@@ -342,6 +370,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
         getAccountByMailAddressFromCache(mailAddress).map(_.fullName).getOrElse(userName)
       }
     }
+    logger.debug("<<< Exiting displayUserName(userName={},mailAddress={})", userName, mailAddress)
     if (userName == displayName) {
       userName
     } else {
@@ -369,9 +398,13 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     label: Boolean = false
   )(implicit context: Context): Html = {
 
+    logger.debug(">>> Entering avatarLink(userName={},size={},mailAddress={},tooltip={},label={})", userName, size, mailAddress, tooltip, label)
     val avatarHtml = avatar(userName, size, tooltip, mailAddress)
     val contentHtml = if (label) Html(avatarHtml.body + " " + userName) else avatarHtml
+    logger.debug("avatarLink(userName={},size={},mailAddress={},tooltip={},label={}): avatarHtml → {}", userName, size, mailAddress, tooltip, label, avatarHtml)
+    logger.debug("avatarLink(userName={},size={},mailAddress={},tooltip={},label={}): contentHtml → {}", userName, size, mailAddress, tooltip, label, contentHtml)
 
+    logger.debug("<<< Exiting avatarLink(userName={},size={},mailAddress={},tooltip={},label={})", userName, size, mailAddress, tooltip, label)
     userWithContent(userName, mailAddress)(contentHtml)
   }
 
@@ -383,6 +416,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     userWithContent(commit.authorName, commit.authorEmailAddress)(avatar(commit, size))
 
   private def userWithContent(userName: String, mailAddress: String = "", styleClass: String = "")(
+  logger.debug(">>> Entering userWithContent(userName={},mailAddress={},styleClass={})", userName, mailAddress, styleClass)
+  logger.debug("<<< Exiting userWithContent(userName={},mailAddress={},styleClass={})", userName, mailAddress, styleClass)
     content: Html
   )(implicit context: Context): Html =
     (if (mailAddress.isEmpty) {
@@ -405,6 +440,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   implicit class RichHtmlSeq(private val seq: Seq[Html]) extends AnyVal {
     def mkHtml(separator: String) = Html(seq.mkString(separator))
+    logger.debug(">>> Entering mkHtml(separator={})", separator)
+    logger.debug("<<< Exiting mkHtml(separator={})", separator)
     def mkHtml(separator: scala.xml.Elem) = Html(seq.mkString(separator.toString))
   }
 
@@ -417,13 +454,16 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
       case CommitState.ERROR =>
         """<i style="color:inherit;width:inherit;height:inherit" class="octicon octicon-x"></i>"""
       case CommitState.FAILURE =>
+        logger.debug("<<< Exiting commitStateIcon(state={})", state)
         """<i style="color:inherit;width:inherit;height:inherit" class="octicon octicon-x"></i>"""
     })
 
   def commitStateText(state: CommitState, commitId: String) = state match {
     case CommitState.PENDING => "Waiting to hear about " + commitId.substring(0, 8)
     case CommitState.SUCCESS => "All is well"
-    case CommitState.ERROR   => "Failed"
+    case CommitState.ERROR   =>
+      logger.debug("<<< Exiting commitStateText(state={},commitId={})", state, commitId)
+      "Failed"
     case CommitState.FAILURE => "Failed"
   }
 
@@ -431,7 +471,9 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Render a given object as the JSON string.
    */
   def json(obj: AnyRef): String = {
+    logger.debug(">>> Entering json(obj={})", obj)
     implicit val formats: Formats = org.json4s.DefaultFormats
+    logger.debug("<<< Exiting json(obj={})", obj)
     org.json4s.jackson.Serialization.write(obj)
   }
 
@@ -563,6 +605,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     s"$baseUrl${if (baseUrl.contains("?")) "&" else "?"}$queryString"
   }
 
+  logger.debug("<<< Exiting date(date={})", date)
   def md5(value: String): String = DigestUtils.md5Hex(value)
 
 }

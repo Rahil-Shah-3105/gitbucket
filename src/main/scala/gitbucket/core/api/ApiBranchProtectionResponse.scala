@@ -16,6 +16,7 @@ case class ApiBranchProtectionResponse(
 }
 
 object ApiBranchProtectionResponse {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   case class EnforceAdmins(enabled: Boolean)
 
@@ -23,6 +24,7 @@ object ApiBranchProtectionResponse {
 //  case class EnablingAndDisabling(protection: ApiBranchProtectionResponse)
 
   def apply(info: ProtectedBranchService.ProtectedBranchInfo): ApiBranchProtectionResponse =
+    logger.debug(">>> Entering apply(info={})", info)
     ApiBranchProtectionResponse(
       url = Some(
         ApiPath(
@@ -50,6 +52,7 @@ object ApiBranchProtectionResponse {
         Restrictions(restrictionsUsers)
       },
       enforce_admins = if (info.enabled) Some(EnforceAdmins(info.enforceAdmins)) else None
+    logger.debug("<<< Exiting apply(enabled={},includeAdministrators={})", enabled, includeAdministrators)
     )
 
   val statusNone: Status = Status(None, Off, Seq.empty, None)

@@ -31,6 +31,7 @@ class FileUploadController
     with AccountService
     with ReleaseService
     with SystemSettingsService {
+     private val logger = LoggerFactory.getLogger(getClass)
 
   post("/image") {
     setMultipartConfig()
@@ -142,6 +143,7 @@ class FileUploadController
             FileUtils.writeByteArrayToFile(
               new File(getReleaseFilesDir(owner, repository), FileUtil.checkFilename(tag + "/" + fileId)),
               file.get()
+            logger.debug("<<< Exiting execute(f={},mimeTypeChecker={})", f, mimeTypeChecker)
             )
           },
           _ => true
@@ -158,6 +160,7 @@ class FileUploadController
         execute(
           { (file, fileId) =>
             request2Session(request).conn.importAsSQL(file.getInputStream)
+        logger.debug("execute(f={},mimeTypeChecker={}): contentType → {}", f, mimeTypeChecker, contentType)
           },
           _ => true
         )
@@ -166,22 +169,33 @@ class FileUploadController
   }
 
   private def setMultipartConfig(): Unit = {
+    logger.debug(">>> Entering setMultipartConfig()")
     val settings = loadSystemSettings()
     val config = MultipartConfig(maxFileSize = Some(settings.upload.maxFileSize))
+    logger.debug("setMultipartConfig(): config → {}", config)
+    logger.debug("setMultipartConfig(): settings → {}", settings)
+    logger.debug("<<< Exiting setMultipartConfig()")
     config.apply(request.getServletContext)
   }
 
   private def setMultipartConfigForLargeFile(): Unit = {
+    logger.debug(">>> Entering setMultipartConfigForLargeFile()")
     val settings = loadSystemSettings()
     val config = MultipartConfig(maxFileSize = Some(settings.upload.largeMaxFileSize))
+    logger.debug("setMultipartConfigForLargeFile(): config → {}", config)
+    logger.debug("setMultipartConfigForLargeFile(): settings → {}", settings)
+    logger.debug("<<< Exiting setMultipartConfigForLargeFile()")
     config.apply(request.getServletContext)
   }
 
   private def onlyWikiEditable(owner: String, repository: String, loginAccount: Account)(action: => Any): Any = {
+    logger.debug(">>> Entering onlyWikiEditable(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     implicit val session: Session = Database.getSession(request)
     getRepository(owner, repository) match {
+     logger.debug("<<< Exiting onlyWikiEditable(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
       case Some(x) =>
         x.repository.options.wikiOption match {
+         logger.debug("onlyWikiEditable(owner={},repository={},loginAccount={}): session → {}", owner, repository, loginAccount, session)
           case "ALL" if !x.repository.isPrivate                                     => action
           case "PUBLIC" if hasGuestRole(owner, repository, Some(loginAccount))      => action
           case "PRIVATE" if hasDeveloperRole(owner, repository, Some(loginAccount)) => action
@@ -199,6 +213,7 @@ class FileUploadController
         contentType = "text/plain"
         Ok(fileId)
       case _ => BadRequest()
+    logger.debug("<<< Exiting execute(f={},mimeTypeChecker={})", f, mimeTypeChecker)
     }
 
 }

@@ -23,12 +23,16 @@ trait CommitsService {
   ) =
     CommitComments filter { t =>
       t.byCommit(owner, repository, commitId) && (t.issueId.isEmpty || includePullRequest)
+    logger.debug(">>> Entering getCommitComments(owner={},repository={},commitId={},includePullRequest={})", owner, repository, commitId, includePullRequest)
+    logger.debug("<<< Exiting getCommitComments(owner={},repository={},commitId={},includePullRequest={})", owner, repository, commitId, includePullRequest)
     } list
 
   def getCommitComment(owner: String, repository: String, commentId: String)(implicit s: Session) =
     if (commentId forall (_.isDigit))
       CommitComments filter { t =>
         t.byPrimaryKey(commentId.toInt) && t.byRepository(owner, repository)
+      logger.debug(">>> Entering getCommitComment(owner={},repository={},commentId={})", owner, repository, commentId)
+      logger.debug("<<< Exiting getCommitComment(owner={},repository={},commentId={})", owner, repository, commentId)
       } firstOption
     else
       None
@@ -44,6 +48,7 @@ trait CommitsService {
     diff: Option[String],
     issueId: Option[Int]
   )(implicit s: Session, c: JsonFormat.Context, context: Context): Int = {
+    private val logger = LoggerFactory.getLogger(getClass)
     val commentId = CommitComments returning CommitComments.map(_.commentId) insert CommitComment(
       userName = repository.owner,
       repositoryName = repository.name,
@@ -58,9 +63,17 @@ trait CommitsService {
       issueId = issueId,
       originalCommitId = commitId,
       originalOldLine = oldLine,
+      logger.debug(">>> Entering createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={})", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId)
+      logger.debug("<<< Exiting createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={})", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId)
       originalNewLine = newLine
     )
 
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): userName → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, userName)
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): repositoryName → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, repositoryName)
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): commentedUserName → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, commentedUserName)
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): registeredDate → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, registeredDate)
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): updatedDate → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, updatedDate)
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): originalCommitId → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, originalCommitId)
     for {
       fileName <- fileName
       diff <- diff
@@ -75,8 +88,10 @@ trait CommitsService {
         diff
       )
     }
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): originalNewLine → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, originalNewLine)
 
     val comment = getCommitComment(repository.owner, repository.name, commentId.toString).get
+    logger.debug("createCommitComment(repository={},commitId={},loginAccount={},content={},fileName={},oldLine={},newLine={},diff={},issueId={}): comment → {}", repository, commitId, loginAccount, content, fileName, oldLine, newLine, diff, issueId, comment)
     issueId match {
       case Some(issueId) =>
         getPullRequest(repository.owner, repository.name, issueId).foreach { case (issue, pullRequest) =>
@@ -104,6 +119,8 @@ trait CommitsService {
   }
 
   def updateCommitCommentPosition(commentId: Int, commitId: String, oldLine: Option[Int], newLine: Option[Int])(implicit
+  logger.debug(">>> Entering updateCommitCommentPosition(commentId={},commitId={},oldLine={},newLine={})", commentId, commitId, oldLine, newLine)
+  logger.debug("<<< Exiting updateCommitCommentPosition(commentId={},commitId={},oldLine={},newLine={})", commentId, commitId, oldLine, newLine)
     s: Session
   ): Unit =
     CommitComments
@@ -114,15 +131,18 @@ trait CommitsService {
       .update(commitId, oldLine, newLine)
 
   def updateCommitComment(commentId: Int, content: String)(implicit s: Session) = {
+    logger.debug(">>> Entering updateCommitComment(commentId={},content={})", commentId, content)
     CommitComments
       .filter(_.byPrimaryKey(commentId))
       .map { t =>
         (t.content, t.updatedDate)
       }
+      logger.debug("<<< Exiting updateCommitComment(commentId={},content={})", commentId, content)
       .update(content, currentDate)
   }
 
   def deleteCommitComment(commentId: Int)(implicit s: Session) =
+    logger.debug(">>> Entering deleteCommitComment(commentId={})", commentId)
     CommitComments filter (_.byPrimaryKey(commentId)) delete
 
   def saveCommitCommentDiff(
@@ -132,10 +152,13 @@ trait CommitsService {
     fileName: String,
     oldLine: Option[Int],
     newLine: Option[Int],
+    logger.debug(">>> Entering saveCommitCommentDiff(owner={},repository={},commitId={},fileName={},oldLine={},newLine={},diffJson={})", owner, repository, commitId, fileName, oldLine, newLine, diffJson)
+    logger.debug("<<< Exiting saveCommitCommentDiff(owner={},repository={},commitId={},fileName={},oldLine={},newLine={},diffJson={})", owner, repository, commitId, fileName, oldLine, newLine, diffJson)
     diffJson: String
   ): Unit = {
     val dir = new File(getDiffDir(owner, repository), FileUtil.checkFilename(commitId))
     if (!dir.exists) {
+      logger.debug("saveCommitCommentDiff(owner={},repository={},commitId={},fileName={},oldLine={},newLine={},diffJson={}): dir → {}", owner, repository, commitId, fileName, oldLine, newLine, diffJson, dir)
       dir.mkdirs()
     }
     val file = diffFile(dir, fileName, oldLine, newLine)
@@ -150,14 +173,18 @@ trait CommitsService {
     oldLine: Option[Int],
     newLine: Option[Int]
   ): Option[String] = {
+    logger.debug(">>> Entering loadCommitCommentDiff(owner={},repository={},commitId={},fileName={},oldLine={},newLine={})", owner, repository, commitId, fileName, oldLine, newLine)
     val dir = new File(getDiffDir(owner, repository), FileUtil.checkFilename(commitId))
     val file = diffFile(dir, fileName, oldLine, newLine)
     if (file.exists) {
+      logger.debug("loadCommitCommentDiff(owner={},repository={},commitId={},fileName={},oldLine={},newLine={}): dir → {}", owner, repository, commitId, fileName, oldLine, newLine, dir)
+      logger.debug("loadCommitCommentDiff(owner={},repository={},commitId={},fileName={},oldLine={},newLine={}): file → {}", owner, repository, commitId, fileName, oldLine, newLine, file)
       Option(FileUtils.readFileToString(file, "UTF-8"))
     } else None
   }
 
   private def diffFile(dir: java.io.File, fileName: String, oldLine: Option[Int], newLine: Option[Int]): File = {
+    logger.debug(">>> Entering diffFile(dir={},fileName={},oldLine={},newLine={})", dir, fileName, oldLine, newLine)
     new File(
       dir,
       StringUtil.sha1(
@@ -165,6 +192,7 @@ trait CommitsService {
           "_oldLine:" + oldLine.map(_.toString).getOrElse("") +
           "_newLine:" + newLine.map(_.toString).getOrElse("")
       )
+    logger.debug("<<< Exiting diffFile(dir={},fileName={},oldLine={},newLine={})", dir, fileName, oldLine, newLine)
     )
   }
 

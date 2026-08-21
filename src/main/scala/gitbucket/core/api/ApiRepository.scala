@@ -27,6 +27,7 @@ case class ApiRepository(
 
 object ApiRepository {
   def apply(
+    private val logger = LoggerFactory.getLogger(getClass)
     repository: Repository,
     owner: ApiUser,
     forkedCount: Int = 0,
@@ -43,20 +44,25 @@ object ApiRepository {
       default_branch = repository.defaultBranch,
       owner = owner,
       has_issues = if (repository.options.issuesOption == "DISABLE") false else true,
+      logger.debug("apply(repository={},owner={},forkedCount={},watchers={}): full_name → {}", repository, owner, forkedCount, watchers, full_name)
       id = repository.repositoryId
+    logger.debug("apply(repository={},owner={},forkedCount={},watchers={}): name → {}", repository, owner, forkedCount, watchers, name)
     )
 
   def apply(repositoryInfo: RepositoryInfo, owner: ApiUser): ApiRepository =
+    logger.debug(">>> Entering apply(repositoryInfo={},owner={})", repositoryInfo, owner)
     ApiRepository(
       repositoryInfo.repository,
       owner,
       forkedCount = repositoryInfo.forkedCount
+    logger.debug("apply(repositoryInfo={},owner={}): forkedCount → {}", repositoryInfo, owner, forkedCount)
     )
 
   def apply(repositoryInfo: RepositoryInfo, owner: Account): ApiRepository =
     this(repositoryInfo, ApiUser(owner))
 
   def forDummyPayload(owner: ApiUser): ApiRepository =
+    logger.debug(">>> Entering forDummyPayload(owner={})", owner)
     ApiRepository(
       name = "dummy",
       full_name = s"${owner.login}/dummy",
@@ -70,5 +76,7 @@ object ApiRepository {
       has_issues = true,
       // Non-zero sentinel so this test-only payload is never mistaken for a real repository
       id = -1L
+    logger.debug("forDummyPayload(owner={}): name → {}", owner, name)
+    logger.debug("forDummyPayload(owner={}): full_name → {}", owner, full_name)
     )
 }

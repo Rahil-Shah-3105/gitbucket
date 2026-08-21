@@ -13,12 +13,14 @@ import gitbucket.core.model.Profile.profile.blockingApi._
 import gitbucket.core.servlet.Database
 
 class ApiAuthenticationFilter extends Filter with AccessTokenService with AccountService with SystemSettingsService {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   override def init(filterConfig: FilterConfig): Unit = {}
 
   override def destroy(): Unit = {}
 
   override def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain): Unit = {
+    logger.debug(">>> Entering doFilter(req={},res={},chain={})", req, res, chain)
     implicit val request: HttpServletRequest = req.asInstanceOf[HttpServletRequest]
     implicit val session: slick.jdbc.JdbcBackend#Session =
       req.getAttribute(Keys.Request.DBSession).asInstanceOf[slick.jdbc.JdbcBackend#Session]
@@ -31,9 +33,12 @@ class ApiAuthenticationFilter extends Filter with AccessTokenService with Accoun
         case _                                 => Left(())
       }
       .orElse {
+        logger.debug(">>> Entering doBasicAuth(auth={},settings={},request={})", auth, settings, request)
+        logger.debug("<<< Exiting doBasicAuth(auth={},settings={},request={})", auth, settings, request)
         Option(req.getParameter("access_token")).map(AccessTokenService.getAccountByAccessToken(_).toRight(()))
       }
       .orElse {
+        logger.debug("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
         Option(request.getSession.getAttribute(Keys.Session.LoginAccount).asInstanceOf[Account]).map(Right(_))
       } match {
       case Some(Right(account)) =>
@@ -41,6 +46,7 @@ class ApiAuthenticationFilter extends Filter with AccessTokenService with Accoun
         Database() withTransaction { implicit session =>
           updateLastLoginDate(account.userName)
         }
+        logger.debug("doFilter(req={},res={},chain={}): request → {}", req, res, chain, request)
         chain.doFilter(req, res)
       case None          => chain.doFilter(req, res)
       case Some(Left(_)) => {
@@ -54,9 +60,11 @@ class ApiAuthenticationFilter extends Filter with AccessTokenService with Accoun
   }
 
   def doBasicAuth(auth: String, settings: SystemSettings, request: HttpServletRequest): Option[Account] = {
+    logger.debug(">>> Entering doBasicAuth(auth={},settings={},request={})", auth, settings, request)
     val Array(username, password) = AuthUtil.decodeAuthHeader(auth).split(":", 2)
     Database() withTransaction { implicit session =>
       authenticate(settings, username, password)
+    logger.debug("<<< Exiting doBasicAuth(auth={},settings={},request={})", auth, settings, request)
     }
   }
 }

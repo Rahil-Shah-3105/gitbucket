@@ -38,6 +38,7 @@ class AccountController
     with RequestCache
 
 trait AccountControllerBase extends AccountManagementControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService & RepositoryService & ActivityService & WikiService & LabelsService & SshKeyService &
     GpgKeyService & OneselfAuthenticator & UsersAuthenticator & GroupManagerAuthenticator & ReadableUsersAuthenticator &
     AccessTokenService & WebHookService & PrioritiesService & RepositoryCreationService =>
@@ -202,6 +203,8 @@ trait AccountControllerBase extends AccountManagementControllerBase {
       "url" -> trim(label("url", text(required, accountWebHook(update)))),
       "events" -> accountWebhookEvents,
       "ctype" -> label("ctype", text()),
+      logger.debug(">>> Entering accountWebHookForm(update={})", update)
+      logger.debug("<<< Exiting accountWebHookForm(update={})", update)
       "token" -> optional(trim(label("token", text(maxlength(100)))))
     )((url, events, ctype, token) => AccountWebHookForm(url, events, WebHookContentType.valueOf(ctype), token))
 
@@ -209,28 +212,39 @@ trait AccountControllerBase extends AccountManagementControllerBase {
    * Provides duplication check for web hook url. duplicated from RepositorySettingsController.scala
    */
   private def accountWebHook(needExists: Boolean): Constraint = new Constraint() {
+    logger.debug(">>> Entering accountWebHook(needExists={})", needExists)
     override def validate(name: String, value: String, messages: Messages): Option[String] =
       if (getAccountWebHook(params("userName"), value).isDefined != needExists) {
+        logger.debug(">>> Entering validate(name={},value={},messages={})", name, value, messages)
         Some(if (needExists) {
           "URL had not been registered yet."
         } else {
           "URL had been registered already."
         })
       } else {
+        logger.debug("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
+        logger.debug(">>> Entering validate(name={},params={},messages={})", name, params, messages)
+        logger.debug("<<< Exiting validate(name={},params={},messages={})", name, params, messages)
         None
       }
   }
 
   private def accountWebhookEvents = new ValueType[Set[WebHook.Event]] {
     def convert(name: String, params: Map[String, Seq[String]], messages: Messages): Set[WebHook.Event] = {
+      logger.debug(">>> Entering convert(name={},params={},messages={})", name, params, messages)
       WebHook.Event.values.flatMap { t =>
         params.optionValue(name + "." + t.name).map(_ => t)
+      logger.debug("<<< Exiting convert(name={},params={},messages={})", name, params, messages)
       }.toSet
     }
     def validate(name: String, params: Map[String, Seq[String]], messages: Messages): Seq[(String, String)] =
       if (convert(name, params, messages).isEmpty) {
+        logger.debug(">>> Entering validate(name={},params={},messages={})", name, params, messages)
         Seq(name -> messages("error.required").format(name))
       } else {
+        logger.debug("<<< Exiting validate(name={},params={},messages={})", name, params, messages)
+        logger.debug(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
+        logger.debug("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
         Nil
       }
   }
@@ -556,6 +570,8 @@ trait AccountControllerBase extends AccountManagementControllerBase {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     def _headers(h: Array[org.apache.http.Header]): Array[Array[String]] = h.map { h =>
+      logger.debug(">>> Entering _headers(h={})", h)
+      logger.debug("<<< Exiting _headers(h={})", h)
       Array(h.getName, h.getValue)
     }
 
@@ -918,6 +934,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
       messages: Messages
     ): Option[String] = {
       for {
+        logger.debug("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
         userName <- params.optionValue("owner")
         _ <- getRepositoryNamesOfUser(userName).find(_.equalsIgnoreCase(value))
       } yield {
@@ -969,9 +986,11 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   }
 
   private def isGroupManager(account: Option[Account], members: Seq[GroupMember]): Boolean = {
+    logger.debug(">>> Entering isGroupManager(account={},members={})", account, members)
     account.exists { account =>
       account.isAdmin || members.exists { member =>
         member.userName == account.userName && member.isManager
+      logger.debug("<<< Exiting isGroupManager(account={},members={})", account, members)
       }
     }
   }

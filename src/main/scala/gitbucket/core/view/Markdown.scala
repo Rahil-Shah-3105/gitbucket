@@ -36,15 +36,20 @@ object Markdown {
     enableLineBreaks: Boolean,
     enableTaskList: Boolean = false,
     hasWritePermission: Boolean = false,
+    logger.debug(">>> Entering toHtml(markdown={},repository={},branch={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={},pages={})", markdown, repository, branch, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission, pages)
+    logger.debug("<<< Exiting toHtml(markdown={},repository={},branch={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={},pages={})", markdown, repository, branch, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission, pages)
     pages: List[String] = Nil
   )(implicit context: Context): String = {
+    private val logger = LoggerFactory.getLogger(getClass)
 
     // escape task list
     val source = if (enableTaskList) escapeTaskList(markdown) else markdown
+    logger.debug("toHtml(markdown={},repository={},branch={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={},pages={}): source → {}", markdown, repository, branch, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission, pages, source)
 
     val options = new Options()
     options.setBreaks(enableLineBreaks)
 
+    logger.debug("toHtml(markdown={},repository={},branch={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={},pages={}): options → {}", markdown, repository, branch, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission, pages, options)
     val renderer = new GitBucketMarkedRenderer(
       options,
       repository,
@@ -57,6 +62,7 @@ object Markdown {
       pages
     )
 
+    logger.debug("toHtml(markdown={},repository={},branch={},enableWikiLink={},enableRefsLink={},enableAnchor={},enableLineBreaks={},enableTaskList={},hasWritePermission={},pages={}): renderer → {}", markdown, repository, branch, enableWikiLink, enableRefsLink, enableAnchor, enableLineBreaks, enableTaskList, hasWritePermission, pages, renderer)
     Marked.marked(source, options, renderer)
   }
 
@@ -80,9 +86,12 @@ object Markdown {
       with WikiService {
 
     override def heading(text: String, level: Int, raw: String): String = {
+      logger.debug(">>> Entering heading(text={},level={},raw={})", text, level, raw)
       val id = generateAnchorName(text)
       val out = new StringBuilder()
 
+      logger.debug("heading(text={},level={},raw={}): out → {}", text, level, raw, out)
+      logger.debug("heading(text={},level={},raw={}): id → {}", text, level, raw, id)
       out.append("<h" + level + " id=\"" + options.getHeaderPrefix + id + "\"")
 
       if (enableAnchor) {
@@ -97,6 +106,7 @@ object Markdown {
 
       out.append(text)
       out.append("</h" + level + ">\n")
+      logger.debug("<<< Exiting heading(text={},level={},raw={})", text, level, raw)
       out.toString()
     }
 
@@ -106,12 +116,14 @@ object Markdown {
     }
 
     override def list(body: String, ordered: Boolean): String = {
+      logger.debug(">>> Entering list(body={},ordered={})", body, ordered)
       var listType: String = null
       if (ordered) {
         listType = "ol"
       } else {
         listType = "ul"
       }
+      logger.debug("<<< Exiting list(body={},ordered={})", body, ordered)
       if (body.contains("""class="task-list-item-checkbox"""")) {
         "<" + listType + " class=\"task-list\">\n" + body + "</" + listType + ">\n"
       } else {
@@ -120,34 +132,47 @@ object Markdown {
     }
 
     override def listitem(text: String): String = {
+      logger.debug(">>> Entering listitem(text={})", text)
       if (text.contains("""class="task-list-item-checkbox" """)) {
         "<li class=\"task-list-item\">" + text + "</li>\n"
       } else {
         "<li>" + text + "</li>\n"
+      logger.debug("<<< Exiting listitem(text={})", text)
       }
     }
 
     override def text(text: String): String = {
+      logger.debug(">>> Entering text(text={})", text)
       // convert commit id and username to link.
       val t1 = if (enableRefsLink) convertRefsLinks(text, repository, "#", false) else text
+      logger.debug("text(text={}): t1 → {}", text, t1)
       // convert task list to checkbox.
       val t2 = if (enableTaskList) convertCheckBox(t1, hasWritePermission) else t1
+      logger.debug("text(text={}): t2 → {}", text, t2)
       // decorate by TextDecorator plugins
+      logger.debug("<<< Exiting text(text={})", text)
       helpers.decorateHtml(t2, repository)
     }
 
     override def link(href: String, title: String, text: String): String = {
+      logger.debug(">>> Entering link(href={},title={},text={})", href, title, text)
+      logger.debug("<<< Exiting link(href={},title={},text={})", href, title, text)
       super.link(fixUrl(href, branch, false), title, text)
     }
 
     override def image(href: String, title: String, text: String): String = {
+      logger.debug(">>> Entering image(href={},title={},text={})", href, title, text)
+      logger.debug("<<< Exiting image(href={},title={},text={})", href, title, text)
       super.image(fixUrl(href, branch, true), title, text)
     }
 
     override def nolink(text: String): String = {
+      logger.debug(">>> Entering nolink(text={})", text)
       if (enableWikiLink && text.startsWith("[[") && text.endsWith("]]")) {
+        logger.debug("<<< Exiting nolink(text={})", text)
         val link = text.replaceAll("(^\\[\\[|\\]\\]$)", "")
 
+        logger.debug("nolink(text={}): link → {}", text, link)
         val (label, page) = if (link.contains('|')) {
           val i = link.indexOf('|')
           (link.substring(0, i), link.substring(i + 1))
@@ -159,6 +184,7 @@ object Markdown {
           page
         )
         if (pages.contains(page)) {
+          logger.debug("nolink(text={}): url → {}", text, url)
           "<a href=\"" + url + "\">" + escape(label) + "</a>"
         } else {
           "<a href=\"" + url + "\" class=\"absent\">" + escape(label) + "</a>"
@@ -169,8 +195,11 @@ object Markdown {
     }
 
     private def fixUrl(url: String, branch: String, isImage: Boolean = false): String = {
+      logger.debug(">>> Entering fixUrl(url={},branch={},isImage={})", url, branch, isImage)
       lazy val urlWithRawParam: String = url + (if (isImage && !url.endsWith("?raw=true")) "?raw=true" else "")
 
+      logger.debug("<<< Exiting fixUrl(url={},branch={},isImage={})", url, branch, isImage)
+      logger.debug("fixUrl(url={},branch={},isImage={}): urlWithRawParam → {}", url, branch, isImage, urlWithRawParam)
       if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:")) {
         url
       } else if (url.startsWith("/")) {
@@ -183,6 +212,8 @@ object Markdown {
           if (context.currentPath.contains("/blob/")) {
             val paths = context.currentPath.split("/").dropRight(1)
             val path = if (paths.length > 3) paths.drop(4).mkString("/") else branch
+            logger.debug("fixUrl(url={},branch={},isImage={}): paths → {}", url, branch, isImage, paths)
+            logger.debug("fixUrl(url={},branch={},isImage={}): path → {}", url, branch, isImage, path)
             repository.httpUrl.replaceFirst("/git/", "/").stripSuffix(".git") + "/blob/" + path + "/" + urlWithRawParam
           } else if (context.currentPath.contains("/tree/")) {
             val paths = context.currentPath.split("/")
@@ -200,6 +231,9 @@ object Markdown {
           val owner = pathElems(1)
           val repos = pathElems(2)
           if (getWikiPage(owner, repos, url, getWikiBranch(owner, repos)) == None) {
+            logger.debug("fixUrl(url={},branch={},isImage={}): pathElems → {}", url, branch, isImage, pathElems)
+            logger.debug("fixUrl(url={},branch={},isImage={}): owner → {}", url, branch, isImage, owner)
+            logger.debug("fixUrl(url={},branch={},isImage={}): repos → {}", url, branch, isImage, repos)
             repository.httpUrl.replaceFirst("/git/", "/").stripSuffix(".git") + "/wiki/_blob/" + url
           } else {
             repository.httpUrl.replaceFirst("/git/", "/").stripSuffix(".git") + "/wiki/" + url
@@ -211,22 +245,31 @@ object Markdown {
   }
 
   def escapeTaskList(text: String): String = {
+    logger.debug(">>> Entering escapeTaskList(text={})", text)
+    logger.debug("<<< Exiting escapeTaskList(text={})", text)
     Pattern.compile("""^( *)- \[([x| ])\] """, Pattern.MULTILINE).matcher(text).replaceAll("$1* task:$2: ")
   }
 
   def generateAnchorName(text: String): String = {
+    logger.debug(">>> Entering generateAnchorName(text={})", text)
     val normalized = Normalizer.normalize(text.replaceAll("<.*>", "").replaceAll("[\\s]", "-"), Normalizer.Form.NFD)
     val encoded = StringUtil.urlEncode(normalized)
+    logger.debug("generateAnchorName(text={}): encoded → {}", text, encoded)
+    logger.debug("generateAnchorName(text={}): normalized → {}", text, normalized)
+    logger.debug("<<< Exiting generateAnchorName(text={})", text)
     encoded.toLowerCase(Locale.ENGLISH)
   }
 
   def convertCheckBox(text: String, hasWritePermission: Boolean): String = {
+    logger.debug(">>> Entering convertCheckBox(text={},hasWritePermission={})", text, hasWritePermission)
     val disabled = if (hasWritePermission) "" else "disabled"
+    logger.debug("<<< Exiting convertCheckBox(text={},hasWritePermission={})", text, hasWritePermission)
     text
       .replaceAll(
         "task:x:",
         """<input type="checkbox" class="task-list-item-checkbox" checked="checked" """ + disabled + "/>"
       )
+      logger.debug("convertCheckBox(text={},hasWritePermission={}): disabled → {}", text, hasWritePermission, disabled)
       .replaceAll("task: :", """<input type="checkbox" class="task-list-item-checkbox" """ + disabled + "/>")
   }
 

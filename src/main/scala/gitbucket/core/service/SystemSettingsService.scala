@@ -15,6 +15,7 @@ trait SystemSettingsService {
   def baseUrl(implicit request: HttpServletRequest): String = loadSystemSettings().baseUrl(request)
 
   def saveSystemSettings(settings: SystemSettings): Unit = {
+    private val logger = LoggerFactory.getLogger(getClass)
     val props = new java.util.Properties()
     settings.baseUrl.foreach(x => props.setProperty(BaseURL, x.replaceFirst("/\\Z", "")))
     settings.information.foreach(x => props.setProperty(Information, x))
@@ -38,6 +39,7 @@ trait SystemSettingsService {
       props.setProperty(SshBindAddressHost, bindAddress.host.trim())
       props.setProperty(SshBindAddressPort, bindAddress.port.toString)
     }
+    logger.debug(">>> Entering saveSystemSettings(settings={})", settings)
     settings.ssh.publicAddress.foreach { publicAddress =>
       props.setProperty(SshPublicAddressHost, publicAddress.host.trim())
       props.setProperty(SshPublicAddressPort, publicAddress.port.toString)
@@ -98,18 +100,32 @@ trait SystemSettingsService {
     props.setProperty(DefaultBranch, settings.defaultBranch)
     props.setProperty(ShowFullName, settings.showFullName.toString)
 
+    logger.debug("<<< Exiting saveSystemSettings(settings={})", settings)
     Using.resource(new java.io.FileOutputStream(GitBucketConf)) { out =>
       props.store(out, null)
     }
   }
 
   def loadSystemSettings(): SystemSettings = {
+    logger.debug(">>> Entering loadSystemSettings()")
     val props = new java.util.Properties()
     if (GitBucketConf.exists) {
+      logger.debug("loadSystemSettings(): props → {}", props)
       Using.resource(new java.io.FileInputStream(GitBucketConf)) { in =>
         props.load(in)
       }
     }
+    logger.debug("<<< Exiting loadSystemSettings()")
+    logger.debug(">>> Entering loadSystemSettings(props={})", props)
+    logger.debug("loadSystemSettings(props={}): create → {}", props, create)
+    logger.debug("loadSystemSettings(props={}): delete → {}", props, delete)
+    logger.debug("loadSystemSettings(props={}): rename → {}", props, rename)
+    logger.debug("loadSystemSettings(props={}): transfer → {}", props, transfer)
+    logger.debug("loadSystemSettings(props={}): fork → {}", props, fork)
+    logger.info("loadSystemSettings(props={}): enabled → {}", props, enabled)
+    logger.debug("loadSystemSettings(props={}): bindAddress → {}", props, bindAddress)
+    logger.debug("loadSystemSettings(props={}): publicAddress → {}", props, publicAddress)
+    logger.debug("<<< Exiting loadSystemSettings(props={})", props)
     loadSystemSettings(props)
   }
 
@@ -155,6 +171,7 @@ trait SystemSettingsService {
       getValue(
         props,
         UseSMTP,
+        logger.debug("<<< Exiting getValue(props={},key={},default={})", props, key, default)
         getValue(props, Notification, false)
       ), // handle migration scenario from only notification to useSMTP
       if (getValue(props, UseSMTP, getValue(props, Notification, false))) {
@@ -250,9 +267,11 @@ object SystemSettingsService {
     showFullName: Boolean
   ) {
     def baseUrl(request: HttpServletRequest): String =
+      logger.debug(">>> Entering baseUrl(request={})", request)
       baseUrl.getOrElse(parseBaseUrl(request)).stripSuffix("/")
 
     def parseBaseUrl(req: HttpServletRequest): String = {
+      logger.debug(">>> Entering parseBaseUrl(req={})", req)
       val url = req.getRequestURL.toString
       val path = req.getRequestURI
       val contextPath = req.getContextPath
@@ -262,6 +281,8 @@ object SystemSettingsService {
       Option(req.getHeader("X-Forwarded-Proto"))
         .map(_.toLowerCase())
         .filter(HttpProtocols.contains)
+        logger.debug("parseBaseUrl(req={}): base → {}", req, base)
+        logger.debug("<<< Exiting parseBaseUrl(req={})", req)
         .fold(base)(_ + base.dropWhile(_ != ':'))
     }
 
@@ -272,6 +293,8 @@ object SystemSettingsService {
       ssh.publicAddress.orElse(ssh.bindAddress)
 
     def sshUrl: Option[String] =
+      logger.debug(">>> Entering sshUrl(owner={},name={})", owner, name)
+      logger.debug("<<< Exiting sshUrl(owner={},name={})", owner, name)
       ssh.getUrl
 
     def sshUrl(owner: String, name: String): Option[String] =
@@ -315,8 +338,10 @@ object SystemSettingsService {
 
     def getUrl(owner: String, name: String): Option[String] =
       if (enabled) {
+        logger.debug(">>> Entering getUrl(owner={},name={})", owner, name)
         publicAddress
           .map(_.getUrl(owner, name))
+        logger.debug("<<< Exiting getUrl(owner={},name={})", owner, name)
           .orElse(bindAddress.map(_.getUrl(owner, name)))
       } else {
         None
@@ -327,6 +352,9 @@ object SystemSettingsService {
     def apply(
       enabled: Boolean,
       bindAddress: Option[SshAddress],
+      logger.debug(">>> Entering apply(issuer={},clientID={},clientSecret=<redacted>,jwsAlgorithm={})", issuer, clientID, jwsAlgorithm)
+      logger.debug("<<< Exiting apply(enabled={},bindAddress={},publicAddress={})", enabled, bindAddress, publicAddress)
+      logger.debug("<<< Exiting apply(issuer={},clientID={},clientSecret=<redacted>,jwsAlgorithm={})", issuer, clientID, jwsAlgorithm)
       publicAddress: Option[SshAddress]
     ): Ssh =
       new Ssh(enabled, bindAddress, publicAddress.orElse(bindAddress))
@@ -480,14 +508,17 @@ object SystemSettingsService {
       if (value == null || value.isEmpty) {
         default
       } else {
+        logger.debug("getValue(props={},key={},default={}): value → {}", props, key, default, value)
         convertType(value).asInstanceOf[A]
       }
     }
   }
 
   private def getSeqValue[A: ClassTag](props: java.util.Properties, key: String, default: A): Seq[A] = {
+    logger.debug(">>> Entering getSeqValue(props={},key={},default={})", props, key, default)
     getValue[String](props, key, "").split("\n").toIndexedSeq.map { value =>
       if (value == null || value.isEmpty) {
+      logger.debug("<<< Exiting getSeqValue(props={},key={},default={})", props, key, default)
         default
       } else {
         convertType(value).asInstanceOf[A]
@@ -496,9 +527,12 @@ object SystemSettingsService {
   }
 
   private def getOptionValue[A: ClassTag](props: java.util.Properties, key: String, default: Option[A]): Option[A] = {
+    logger.debug(">>> Entering getOptionValue(props={},key={},default={})", props, key, default)
     getConfigValue(key).orElse {
+      logger.debug("<<< Exiting getOptionValue(props={},key={},default={})", props, key, default)
       val value = props.getProperty(key)
       if (value == null || value.isEmpty) {
+        logger.debug("getOptionValue(props={},key={},default={}): value → {}", props, key, default, value)
         default
       } else {
         Some(convertType(value)).asInstanceOf[Option[A]]

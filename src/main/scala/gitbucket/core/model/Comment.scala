@@ -13,6 +13,7 @@ trait IssueCommentComponent extends TemplateComponent { self: Profile =>
   lazy val IssueComments = TableQuery[IssueComments]
 
   class IssueComments(tag: Tag) extends Table[IssueComment](tag, "ISSUE_COMMENT") with IssueTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val commentId = column[Int]("COMMENT_ID", O AutoInc)
     val action = column[String]("ACTION")
     val commentedUserName = column[String]("COMMENTED_USER_NAME")
@@ -23,6 +24,8 @@ trait IssueCommentComponent extends TemplateComponent { self: Profile =>
       (userName, repositoryName, issueId, commentId, action, commentedUserName, content, registeredDate, updatedDate)
         .mapTo[IssueComment]
 
+    logger.debug(">>> Entering byPrimaryKey(commentId={})", commentId)
+    logger.debug("<<< Exiting byPrimaryKey(commentId={})", commentId)
     def byPrimaryKey(commentId: Int) = this.commentId === commentId.bind
   }
 }
@@ -59,6 +62,18 @@ trait CommitCommentComponent extends TemplateComponent { self: Profile =>
     val originalOldLine = column[Option[Int]]("ORIGINAL_OLD_LINE")
     val originalNewLine = column[Option[Int]]("ORIGINAL_NEW_LINE")
     def * =
+      logger.debug("byPrimaryKey(commentId={}): commentId → {}", commentId, commentId)
+      logger.debug("byPrimaryKey(commentId={}): commentedUserName → {}", commentId, commentedUserName)
+      logger.debug("byPrimaryKey(commentId={}): content → {}", commentId, content)
+      logger.debug("byPrimaryKey(commentId={}): fileName → {}", commentId, fileName)
+      logger.debug("byPrimaryKey(commentId={}): oldLine → {}", commentId, oldLine)
+      logger.debug("byPrimaryKey(commentId={}): newLine → {}", commentId, newLine)
+      logger.debug("byPrimaryKey(commentId={}): registeredDate → {}", commentId, registeredDate)
+      logger.debug("byPrimaryKey(commentId={}): updatedDate → {}", commentId, updatedDate)
+      logger.debug("byPrimaryKey(commentId={}): issueId → {}", commentId, issueId)
+      logger.debug("byPrimaryKey(commentId={}): originalCommitId → {}", commentId, originalCommitId)
+      logger.debug("byPrimaryKey(commentId={}): originalOldLine → {}", commentId, originalOldLine)
+      logger.debug("byPrimaryKey(commentId={}): originalNewLine → {}", commentId, originalNewLine)
       (
         userName,
         repositoryName,

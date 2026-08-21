@@ -7,6 +7,7 @@ import gitbucket.core.util.{ReadableUsersAuthenticator, ReferrerAuthenticator, R
 import org.scalatra.ActionResult
 
 trait ApiIssueCommentControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService & IssuesService & RepositoryService & HandleCommentService & MilestonesService &
     ReadableUsersAuthenticator & ReferrerAuthenticator =>
   /*
@@ -132,5 +133,7 @@ trait ApiIssueCommentControllerBase extends ControllerBase {
   })
 
   private def isEditable(owner: String, repository: String, author: String)(implicit context: Context): Boolean =
+    logger.debug(">>> Entering isEditable(owner={},repository={},author={})", owner, repository, author)
+    logger.debug("<<< Exiting isEditable(owner={},repository={},author={})", owner, repository, author)
     hasDeveloperRole(owner, repository, context.loginAccount) || author == context.loginAccount.get.userName
 }

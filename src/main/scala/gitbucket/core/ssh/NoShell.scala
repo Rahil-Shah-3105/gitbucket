@@ -10,16 +10,21 @@ import java.io.{InputStream, OutputStream}
 import org.eclipse.jgit.lib.Constants
 
 class NoShell(sshAddress: SshAddress) extends ShellFactory {
+  private val logger = LoggerFactory.getLogger(getClass)
   override def createShell(channel: ChannelSession): Command = new Command() {
+    logger.debug(">>> Entering createShell(channel={})", channel)
     private var in: InputStream = null
     private var out: OutputStream = null
     private var err: OutputStream = null
+    logger.debug("<<< Exiting createShell(channel={})", channel)
     private var callback: ExitCallback = null
 
     override def start(channel: ChannelSession, env: Environment): Unit = {
+      logger.debug(">>> Entering start(channel={},env={})", channel, env)
       val placeholderAddress = sshAddress.getUrl("OWNER", "REPOSITORY_NAME")
       val message =
         """
+        logger.debug("start(channel={},env={}): placeholderAddress → {}", channel, env, placeholderAddress)
           | Welcome to
           |   _____   _   _     ____                   _             _
           |  / ____| (_) | |   |  _ \                 | |           | |
@@ -46,18 +51,26 @@ class NoShell(sshAddress: SshAddress) extends ShellFactory {
     override def destroy(channel: ChannelSession): Unit = {}
 
     override def setInputStream(in: InputStream): Unit = {
+      logger.debug(">>> Entering setInputStream(in={})", in)
+      logger.debug("setInputStream(in={}): in → {}", in, in)
       this.in = in
     }
 
     override def setOutputStream(out: OutputStream): Unit = {
+      logger.debug(">>> Entering setOutputStream(out={})", out)
+      logger.debug("setOutputStream(out={}): out → {}", out, out)
       this.out = out
     }
 
     override def setErrorStream(err: OutputStream): Unit = {
+      logger.debug(">>> Entering setErrorStream(err={})", err)
+      logger.debug("setErrorStream(err={}): err → {}", err, err)
       this.err = err
     }
 
     override def setExitCallback(callback: ExitCallback): Unit = {
+      logger.debug(">>> Entering setExitCallback(callback={})", callback)
+      logger.debug("setExitCallback(callback={}): callback → {}", callback, callback)
       this.callback = callback
     }
   }

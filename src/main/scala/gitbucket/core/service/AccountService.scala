@@ -22,6 +22,7 @@ trait AccountService {
   def authenticate(settings: SystemSettings, userName: String, password: String)(implicit
     s: Session
   ): Option[Account] = {
+    logger.debug(">>> Entering authenticate(settings={},userName={},password=<redacted>)", settings, userName)
     val account = if (password.isEmpty) {
       None
     } else if (settings.ldapAuthentication) {
@@ -34,6 +35,7 @@ trait AccountService {
       logger.info(s"Failed to authenticate: $userName")
     }
 
+    logger.debug("<<< Exiting authenticate(settings={},userName={},password=<redacted>)", settings, userName)
     account
   }
 
@@ -41,7 +43,10 @@ trait AccountService {
    * Authenticate by internal database.
    */
   private def defaultAuthentication(userName: String, password: String)(implicit s: Session) = {
+    logger.debug(">>> Entering defaultAuthentication(userName={},password=<redacted>)", userName)
     val pbkdf2re = """^\$pbkdf2-sha256\$(\d+)\$([0-9a-zA-Z+/=]+)\$([0-9a-zA-Z+/=]+)$""".r
+    logger.debug("<<< Exiting defaultAuthentication(userName={},password=<redacted>)", userName)
+    logger.debug("defaultAuthentication(userName={},password=<redacted>): pbkdf2re → {}", userName, pbkdf2re)
     getAccountByUserName(userName).collect {
       case account if !account.isGroupAccount =>
         account.password match {
@@ -52,6 +57,7 @@ trait AccountService {
           case _ => None
         }
       case account if (!account.isGroupAccount && account.password == sha1(password)) => Some(account)
+    logger.debug("<<< Exiting getAccountByUserName(userName={},includeRemoved={})", userName, includeRemoved)
     }.flatten
   }
 
@@ -59,6 +65,8 @@ trait AccountService {
    * Authenticate by LDAP.
    */
   private def ldapAuthentication(settings: SystemSettings, userName: String, password: String)(implicit
+  logger.debug(">>> Entering ldapAuthentication(settings={},userName={},password=<redacted>)", settings, userName)
+  logger.debug("<<< Exiting ldapAuthentication(settings={},userName={},password=<redacted>)", settings, userName)
     s: Session
   ): Option[Account] = {
     LDAPUtil.authenticate(settings.ldap.get, userName, password) match {
@@ -99,6 +107,7 @@ trait AccountService {
                 )
                 getAccountByUserName(ldapUserInfo.userName)
               }
+            logger.debug(">>> Entering getAccountByUserName(userName={},includeRemoved={})", userName, includeRemoved)
             }
         }
       }
@@ -110,12 +119,17 @@ trait AccountService {
   }
 
   def getAccountByUserName(userName: String, includeRemoved: Boolean = false)(implicit s: Session): Option[Account] =
+    logger.debug(">>> Entering getAccountByUserName(userName={},includeRemoved={})", userName, includeRemoved)
+    logger.debug("<<< Exiting getAccountByUserName(userName={},includeRemoved={})", userName, includeRemoved)
     Accounts filter (t => (t.userName === userName.bind).&&(t.removed === false.bind, !includeRemoved)) firstOption
 
   def getAccountById(accountId: Long, includeRemoved: Boolean = false)(implicit s: Session): Option[Account] =
+    logger.debug(">>> Entering getAccountById(accountId={},includeRemoved={})", accountId, includeRemoved)
+    logger.debug("<<< Exiting getAccountById(accountId={},includeRemoved={})", accountId, includeRemoved)
     Accounts filter (t => (t.accountId === accountId.bind).&&(t.removed === false.bind, !includeRemoved)) firstOption
 
   def getAccountByUserNameIgnoreCase(userName: String, includeRemoved: Boolean = false)(implicit
+  logger.debug(">>> Entering getAccountByUserNameIgnoreCase(userName={},includeRemoved={})", userName, includeRemoved)
     s: Session
   ): Option[Account] =
     Accounts filter (t =>
@@ -123,10 +137,13 @@ trait AccountService {
     ) firstOption
 
   def getAccountsByUserNames(userNames: Set[String], knowns: Set[Account], includeRemoved: Boolean = false)(implicit
+  logger.debug(">>> Entering getAccountsByUserNames(userNames={},knowns={},includeRemoved={})", userNames, knowns, includeRemoved)
+  logger.debug("<<< Exiting getAccountsByUserNames(userNames={},knowns={},includeRemoved={})", userNames, knowns, includeRemoved)
     s: Session
   ): Map[String, Account] = {
     val map = knowns.map(a => a.userName -> a).toMap
     val needs = userNames -- map.keySet
+    logger.debug("getAccountsByUserNames(userNames={},knowns={},includeRemoved={}): map → {}", userNames, knowns, includeRemoved, map)
     if (needs.isEmpty) {
       map
     } else {
@@ -151,15 +168,19 @@ trait AccountService {
       .map { case (a, e) => a } firstOption
 
   def getAllUsers(includeRemoved: Boolean = true, includeGroups: Boolean = true)(implicit s: Session): List[Account] = {
+    logger.debug(">>> Entering getAllUsers(includeRemoved={},includeGroups={})", includeRemoved, includeGroups)
     Accounts filter { t =>
       (1.bind === 1.bind)
         .&&(t.groupAccount === false.bind, !includeGroups)
         .&&(t.removed === false.bind, !includeRemoved)
+    logger.debug("<<< Exiting getAllUsers(includeRemoved={},includeGroups={})", includeRemoved, includeGroups)
     } sortBy (_.userName) list
   }
 
   def isLastAdministrator(account: Account)(implicit s: Session): Boolean = {
+    logger.debug(">>> Entering isLastAdministrator(account={})", account)
     if (account.isAdmin) {
+      logger.debug("<<< Exiting isLastAdministrator(account={})", account)
       (Accounts filter (_.removed === false.bind) filter (_.isAdmin === true.bind) map (_.userName.length)).first == 1
     } else false
   }
@@ -173,6 +194,7 @@ trait AccountService {
     description: Option[String],
     url: Option[String]
   )(implicit s: Session): Account = {
+    logger.debug(">>> Entering createAccount(userName={},password=<redacted>,fullName={},mailAddress={},isAdmin={},description={},url={})", userName, fullName, mailAddress, isAdmin, description, url)
     val account = Account(
       userName = userName,
       password = password,
@@ -189,21 +211,28 @@ trait AccountService {
       description = description
     )
     val accountId = Accounts returning Accounts.map(_.accountId) insert account
+    logger.debug("createAccount(userName={},password=<redacted>,fullName={},mailAddress={},isAdmin={},description={},url={}): registeredDate → {}", userName, fullName, mailAddress, isAdmin, description, url, registeredDate)
+    logger.debug("createAccount(userName={},password=<redacted>,fullName={},mailAddress={},isAdmin={},description={},url={}): updatedDate → {}", userName, fullName, mailAddress, isAdmin, description, url, updatedDate)
+    logger.debug("createAccount(userName={},password=<redacted>,fullName={},mailAddress={},isAdmin={},description={},url={}): lastLoginDate → {}", userName, fullName, mailAddress, isAdmin, description, url, lastLoginDate)
     account.copy(accountId = accountId)
   }
 
   def suspendAccount(account: Account)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering suspendAccount(account={})", account)
     // Remove from GROUP_MEMBER and COLLABORATOR
     removeUserRelatedData(account.userName)
     updateAccount(account.copy(isRemoved = true))
 
     // call hooks
+    logger.debug("<<< Exiting suspendAccount(account={})", account)
     PluginRegistry().getAccountHooks.foreach(_.deleted(account.userName))
   }
 
   def updateAccount(account: Account)(implicit s: Session): Unit =
     Accounts
       .filter { a =>
+        logger.debug(">>> Entering updateAccount(account={})", account)
+        logger.debug("<<< Exiting updateAccount(account={})", account)
         a.userName === account.userName.bind
       }
       .map { a =>
@@ -234,21 +263,28 @@ trait AccountService {
       )
 
   def updateAvatarImage(userName: String, image: Option[String])(implicit s: Session): Unit =
+    logger.debug(">>> Entering updateAvatarImage(userName={},image={})", userName, image)
     Accounts.filter(_.userName === userName.bind).map(_.image.?).update(image)
 
   def getAccountExtraMailAddresses(userName: String)(implicit s: Session): List[String] = {
+    logger.debug(">>> Entering getAccountExtraMailAddresses(userName={})", userName)
+    logger.debug("<<< Exiting getAccountExtraMailAddresses(userName={})", userName)
     AccountExtraMailAddresses.filter(_.userName === userName.bind).map(_.extraMailAddress) list
   }
 
   def updateAccountExtraMailAddresses(userName: String, mails: List[String])(implicit s: Session): Unit = {
+    logger.debug(">>> Entering updateAccountExtraMailAddresses(userName={},mails={})", userName, mails)
     AccountExtraMailAddresses.filter(_.userName === userName.bind).delete
+    logger.debug("<<< Exiting updateAccountExtraMailAddresses(userName={},mails={})", userName, mails)
     mails.map(AccountExtraMailAddresses insert AccountExtraMailAddress(userName, _))
   }
 
   def updateLastLoginDate(userName: String)(implicit s: Session): Unit =
+    logger.debug(">>> Entering updateLastLoginDate(userName={})", userName)
     Accounts.filter(_.userName === userName.bind).map(_.lastLoginDate).update(currentDate)
 
   def createGroup(groupName: String, description: Option[String], url: Option[String])(implicit s: Session): Account = {
+    logger.debug(">>> Entering createGroup(groupName={},description={},url={})", groupName, description, url)
     val group = Account(
       userName = groupName,
       password = "",
@@ -265,10 +301,14 @@ trait AccountService {
       description = description
     )
     val accountId = Accounts returning Accounts.map(_.accountId) insert group
+    logger.debug("createGroup(groupName={},description={},url={}): userName → {}", groupName, description, url, userName)
+    logger.warn("createGroup(groupName={},description={},url={}): password → {}", groupName, description, url, password)
+    logger.debug("createGroup(groupName={},description={},url={}): fullName → {}", groupName, description, url, fullName)
     group.copy(accountId = accountId)
   }
 
   def updateGroup(groupName: String, description: Option[String], url: Option[String], removed: Boolean)(implicit
+  logger.debug("<<< Exiting updateGroup(groupName={},description={},url={},removed={})", groupName, description, url, removed)
     s: Session
   ): Unit =
     Accounts
@@ -277,19 +317,24 @@ trait AccountService {
       .update(url, description, currentDate, removed)
 
   def updateGroupMembers(groupName: String, members: List[(String, Boolean)])(implicit s: Session): Unit = {
+    logger.debug(">>> Entering updateGroupMembers(groupName={},members={})", groupName, members)
     GroupMembers.filter(_.groupName === groupName.bind).delete
+    logger.debug("<<< Exiting updateGroupMembers(groupName={},members={})", groupName, members)
     members.foreach { case (userName, isManager) =>
       GroupMembers insert GroupMember(groupName, userName, isManager)
     }
   }
 
   def getGroupMembers(groupName: String)(implicit s: Session): List[GroupMember] =
+    logger.debug(">>> Entering getGroupMembers(groupName={})", groupName)
     GroupMembers
       .filter(_.groupName === groupName.bind)
       .sortBy(_.userName)
+      logger.debug("<<< Exiting getGroupMembers(groupName={})", groupName)
       .list
 
   def getGroupsByUserName(userName: String)(implicit s: Session): List[String] =
+    logger.debug(">>> Entering getGroupsByUserName(userName={})", userName)
     GroupMembers
       .filter(_.userName === userName.bind)
       .sortBy(_.groupName)
@@ -297,21 +342,27 @@ trait AccountService {
       .list
 
   def removeUserRelatedData(userName: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering removeUserRelatedData(userName={})", userName)
     GroupMembers.filter(_.userName === userName.bind).delete
+    logger.debug("<<< Exiting removeUserRelatedData(userName={})", userName)
     Collaborators.filter(_.collaboratorName === userName.bind).delete
   }
 
   def removeUser(account: Account)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering removeUser(account={})", account)
     // Remove from GROUP_MEMBER and COLLABORATOR
     removeUserRelatedData(account.userName)
     updateAccount(account.copy(isRemoved = true))
 
     // call hooks
+    logger.debug("<<< Exiting removeUser(account={})", account)
     PluginRegistry().getAccountHooks.foreach(_.deleted(account.userName))
   }
 
   def getGroupNames(userName: String)(implicit s: Session): List[String] = {
+    logger.debug(">>> Entering getGroupNames(userName={})", userName)
     List(userName) ++
+    logger.debug("<<< Exiting getGroupNames(userName={})", userName)
       Collaborators.filter(_.collaboratorName === userName.bind).sortBy(_.userName).map(_.userName).list.distinct
   }
 
@@ -319,31 +370,46 @@ trait AccountService {
    * For account preference
    */
   def getAccountPreference(userName: String)(implicit
+  logger.debug(">>> Entering getAccountPreference(userName={})", userName)
+  logger.debug("<<< Exiting getAccountPreference(userName={})", userName)
     s: Session
   ): Option[AccountPreference] = {
+    logger.debug(">>> Entering getAccountPreference(userName={})", userName)
+    logger.debug("<<< Exiting getAccountPreference(userName={})", userName)
     AccountPreferences filter (_.byPrimaryKey(userName)) firstOption
   }
 
   def addAccountPreference(userName: String, highlighterTheme: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering addAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
+    logger.debug("<<< Exiting addAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
     AccountPreferences insert AccountPreference(userName = userName, highlighterTheme = highlighterTheme)
   }
 
   def updateAccountPreference(userName: String, highlighterTheme: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering updateAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
     AccountPreferences
       .filter(_.byPrimaryKey(userName))
       .map(t => t.highlighterTheme)
+      logger.debug("<<< Exiting updateAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
       .update(highlighterTheme)
   }
 
   def addOrUpdateAccountPreference(userName: String, highlighterTheme: String)(implicit s: Session): Unit = {
+    logger.debug(">>> Entering addOrUpdateAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
     getAccountPreference(userName) match {
       case Some(_) => updateAccountPreference(userName, highlighterTheme)
-      case _       => addAccountPreference(userName, highlighterTheme)
+      case _       =>
+        logger.debug("<<< Exiting addOrUpdateAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
+        addAccountPreference(userName, highlighterTheme)
     }
   }
 
   def generateResetPasswordToken(mailAddress: String): String = {
+    logger.debug(">>> Entering generateResetPasswordToken(mailAddress={})", mailAddress)
     // default to 10 minutes for backward compatibility
+    logger.debug("<<< Exiting generateResetPasswordToken(mailAddress={})", mailAddress)
+    logger.debug(">>> Entering generateResetPasswordToken(mailAddress={},expirationMillis={})", mailAddress, expirationMillis)
+    logger.debug("<<< Exiting generateResetPasswordToken(mailAddress={},expirationMillis={})", mailAddress, expirationMillis)
     generateResetPasswordToken(mailAddress, 10 * 60 * 1000L)
   }
 
@@ -351,23 +417,31 @@ trait AccountService {
     val claimsSet = new JWTClaimsSet.Builder()
       .claim("mailAddress", mailAddress)
       .expirationTime(new java.util.Date(System.currentTimeMillis() + expirationMillis))
+      logger.debug("generateResetPasswordToken(mailAddress={},expirationMillis={}): claimsSet → {}", mailAddress, expirationMillis, claimsSet)
       .build()
 
     val signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claimsSet)
     signedJWT.sign(new MACSigner(AccountService.jwtSecretKey))
 
+    logger.debug("generateResetPasswordToken(mailAddress={},expirationMillis={}): signedJWT → {}", mailAddress, expirationMillis, signedJWT)
     signedJWT.serialize()
   }
 
   def decodeResetPasswordToken(token: String): Option[String] = {
+    logger.debug(">>> Entering decodeResetPasswordToken(token=<redacted>)")
     try {
+      logger.debug("<<< Exiting decodeResetPasswordToken(token=<redacted>)")
       val signedJWT = SignedJWT.parse(token)
       val verifier = new MACVerifier(AccountService.jwtSecretKey)
       if (signedJWT.verify(verifier) && new java.util.Date().before(signedJWT.getJWTClaimsSet().getExpirationTime())) {
+        logger.debug("decodeResetPasswordToken(token=<redacted>): signedJWT → {}", signedJWT)
+        logger.debug("decodeResetPasswordToken(token=<redacted>): verifier → {}", verifier)
         Some(signedJWT.getPayload.toJSONObject.get("mailAddress").toString)
       } else None
     } catch {
-      case _: Exception => None
+      case _: Exception =>
+        logger.error("Exception in decodeResetPasswordToken(token=<redacted>): {}", e.getMessage, e)
+        None
     }
   }
 }

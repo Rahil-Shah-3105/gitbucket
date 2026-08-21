@@ -19,6 +19,7 @@ case class ApiCommitListItem(
 
 object ApiCommitListItem {
   def apply(commit: CommitInfo, repositoryName: RepositoryName): ApiCommitListItem =
+    logger.debug(">>> Entering apply(commit={},repositoryName={})", commit, repositoryName)
     ApiCommitListItem(
       sha = commit.id,
       commit = Commit(
@@ -28,10 +29,12 @@ object ApiCommitListItem {
       )(commit.id, repositoryName),
       author = None,
       committer = None,
+      logger.debug("<<< Exiting apply(commit={},repositoryName={})", commit, repositoryName)
       parents = commit.parents.map(Parent(_)(repositoryName))
     )(repositoryName)
 
   case class Parent(sha: String)(repositoryName: RepositoryName) {
+    private val logger = LoggerFactory.getLogger(getClass)
     val url = ApiPath(s"/api/v3/repos/${repositoryName.fullName}/commits/${sha}")
   }
 

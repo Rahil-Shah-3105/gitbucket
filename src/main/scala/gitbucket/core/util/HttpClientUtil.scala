@@ -12,7 +12,9 @@ import scala.util.Using
 object HttpClientUtil {
 
   def withHttpClient[T](proxy: Option[SystemSettingsService.Proxy])(f: CloseableHttpClient => T): T = {
+    private val logger = LoggerFactory.getLogger(getClass)
     val builder = HttpClientBuilder.create.useSystemProperties
+    logger.debug(">>> Entering withHttpClient(proxy={})", proxy)
 
     proxy.foreach { proxy =>
       builder.setProxy(new HttpHost(proxy.host, proxy.port))
@@ -27,20 +29,27 @@ object HttpClientUtil {
       }
     }
 
+    logger.debug("<<< Exiting withHttpClient(proxy={})", proxy)
     Using.resource(builder.build())(f)
   }
 
   def isPrivateAddress(address: String): Boolean = {
+    logger.debug(">>> Entering isPrivateAddress(address={})", address)
     val ipAddress = InetAddress.getByName(address)
+    logger.debug("<<< Exiting isPrivateAddress(address={})", address)
+    logger.debug("isPrivateAddress(address={}): ipAddress → {}", address, ipAddress)
     ipAddress.isSiteLocalAddress || ipAddress.isLinkLocalAddress || ipAddress.isLoopbackAddress
   }
 
   def inIpRange(ipRange: String, ipAddress: String): Boolean = {
+    logger.debug(">>> Entering inIpRange(ipRange={},ipAddress={})", ipRange, ipAddress)
     if (ipRange.contains('/')) {
+      logger.debug("<<< Exiting inIpRange(ipRange={},ipAddress={})", ipRange, ipAddress)
       val utils = new SubnetUtils(ipRange)
       utils.setInclusiveHostCount(true)
       utils.getInfo.isInRange(ipAddress)
     } else {
+      logger.debug("inIpRange(ipRange={},ipAddress={}): utils → {}", ipRange, ipAddress, utils)
       ipRange == ipAddress
     }
   }

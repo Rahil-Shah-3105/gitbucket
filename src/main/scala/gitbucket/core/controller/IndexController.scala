@@ -34,6 +34,7 @@ class IndexController
     with RequestCache
 
 trait IndexControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & ActivityService & AccountService & RepositorySearchService & UsersAuthenticator &
     ReferrerAuthenticator & AccessTokenService & AccountFederationService & OpenIDConnectService =>
 
@@ -214,8 +215,10 @@ trait IndexControllerBase extends ControllerBase {
    * Set account information into HttpSession and redirect.
    */
   private def signin(account: Account, redirectUrl: String = "/") = {
+    logger.debug(">>> Entering signin(account={},redirectUrl={})", account, redirectUrl)
     session.setAttribute(Keys.Session.LoginAccount, account)
     if (isDevFeatureEnabled(DevFeatures.KeepSession)) {
+      logger.debug("signin(account={},redirectUrl={}): session → {}", account, redirectUrl, session)
       saveLoginAccountToLocalFile(account)
     }
     updateLastLoginDate(account.userName)
@@ -224,6 +227,7 @@ trait IndexControllerBase extends ControllerBase {
       redirect("/" + account.userName + "/_edit")
     }
 
+    logger.debug("<<< Exiting signin(account={},redirectUrl={})", account, redirectUrl)
     if (redirectUrl.stripSuffix("/") == request.getContextPath) {
       redirect("/")
     } else {

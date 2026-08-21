@@ -33,6 +33,7 @@ class ReleaseController
     with RequestCache
 
 trait ReleaseControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & AccountService & ReleaseService & ReadableUsersAuthenticator & ReferrerAuthenticator &
     WritableUsersAuthenticator & ActivityService =>
 
@@ -217,14 +218,18 @@ trait ReleaseControllerBase extends ControllerBase {
   })
 
   private def fetchReleases(repository: RepositoryService.RepositoryInfo, page: Int) = {
+    logger.debug(">>> Entering fetchReleases(repository={},page={})", repository, page)
     import gitbucket.core.service.ReleaseService.*
 
     val (offset, limit) = ((page - 1) * ReleaseLimit, ReleaseLimit)
     val tagsToDisplay = repository.tags.reverse.slice(offset, offset + limit)
 
+    logger.debug("fetchReleases(repository={},page={}): tagsToDisplay → {}", repository, page, tagsToDisplay)
     val releases = getReleases(repository.owner, repository.name, tagsToDisplay)
     val assets = getReleaseAssetsMap(repository.owner, repository.name, releases)
 
+    logger.debug("fetchReleases(repository={},page={}): releases → {}", repository, page, releases)
+    logger.debug("fetchReleases(repository={},page={}): assets → {}", repository, page, assets)
     val tagsWithReleases = tagsToDisplay.map { tag =>
       (
         tag,
@@ -233,6 +238,7 @@ trait ReleaseControllerBase extends ControllerBase {
         }
       )
     }
+    logger.debug("<<< Exiting fetchReleases(repository={},page={})", repository, page)
     tagsWithReleases
   }
 }

@@ -59,12 +59,17 @@ object ApiCommits {
     committer: Option[Account],
     commentCount: Int
   ): ApiCommits = {
+    private val logger = LoggerFactory.getLogger(getClass)
     val files = diffs.map { diff =>
       var additions = 0
+      logger.debug(">>> Entering apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={})", repositoryName, commitInfo, diffs, author, committer, commentCount)
       var deletions = 0
 
       diff.patch.getOrElse("").split("\n").foreach { line =>
         if (line.startsWith("+")) additions = additions + 1
+        logger.info("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): url → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, url)
+        logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): tree → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, tree)
+        logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): comment_count → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, comment_count)
         if (line.startsWith("-")) deletions = deletions + 1
       }
 
@@ -82,18 +87,27 @@ object ApiCommits {
           case ChangeType.COPY   => "copied"
         },
         raw_url = if (diff.changeType == ChangeType.DELETE) {
+          logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): changes → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, changes)
+          logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): status → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, status)
+          logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): message → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, message)
           ApiPath(s"/${repositoryName.fullName}/raw/${commitInfo.parents.head}/${diff.oldPath}")
         } else {
           ApiPath(s"/${repositoryName.fullName}/raw/${commitInfo.id}/${diff.newPath}")
         },
         blob_url = if (diff.changeType == ChangeType.DELETE) {
+          logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): commit → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, commit)
+          logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): comment_url → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, comment_url)
+          logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): html_url → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, html_url)
+          logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): sha → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, sha)
           ApiPath(s"/${repositoryName.fullName}/blob/${commitInfo.parents.head}/${diff.oldPath}")
         } else {
           ApiPath(s"/${repositoryName.fullName}/blob/${commitInfo.id}/${diff.newPath}")
         },
         patch = diff.patch.getOrElse("")
+      logger.debug("<<< Exiting apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={})", repositoryName, commitInfo, diffs, author, committer, commentCount)
       )
     }
+    logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): patch → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, patch)
 
     ApiCommits(
       url = ApiPath(s"/api/v3/repos/${repositoryName.fullName}/commits/${commitInfo.id}"),

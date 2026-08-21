@@ -69,6 +69,7 @@ object ApiPullRequest {
     )
 
   case class Commit(sha: String, ref: String, repo: ApiRepository)(baseOwner: String) {
+    private val logger = LoggerFactory.getLogger(getClass)
     val label = if (baseOwner == repo.owner.login) { ref }
     else { s"${repo.owner.login}:${ref}" }
     val user = repo.owner

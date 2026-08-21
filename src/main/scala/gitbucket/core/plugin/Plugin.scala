@@ -32,6 +32,8 @@ abstract class Plugin {
    * Override to declare this plug-in provides images.
    */
   def images(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[(String, Array[Byte])] =
+    logger.debug(">>> Entering images(registry={},context={},settings={})", registry, context, settings)
+    logger.debug("<<< Exiting images(registry={},context={},settings={})", registry, context, settings)
     Nil
 
   /**
@@ -45,6 +47,7 @@ abstract class Plugin {
   def controllers(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting controllers(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(String, ControllerBase)] = Nil
 
@@ -59,6 +62,7 @@ abstract class Plugin {
   def anonymousAccessiblePaths(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting anonymousAccessiblePaths(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[String] = Nil
 
@@ -71,6 +75,8 @@ abstract class Plugin {
    * Override to declare this plug-in provides JavaScript.
    */
   def javaScripts(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[(String, String)] =
+    logger.debug(">>> Entering javaScripts(registry={},context={},settings={})", registry, context, settings)
+    logger.debug("<<< Exiting javaScripts(registry={},context={},settings={})", registry, context, settings)
     Nil
 
   /**
@@ -82,6 +88,8 @@ abstract class Plugin {
    * Override to declare this plug-in provides renderers.
    */
   def renderers(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[(String, Renderer)] =
+    logger.debug(">>> Entering renderers(registry={},context={},settings={})", registry, context, settings)
+    logger.debug("<<< Exiting renderers(registry={},context={},settings={})", registry, context, settings)
     Nil
 
   /**
@@ -95,6 +103,7 @@ abstract class Plugin {
   def repositoryRoutings(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting repositoryRoutings(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[GitRepositoryRouting] = Nil
 
@@ -107,6 +116,7 @@ abstract class Plugin {
    * Override to add account hooks.
    */
   def accountHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[AccountHook] = Nil
+  logger.debug(">>> Entering accountHooks(registry={},context={},settings={})", registry, context, settings)
 
   /**
    * Override to add receive hooks.
@@ -115,8 +125,10 @@ abstract class Plugin {
 
   /**
    * Override to add receive hooks.
+   logger.debug("<<< Exiting accountHooks(registry={},context={},settings={})", registry, context, settings)
    */
   def receiveHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[ReceiveHook] = Nil
+  logger.debug(">>> Entering receiveHooks(registry={},context={},settings={})", registry, context, settings)
 
   /**
    * Override to add repository hooks.
@@ -125,10 +137,12 @@ abstract class Plugin {
 
   /**
    * Override to add repository hooks.
+   logger.debug("<<< Exiting receiveHooks(registry={},context={},settings={})", registry, context, settings)
    */
   def repositoryHooks(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting repositoryHooks(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[RepositoryHook] = Nil
 
@@ -141,6 +155,7 @@ abstract class Plugin {
    * Override to add issue hooks.
    */
   def issueHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[IssueHook] = Nil
+  logger.debug(">>> Entering issueHooks(registry={},context={},settings={})", registry, context, settings)
 
   /**
    * Override to add pull request hooks.
@@ -149,10 +164,12 @@ abstract class Plugin {
 
   /**
    * Override to add pull request hooks.
+   logger.debug("<<< Exiting issueHooks(registry={},context={},settings={})", registry, context, settings)
    */
   def pullRequestHooks(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting pullRequestHooks(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[PullRequestHook] = Nil
 
@@ -167,6 +184,7 @@ abstract class Plugin {
   def repositoryHeaders(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting repositoryHeaders(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(RepositoryInfo, Context) => Option[Html]] = Nil
 
@@ -181,6 +199,7 @@ abstract class Plugin {
   def globalMenus(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting globalMenus(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(Context) => Option[Link]] = Nil
 
@@ -195,6 +214,7 @@ abstract class Plugin {
   def repositoryMenus(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting repositoryMenus(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(RepositoryInfo, Context) => Option[Link]] = Nil
 
@@ -209,6 +229,7 @@ abstract class Plugin {
   def repositorySettingTabs(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting repositorySettingTabs(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(RepositoryInfo, Context) => Option[Link]] = Nil
 
@@ -223,6 +244,7 @@ abstract class Plugin {
   def profileTabs(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting profileTabs(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(Account, Context) => Option[Link]] = Nil
 
@@ -237,6 +259,7 @@ abstract class Plugin {
   def systemSettingMenus(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting systemSettingMenus(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(Context) => Option[Link]] = Nil
 
@@ -251,6 +274,7 @@ abstract class Plugin {
   def accountSettingMenus(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting accountSettingMenus(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(Context) => Option[Link]] = Nil
 
@@ -265,6 +289,7 @@ abstract class Plugin {
   def dashboardTabs(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting dashboardTabs(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(Context) => Option[Link]] = Nil
 
@@ -279,6 +304,7 @@ abstract class Plugin {
   def issueSidebars(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting issueSidebars(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(Issue, RepositoryInfo, Context) => Option[Html]] = Nil
 
@@ -293,6 +319,7 @@ abstract class Plugin {
   def assetsMappings(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting assetsMappings(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[(String, String)] = Nil
 
@@ -305,6 +332,8 @@ abstract class Plugin {
    * Override to add text decorators.
    */
   def textDecorators(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[TextDecorator] =
+    logger.debug(">>> Entering textDecorators(registry={},context={},settings={})", registry, context, settings)
+    logger.debug("<<< Exiting textDecorators(registry={},context={},settings={})", registry, context, settings)
     Nil
 
   /**
@@ -318,6 +347,7 @@ abstract class Plugin {
   def suggestionProviders(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting suggestionProviders(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[SuggestionProvider] = Nil
 
@@ -332,6 +362,7 @@ abstract class Plugin {
   def sshCommandProviders(
     registry: PluginRegistry,
     context: ServletContext,
+    logger.debug("<<< Exiting sshCommandProviders(registry={},context={},settings={})", registry, context, settings)
     settings: SystemSettings
   ): Seq[PartialFunction[String, ChannelSession => Command]] = Nil
 
@@ -340,9 +371,11 @@ abstract class Plugin {
    * Register plugin functionality to PluginRegistry.
    */
   def initialize(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Unit = {
+    private val logger = LoggerFactory.getLogger(getClass)
     (images ++ images(registry, context, settings)).foreach { case (id, in) =>
       registry.addImage(id, in)
     }
+    logger.debug(">>> Entering initialize(registry={},context={},settings={})", registry, context, settings)
     (controllers ++ controllers(registry, context, settings)).foreach { case (path, controller) =>
       registry.addController(path, controller)
     }
@@ -409,6 +442,7 @@ abstract class Plugin {
     (suggestionProviders ++ suggestionProviders(registry, context, settings)).foreach { suggestionProvider =>
       registry.addSuggestionProvider(suggestionProvider)
     }
+    logger.debug("<<< Exiting initialize(registry={},context={},settings={})", registry, context, settings)
     (sshCommandProviders ++ sshCommandProviders(registry, context, settings)).foreach { sshCommandProvider =>
       registry.addSshCommandProvider(sshCommandProvider)
     }
@@ -433,6 +467,8 @@ abstract class Plugin {
     Using.resource(getClass.getClassLoader.getResourceAsStream(path)) { in =>
       val bytes = new Array[Byte](in.available)
       in.read(bytes)
+      logger.debug(">>> Entering fromClassPath(path={})", path)
+      logger.debug("<<< Exiting fromClassPath(path={})", path)
       bytes
     }
 

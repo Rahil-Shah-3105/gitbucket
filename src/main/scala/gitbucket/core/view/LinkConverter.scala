@@ -13,7 +13,9 @@ trait LinkConverter { self: RequestCache =>
   protected def createIssueLink(owner: String, repository: String, issueId: Int, title: String)(implicit
     context: Context
   ): String = {
+    private val logger = LoggerFactory.getLogger(getClass)
     getIssueFromCache(owner, repository, issueId.toString) match {
+      logger.debug(">>> Entering createIssueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
       case Some(issue) =>
         s"""<a href="${context.path}/${owner}/${repository}/${if (issue.isPullRequest) "pull"
           else "issues"}/${issueId}"><strong>${StringUtil
@@ -29,6 +31,7 @@ trait LinkConverter { self: RequestCache =>
   protected def createGlobalIssueLink(owner: String, repository: String, issueId: Int, title: String)(implicit
     context: Context
   ): String = {
+    logger.debug(">>> Entering createGlobalIssueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
     getIssueFromCache(owner, repository, issueId.toString) match {
       case Some(issue) =>
         s"""<a href="${context.path}/${owner}/${repository}/${if (issue.isPullRequest) "pull"
@@ -50,6 +53,7 @@ trait LinkConverter { self: RequestCache =>
   )(implicit context: Context): String = {
 
     // escape HTML tags
+    logger.debug(">>> Entering convertRefsLinks(text={},repository={},issueIdPrefix={},escapeHtml={})", text, repository, issueIdPrefix, escapeHtml)
     val escaped =
       if (escapeHtml) text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
       else text
@@ -59,6 +63,7 @@ trait LinkConverter { self: RequestCache =>
       .replaceBy("(?<=(^|\\W))([a-zA-Z0-9\\-_]+)/([a-zA-Z0-9\\-_\\.]+)@([a-f0-9]{40})(?=(\\W|$))".r) { m =>
         getAccountByUserNameFromCache(m.group(2)).map { _ =>
           s"""<code><a href="${context.path}/${m.group(2)}/${m.group(3)}/commit/${m.group(4)}">${m.group(2)}/${m.group(
+              logger.debug("<<< Exiting convertRefsLinks(text={},repository={},issueIdPrefix={},escapeHtml={})", text, repository, issueIdPrefix, escapeHtml)
               3
             )}@${m.group(4).substring(0, 7)}</a></code>"""
         }

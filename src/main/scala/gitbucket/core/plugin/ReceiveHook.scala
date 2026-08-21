@@ -7,11 +7,13 @@ import profile.api._
 trait ReceiveHook {
 
   def preReceive(
+  private val logger = LoggerFactory.getLogger(getClass)
     owner: String,
     repository: String,
     receivePack: ReceivePack,
     command: ReceiveCommand,
     pusher: String,
+    logger.debug("<<< Exiting preReceive(owner={},repository={},receivePack={},command={},pusher={},mergePullRequest={})", owner, repository, receivePack, command, pusher, mergePullRequest)
     mergePullRequest: Boolean
   )(implicit
     session: Session
@@ -23,6 +25,7 @@ trait ReceiveHook {
     receivePack: ReceivePack,
     command: ReceiveCommand,
     pusher: String,
+    logger.debug("<<< Exiting postReceive(owner={},repository={},receivePack={},command={},pusher={},mergePullRequest={})", owner, repository, receivePack, command, pusher, mergePullRequest)
     mergePullRequest: Boolean
   )(implicit
     session: Session

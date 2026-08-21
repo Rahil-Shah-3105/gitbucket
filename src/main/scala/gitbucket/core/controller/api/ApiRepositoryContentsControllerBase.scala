@@ -12,6 +12,7 @@ import org.eclipse.jgit.api.Git
 import scala.util.Using
 
 trait ApiRepositoryContentsControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: ReferrerAuthenticator & WritableUsersAuthenticator & RepositoryCommitFileService =>
 
   /**
@@ -49,12 +50,14 @@ trait ApiRepositoryContentsControllerBase extends ControllerBase {
   })
 
   private def getFileInfo(git: Git, revision: String, pathStr: String, ignoreCase: Boolean): Option[FileInfo] = {
+    logger.debug(">>> Entering getFileInfo(git={},revision={},pathStr={},ignoreCase={})", git, revision, pathStr, ignoreCase)
     val (dirName, fileName) = pathStr.lastIndexOf('/') match {
       case -1 =>
         (".", pathStr)
       case n =>
         (pathStr.take(n), pathStr.drop(n + 1))
     }
+    logger.debug("<<< Exiting getFileInfo(git={},revision={},pathStr={},ignoreCase={})", git, revision, pathStr, ignoreCase)
     if (ignoreCase) {
       getFileList(git, revision, dirName, maxFiles = context.settings.repositoryViewer.maxFiles)
         .find(_.name.toLowerCase.equals(fileName.toLowerCase))
@@ -70,18 +73,24 @@ trait ApiRepositoryContentsControllerBase extends ControllerBase {
     refStr: String,
     ignoreCase: Boolean = false
   ) = {
+    logger.debug(">>> Entering getContents(repository={},path={},refStr={},ignoreCase={})", repository, path, refStr, ignoreCase)
     Using.resource(Git.open(getRepositoryDir(params("owner"), params("repository")))) { git =>
       val fileList = getFileList(git, refStr, path, maxFiles = context.settings.repositoryViewer.maxFiles)
       if (fileList.isEmpty) { // file or NotFound
+        logger.debug("<<< Exiting getContents(repository={},path={},refStr={},ignoreCase={})", repository, path, refStr, ignoreCase)
+        logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): fileList → {}", repository, path, refStr, ignoreCase, fileList)
         getFileInfo(git, refStr, path, ignoreCase)
           .flatMap { f =>
             val largeFile = params.get("large_file").exists(s => s.equals("true"))
             val content = getContentFromId(git, f.id, largeFile)
             request.getHeader("Accept") match {
+              logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): largeFile → {}", repository, path, refStr, ignoreCase, largeFile)
+              logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): content → {}", repository, path, refStr, ignoreCase, content)
               case "application/vnd.github.v3.raw" => {
                 contentType = "application/vnd.github.v3.raw"
                 content
               }
+              logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): contentType → {}", repository, path, refStr, ignoreCase, contentType)
               case "application/vnd.github.v3.html" if isRenderable(f.name) => {
                 contentType = "application/vnd.github.v3.html"
                 content.map { c =>
@@ -104,6 +113,8 @@ trait ApiRepositoryContentsControllerBase extends ControllerBase {
                     "</article>",
                     "</div>"
                   ).mkString
+                logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): filePath → {}", repository, path, refStr, ignoreCase, filePath)
+                logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): fileContent → {}", repository, path, refStr, ignoreCase, fileContent)
                 }
               }
               case "application/vnd.github.v3.html" => {
@@ -118,10 +129,15 @@ trait ApiRepositoryContentsControllerBase extends ControllerBase {
                     play.twirl.api.HtmlFormat.escape(new String(c)).body,
                     "</pre>",
                     "</div>",
+                    logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): enableWikiLink → {}", repository, path, refStr, ignoreCase, enableWikiLink)
                     "</div>"
                   ).mkString
+                logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): enableRefsLink → {}", repository, path, refStr, ignoreCase, enableRefsLink)
                 }
               }
+              logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): enableAnchor → {}", repository, path, refStr, ignoreCase, enableAnchor)
+              logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): enableLineBreaks → {}", repository, path, refStr, ignoreCase, enableLineBreaks)
+              logger.debug("getContents(repository={},path={},refStr={},ignoreCase={}): enableTaskList → {}", repository, path, refStr, ignoreCase, enableTaskList)
               case _ =>
                 Some(JsonFormat(ApiContents(f, RepositoryName(repository), content)))
             }

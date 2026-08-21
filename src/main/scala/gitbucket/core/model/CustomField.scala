@@ -13,6 +13,7 @@ trait CustomFieldComponent extends TemplateComponent { self: Profile =>
   lazy val CustomFields = TableQuery[CustomFields]
 
   class CustomFields(tag: Tag) extends Table[CustomField](tag, "CUSTOM_FIELD") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val fieldId = column[Int]("FIELD_ID", O AutoInc)
     val fieldName = column[String]("FIELD_NAME")
     val fieldType = column[String]("FIELD_TYPE")
@@ -24,6 +25,8 @@ trait CustomFieldComponent extends TemplateComponent { self: Profile =>
         .mapTo[CustomField]
 
     def byPrimaryKey(userName: String, repositoryName: String, fieldId: Int) =
+      logger.debug(">>> Entering byPrimaryKey(userName={},repositoryName={},fieldId={})", userName, repositoryName, fieldId)
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},fieldId={})", userName, repositoryName, fieldId)
       (this.userName === userName.bind) && (this.repositoryName === repositoryName.bind) && (this.fieldId === fieldId.bind)
   }
 }
@@ -59,22 +62,27 @@ trait CustomFieldBehavior {
 
 object CustomFieldBehavior {
   def validate(field: CustomField, value: String, messages: Messages): Option[String] = {
+    logger.debug(">>> Entering validate(field={},value={},messages={})", field, value, messages)
     if (value.isEmpty) None
     else {
       CustomFieldBehavior(field.fieldType).flatMap { behavior =>
         behavior.validate(field.fieldName, field.constraints, value, messages)
       }
+    logger.error("Exception in validate(name={},constraints={},value={},messages={}): {}", name, constraints, value, messages, e.getMessage, e)
     }
   }
 
   def apply(fieldType: String): Option[CustomFieldBehavior] = {
+    logger.debug(">>> Entering apply(fieldType={})", fieldType)
     fieldType match {
       case "long"   => Some(LongFieldBehavior)
       case "double" => Some(DoubleFieldBehavior)
       case "string" => Some(StringFieldBehavior)
       case "date"   => Some(DateFieldBehavior)
       case "enum"   => Some(EnumFieldBehavior)
-      case _        => None
+      case _        =>
+        logger.debug("<<< Exiting apply(fieldType={})", fieldType)
+        None
     }
   }
 
@@ -169,6 +177,8 @@ object CustomFieldBehavior {
       fieldName: String,
       constraints: Option[String],
       issueId: Option[Int],
+      logger.debug(">>> Entering createPulldownHtml(repository={},fieldId={},fieldName={},constraints={},issueId={},value={})", repository, fieldId, fieldName, constraints, issueId, value)
+      logger.debug("<<< Exiting createPulldownHtml(repository={},fieldId={},fieldName={},constraints={},issueId={},value={})", repository, fieldId, fieldName, constraints, issueId, value)
       value: Option[String]
     )(implicit context: Context): String = {
       val sb = new StringBuilder
@@ -179,6 +189,7 @@ object CustomFieldBehavior {
             val options = new StringBuilder()
             options.append(
               s"""<li><a href="javascript:void(0);" class="custom-field-option-$fieldId" data-value=""><i class="octicon octicon-x"></i> Clear ${StringUtil
+            logger.debug("createPulldownHtml(repository={},fieldId={},fieldName={},constraints={},issueId={},value={}): options → {}", repository, fieldId, fieldName, constraints, issueId, value, options)
                   .escapeHtml(fieldName)}</a></li>"""
             )
             constraints.foreach { x =>
@@ -263,12 +274,14 @@ object CustomFieldBehavior {
     override def createHtml(repository: RepositoryInfo, fieldId: Int, fieldName: String, constraints: Option[String])(
       implicit context: Context
     ): String = {
+      logger.debug(">>> Entering createHtml(repository={},fieldId={},fieldName={},constraints={})", repository, fieldId, fieldName, constraints)
       val sb = new StringBuilder
       sb.append(
         s"""<input type="$fieldType" class="form-control input-sm" id="custom-field-$fieldId" name="custom-field-$fieldId" data-field-id="$fieldId" style="width: 120px;"/>"""
       )
       sb.append(s"""<script>
                    |$$('#custom-field-$fieldId').focusout(function(){
+      logger.debug("<<< Exiting createHtml(repository={},fieldId={},fieldName={},constraints={})", repository, fieldId, fieldName, constraints)
                    |  const $$this = $$(this);
                    |  $$.post('${helpers.url(repository)}/issues/customfield_validation/$fieldId',
                    |    { value: $$this.val() },
@@ -373,5 +386,6 @@ object CustomFieldBehavior {
       value: String,
       messages: Messages
     ): Option[String] = None
+  logger.debug("<<< Exiting fieldHtml(repository={},issueId={},fieldId={},fieldName={},constraints={},value={},editable={})", repository, issueId, fieldId, fieldName, constraints, value, editable)
   }
 }

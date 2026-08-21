@@ -28,8 +28,11 @@ case class ApiWebhook(
 
 object ApiWebhook {
   def apply(
+    private val logger = LoggerFactory.getLogger(getClass)
     _type: String,
     hook: RepositoryWebHook,
+    logger.debug("apply(_type={},hook={},hookEvents={}): events → {}", _type, hook, hookEvents, events)
+    logger.debug("apply(_type={},hook={},hookEvents={}): name → {}", _type, hook, hookEvents, name)
     hookEvents: Set[WebHook.Event]
   ): ApiWebhook =
     ApiWebhook(
@@ -39,6 +42,7 @@ object ApiWebhook {
       active = true, // dummy
       events = hookEvents.toList.map(_.name),
       config = ApiWebhookConfig(hook.ctype.code, hook.url),
+      logger.info("apply(_type={},hook={},hookEvents={}): active → {}", _type, hook, hookEvents, active)
       url = ApiPath(s"/api/v3/${hook.userName}/${hook.repositoryName}/hooks/${hook.hookId}")
     )
 }

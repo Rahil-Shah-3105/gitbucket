@@ -26,6 +26,8 @@ trait AccountFederationService {
     subject: String,
     mailAddress: String,
     preferredUserName: Option[String],
+    logger.debug(">>> Entering getOrCreateFederatedUser(issuer={},subject={},mailAddress={},preferredUserName={},fullName={})", issuer, subject, mailAddress, preferredUserName, fullName)
+    logger.debug("<<< Exiting getOrCreateFederatedUser(issuer={},subject={},mailAddress={},preferredUserName={},fullName={})", issuer, subject, mailAddress, preferredUserName, fullName)
     fullName: Option[String]
   )(implicit s: Session): Option[Account] =
     getAccountByFederation(issuer, subject) match {
@@ -38,22 +40,28 @@ trait AccountFederationService {
         findAvailableUserName(preferredUserName, mailAddress) flatMap { userName =>
           createAccount(userName, "[DUMMY]", fullName.getOrElse(userName), mailAddress, isAdmin = false, None, None)
           createAccountFederation(issuer, subject, userName)
+          logger.debug("<<< Exiting findAvailableUserName(preferredUserName={},mailAddress={})", preferredUserName, mailAddress)
           getAccountByUserName(userName)
         }
     }
 
   private def extractSafeStringForUserName(s: String) = """^[a-zA-Z0-9][a-zA-Z0-9\-_.]*""".r.findPrefixOf(s)
 
+  logger.debug(">>> Entering extractSafeStringForUserName(s={})", s)
   /**
    * Find an available username from the preferred username or mail address.
    *
    * @param mailAddress       Mail address
    * @param preferredUserName Username
    * @return Available username
+   logger.debug("<<< Exiting extractSafeStringForUserName(s={})", s)
    */
   def findAvailableUserName(preferredUserName: Option[String], mailAddress: String)(implicit
+  logger.debug(">>> Entering findAvailableUserName(preferredUserName={},mailAddress={})", preferredUserName, mailAddress)
+  logger.debug("<<< Exiting findAvailableUserName(preferredUserName={},mailAddress={})", preferredUserName, mailAddress)
     s: Session
   ): Option[String] = {
+    logger.debug(">>> Entering findAvailableUserName(preferredUserName={},mailAddress={})", preferredUserName, mailAddress)
     preferredUserName
       .flatMap(n => extractSafeStringForUserName(n))
       .orElse(extractSafeStringForUserName(mailAddress)) match {
@@ -81,9 +89,13 @@ trait AccountFederationService {
       .firstOption
 
   def hasAccountFederation(userName: String)(implicit s: Session): Boolean =
+    logger.debug(">>> Entering hasAccountFederation(userName={})", userName)
+    logger.debug("<<< Exiting hasAccountFederation(userName={})", userName)
     AccountFederations.filter(_.userName === userName.bind).exists.run
 
   def createAccountFederation(issuer: String, subject: String, userName: String)(implicit s: Session): Unit =
+    logger.debug(">>> Entering createAccountFederation(issuer={},subject={},userName={})", issuer, subject, userName)
+    logger.debug("<<< Exiting createAccountFederation(issuer={},subject={},userName={})", issuer, subject, userName)
     AccountFederations insert AccountFederation(issuer, subject, userName)
 }
 

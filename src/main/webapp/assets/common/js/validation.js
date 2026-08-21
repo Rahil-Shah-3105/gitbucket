@@ -1,6 +1,10 @@
+const logger = console;
 $(function(){
+logger.debug('>>> Entering function()');
   $(document).on('submit', 'form[validate=true]', validate);
+logger.debug('<<< Exiting function()');
   $(document).on('click', 'input[formaction]', function(e){
+	logger.debug(`>>> Entering on(document=${document})`);
     var form = $(e.target).parents('form');
     $(form).attr('action', $(e.target).attr('formaction'));
   });
@@ -32,7 +36,10 @@ function validate(e){
 }
 
 function displayErrors(data){
+logger.debug(`>>> Entering displayErrors(data=${data})`);
   $.each(data, function(key, value){
+	logger.debug(`>>> Entering each(data=${data})`);
     $('#error-' + key.split(".").join("_")).text(value);
   });
+logger.debug(`<<< Exiting displayErrors(data=${data})`);
 }

@@ -6,6 +6,7 @@ trait DeployKeyComponent extends TemplateComponent { self: Profile =>
   lazy val DeployKeys = TableQuery[DeployKeys]
 
   class DeployKeys(tag: Tag) extends Table[DeployKey](tag, "DEPLOY_KEY") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val deployKeyId = column[Int]("DEPLOY_KEY_ID", O AutoInc)
     val title = column[String]("TITLE")
     val publicKey = column[String]("PUBLIC_KEY")
@@ -14,6 +15,8 @@ trait DeployKeyComponent extends TemplateComponent { self: Profile =>
       (userName, repositoryName, deployKeyId, title, publicKey, allowWrite).mapTo[DeployKey]
 
     def byPrimaryKey(userName: String, repositoryName: String, deployKeyId: Int) =
+      logger.debug(">>> Entering byPrimaryKey(userName={},repositoryName={},deployKeyId={})", userName, repositoryName, deployKeyId)
+      logger.debug("<<< Exiting byPrimaryKey(userName={},repositoryName={},deployKeyId={})", userName, repositoryName, deployKeyId)
       (this.userName === userName.bind) && (this.repositoryName === repositoryName.bind) && (this.deployKeyId === deployKeyId.bind)
   }
 }

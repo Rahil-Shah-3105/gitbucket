@@ -17,8 +17,12 @@ object WebHookContentType {
 }
 
 trait WebHook {
+  private val logger = LoggerFactory.getLogger(getClass)
   val url: String
+  logger.debug(">>> Entering valueOpt(code={})", code)
   val ctype: WebHookContentType
+  logger.debug("<<< Exiting valueOpt(code={})", code)
+  logger.debug("<<< Exiting valueOpt(name={})", name)
   val token: Option[String]
 }
 

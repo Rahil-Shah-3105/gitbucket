@@ -6,6 +6,7 @@ trait SshKeyComponent { self: Profile =>
   lazy val SshKeys = TableQuery[SshKeys]
 
   class SshKeys(tag: Tag) extends Table[SshKey](tag, "SSH_KEY") {
+    private val logger = LoggerFactory.getLogger(getClass)
     val userName = column[String]("USER_NAME")
     val sshKeyId = column[Int]("SSH_KEY_ID", O AutoInc)
     val title = column[String]("TITLE")
@@ -13,6 +14,8 @@ trait SshKeyComponent { self: Profile =>
     def * = (userName, sshKeyId, title, publicKey).mapTo[SshKey]
 
     def byPrimaryKey(userName: String, sshKeyId: Int) =
+      logger.debug(">>> Entering byPrimaryKey(userName={},sshKeyId={})", userName, sshKeyId)
+      logger.debug("<<< Exiting byPrimaryKey(userName={},sshKeyId={})", userName, sshKeyId)
       (this.userName === userName.bind) && (this.sshKeyId === sshKeyId.bind)
   }
 }
