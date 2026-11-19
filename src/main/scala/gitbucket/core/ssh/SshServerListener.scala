@@ -33,6 +33,7 @@ object SshServer {
     server.setShellFactory(new NoShell(publicAddress))
     logger.debug("configure(bindAddress={},publicAddress={},baseUrl={}): server → {}", bindAddress, publicAddress, baseUrl, server)
     logger.warn("<<< Exiting configure(bindAddress={},publicAddress={},baseUrl={})", bindAddress, publicAddress, baseUrl)
+    logger.debug("configure(bindAddress={},publicAddress={},baseUrl={}): provider → {}", bindAddress, publicAddress, baseUrl, provider)
     server
   }
 

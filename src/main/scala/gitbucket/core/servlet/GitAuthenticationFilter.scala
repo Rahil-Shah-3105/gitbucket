@@ -59,8 +59,8 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
       case ex: Exception => {
         logger.error("error", ex)
         AuthUtil.requireAuth(response)
+      logger.warn("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
       }
-    logger.warn("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
     }
   }
 
@@ -72,6 +72,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
     isUpdating: Boolean,
     filter: GitRepositoryFilter
   ): Unit = {
+    logger.error(">>> Entering pluginRepository(request={},response={},chain={},settings={},isUpdating={},filter={})", request, response, chain, settings, isUpdating, filter)
     Database() withSession { implicit session =>
       val account = for {
         authorizationHeader <- Option(request.getHeader("Authorization"))
@@ -85,8 +86,8 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
         chain.doFilter(request, response)
       } else {
         AuthUtil.requireAuth(response)
+      logger.warn("<<< Exiting pluginRepository(request={},response={},chain={},settings={},isUpdating={},filter={})", request, response, chain, settings, isUpdating, filter)
       }
-    logger.warn("<<< Exiting pluginRepository(request={},response={},chain={},settings={},isUpdating={},filter={})", request, response, chain, settings, isUpdating, filter)
     }
   }
 
@@ -97,6 +98,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
     settings: SystemSettings,
     isUpdating: Boolean
   ): Unit = {
+    logger.error(">>> Entering defaultRepository(request={},response={},chain={},settings={},isUpdating={})", request, response, chain, settings, isUpdating)
     val action = request.paths match {
       case Array(_, repositoryOwner, repositoryName, _*) =>
         Database() withSession { implicit session =>
@@ -148,6 +150,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
     }
 
     logger.warn("<<< Exiting defaultRepository(request={},response={},chain={},settings={},isUpdating={})", request, response, chain, settings, isUpdating)
+    logger.debug("defaultRepository(request={},response={},chain={},settings={},isUpdating={}): request → {}", request, response, chain, settings, isUpdating, request)
     action()
   }
 

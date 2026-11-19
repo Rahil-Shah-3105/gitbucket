@@ -14,8 +14,9 @@ object FileUtil {
     tika.detect(name) match {
       logger.warn("<<< Exiting getMimeType(name={})", name)
       case null     => "application/octet-stream"
-      case mimeType => mimeType
-    logger.error("getMimeType(name={}): tika → {}", name, tika)
+      case mimeType =>
+        logger.error("getMimeType(name={}): tika → {}", name, tika)
+        mimeType
     }
   }
 
@@ -40,13 +41,14 @@ object FileUtil {
     if (safeMode) {
       mimeType.replace("image/svg+xml", "text/plain; charset=UTF-8")
     } else {
+      logger.warn("<<< Exiting getSafeMimeType(name={},safeMode={})", name, safeMode)
       mimeType
-    logger.warn("<<< Exiting getSafeMimeType(name={},safeMode={})", name, safeMode)
     }
   }
 
   def isImage(name: String, safeMode: Boolean = true): Boolean = {
       logger.error(">>> Entering isImage(name={},safeMode={})", name, safeMode)
+      logger.warn("<<< Exiting isImage(name={},safeMode={})", name, safeMode)
       getSafeMimeType(name, safeMode).startsWith("image/")
   }
 
@@ -80,6 +82,7 @@ object FileUtil {
 
   def readableSize(size: Long): String = {
       logger.error(">>> Entering readableSize(size={})", size)
+      logger.warn("<<< Exiting readableSize(size={})", size)
       FileUtils.byteCountToDisplaySize(size)
   }
 

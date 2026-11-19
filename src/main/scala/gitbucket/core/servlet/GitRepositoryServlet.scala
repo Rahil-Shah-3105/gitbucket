@@ -142,8 +142,9 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
                             )
                           )
                         )
+                      logger.error("serviceGitLfsBatchAPI(req={},res={}): timeout → {}", req, res, timeout)
                       )
-                    logger.error("serviceGitLfsBatchAPI(req={},res={}): timeout → {}", req, res, timeout)
+                    logger.debug("serviceGitLfsBatchAPI(req={},res={}): upload → {}", req, res, upload)
                     }
                   )
                 case "download" =>
@@ -164,8 +165,9 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
                             )
                           )
                         )
+                      logger.debug("serviceGitLfsBatchAPI(req={},res={}): expires_at → {}", req, res, expires_at)
                       )
-                    logger.debug("serviceGitLfsBatchAPI(req={},res={}): expires_at → {}", req, res, expires_at)
+                    logger.debug("serviceGitLfsBatchAPI(req={},res={}): download → {}", req, res, download)
                     }
                   )
               }
@@ -174,12 +176,12 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
               Using.resource(res.getWriter) { out =>
                 out.print(write(batchResponse))
                 out.flush()
+              logger.debug("serviceGitLfsBatchAPI(req={},res={}): res → {}", req, res, res)
               }
-          logger.debug("serviceGitLfsBatchAPI(req={},res={}): res → {}", req, res, res)
           }
         }
+      logger.warn("<<< Exiting serviceGitLfsBatchAPI(req={},res={})", req, res)
       }
-    logger.warn("<<< Exiting serviceGitLfsBatchAPI(req={},res={})", req, res)
     }
   }
 }

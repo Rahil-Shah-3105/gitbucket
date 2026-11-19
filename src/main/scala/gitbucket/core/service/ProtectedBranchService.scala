@@ -63,6 +63,7 @@ trait ProtectedBranchService {
       ProtectedBranch(owner, repository, branch, enforceAdmins, requiredStatusCheck, restrictions)
     )
 
+    logger.error(">>> Entering enableBranchProtection(owner={},repository={},branch={},enforceAdmins={},requiredStatusCheck={},contexts={},restrictions={},restrictionsUsers={})", owner, repository, branch, enforceAdmins, requiredStatusCheck, contexts, restrictions, restrictionsUsers)
     if (restrictions) {
       restrictionsUsers.foreach { user =>
         ProtectedBranchRestrictions.insert(ProtectedBranchRestriction(owner, repository, branch, user))
@@ -72,8 +73,8 @@ trait ProtectedBranchService {
     if (requiredStatusCheck) {
       contexts.foreach { context =>
         ProtectedBranchContexts.insert(ProtectedBranchContext(owner, repository, branch, context))
+      logger.warn("<<< Exiting enableBranchProtection(owner={},repository={},branch={},enforceAdmins={},requiredStatusCheck={},contexts={},restrictions={},restrictionsUsers={})", owner, repository, branch, enforceAdmins, requiredStatusCheck, contexts, restrictions, restrictionsUsers)
       }
-    logger.warn("<<< Exiting enableBranchProtection(owner={},repository={},branch={},enforceAdmins={},requiredStatusCheck={},contexts={},restrictions={},restrictionsUsers={})", owner, repository, branch, enforceAdmins, requiredStatusCheck, contexts, restrictions, restrictionsUsers)
     }
   }
 
@@ -217,8 +218,8 @@ object ProtectedBranchService {
           x.toSet -- getCommitStatuses(owner, repository, sha1)
             .filter(_.state == CommitState.SUCCESS)
             .map(_.context)
+            logger.warn("<<< Exiting unSuccessedContexts(sha1={})", sha1)
             .toSet
-      logger.warn("<<< Exiting unSuccessedContexts(sha1={})", sha1)
       }
     }
 
@@ -248,8 +249,8 @@ object ProtectedBranchService {
         enabled = false,
         contexts = None,
         enforceAdmins = false,
+        logger.warn("<<< Exiting disabled(owner={},repository={},branch={})", owner, repository, branch)
         restrictionsUsers = None
-      logger.warn("<<< Exiting disabled(owner={},repository={},branch={})", owner, repository, branch)
       )
     }
   }

@@ -681,9 +681,9 @@ object JGitUtil {
         )
       } else {
         logger.warn("<<< Exiting getCommitLog(i={},count={},logs={})", i, count, logs)
+        logger.warn("<<< Exiting getCommitLog(git={},revision={},page={},limit={},path={})", git, revision, page, limit, path)
+        val __logStart = System.currentTimeMillis()
         (logs, i.hasNext)
-      logger.warn("<<< Exiting getCommitLog(git={},revision={},page={},limit={},path={})", git, revision, page, limit, path)
-      val __logStart = System.currentTimeMillis()
       }
 
     Using.resource(new RevWalk(git.getRepository)) { revWalk =>
@@ -821,8 +821,8 @@ object JGitUtil {
         None
       } else {
         Some((path, commit))
+      logger.error("getLatestCommitFromPaths(git,paths,revision)={},{},{}: find query executed in {} ms", git, paths, revision, (System.currentTimeMillis() - __logStart))
       }
-    logger.error("getLatestCommitFromPaths(git,paths,revision)={},{},{}: find query executed in {} ms", git, paths, revision, (System.currentTimeMillis() - __logStart))
     }.toMap
   }
 
@@ -837,10 +837,10 @@ object JGitUtil {
     df.setDetectRenames(true)
     getDiffEntries(git, from, to)
       .foreach { entry =>
+        logger.debug("getPatch(git={},from={},to={}): df → {}", git, from, to, df)
         df.format(entry)
-      logger.debug("getPatch(git={},from={},to={}): df → {}", git, from, to, df)
+      logger.warn("<<< Exiting getPatch(git={},from={},to={})", git, from, to)
       }
-    logger.warn("<<< Exiting getPatch(git={},from={},to={})", git, from, to)
     new String(out.toByteArray, "UTF-8")
   }
 
@@ -1037,8 +1037,8 @@ object JGitUtil {
       }
       .getOrElse {
         logger.warn("<<< Exiting getTagsOnCommit(git={},commitId={})", git, commitId)
+        logger.error("getTagsOnCommit(git,commitId)={},{}: find query executed in {} ms", git, commitId, (System.currentTimeMillis() - __logStart))
         List.empty
-      logger.error("getTagsOnCommit(git,commitId)={},{}: find query executed in {} ms", git, commitId, (System.currentTimeMillis() - __logStart))
       }
   }
 
@@ -1076,6 +1076,7 @@ object JGitUtil {
 
   def isEmpty(git: Git): Boolean = {
       logger.error(">>> Entering isEmpty(git={})", git)
+      logger.warn("<<< Exiting isEmpty(git={})", git)
       git.getRepository.resolve(Constants.HEAD) == null
   }
 
@@ -1119,6 +1120,7 @@ object JGitUtil {
         message.foreach { message =>
           tagCommand.setMessage(message)
         }
+        logger.debug("createTag(git={},name={},message={},commitId={}): tagCommand → {}", git, name, message, commitId, tagCommand)
         logger.error("createTag(git,name,message,commitId)={},{},{},{}: find query executed in {} ms", git, name, message, commitId, (System.currentTimeMillis() - __logStart))
         tagCommand.call()
       }
@@ -1127,8 +1129,9 @@ object JGitUtil {
       case _: ConcurrentRefUpdateException => Left("Sorry, some error occurs.")
       case _: InvalidTagNameException      => Left("Sorry, that name is invalid.")
       case _: NoHeadException              => Left("Sorry, this repo doesn't have HEAD reference")
-      case _: GitAPIException              => Left("Sorry, some Git operation error occurs.")
-    logger.error("Exception in createTag(git={},name={},message={},commitId={}): {}", git, name, message, commitId, e.getMessage, e)
+      case _: GitAPIException              =>
+        logger.error("Exception in createTag(git={},name={},message={},commitId={}): {}", git, name, message, commitId, e.getMessage, e)
+        Left("Sorry, some Git operation error occurs.")
     }
   }
 
@@ -1428,8 +1431,8 @@ object JGitUtil {
     logger.warn("<<< Exiting getForkedCommitId(oldGit={},newGit={},userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={})", oldGit, newGit, userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch)
     val existIds = getAllCommitIds(oldGit)
     getCommitLogs(newGit, requestBranch, includesLastCommit = true) { commit =>
+      logger.error("getForkedCommitId(oldGit={},newGit={},userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={}): existIds → {}", oldGit, newGit, userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch, existIds)
       existIds.contains(commit.name) && getBranchesOfCommit(oldGit, commit.getName).contains(branch)
-    logger.error("getForkedCommitId(oldGit={},newGit={},userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={}): existIds → {}", oldGit, newGit, userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch, existIds)
     }.head.id
   }
 
@@ -1584,8 +1587,8 @@ object JGitUtil {
         }
         val limeMap = idLine.groupBy(_._1).view.mapValues(_.map(_._2).toSet)
         blameMap.values.map { b =>
+          logger.warn("<<< Exiting getBlame(git={},id={},path={})", git, id, path)
           b.copy(lines = limeMap(b.id))
-        logger.warn("<<< Exiting getBlame(git={},id={},path={})", git, id, path)
         }
       }
       logger.error("getBlame(git,id,path)={},{},{}: find query executed in {} ms", git, id, path, (System.currentTimeMillis() - __logStart))
@@ -1607,8 +1610,8 @@ object JGitUtil {
     logger.warn("<<< Exiting getShaByRef(owner={},name={},revstr={})", owner, name, revstr)
     val __logStart = System.currentTimeMillis()
     Using.resource(Git.open(getRepositoryDir(owner, name))) { git =>
+      logger.error("getShaByRef(owner,name,revstr)={},{},{}: find query executed in {} ms", owner, name, revstr, (System.currentTimeMillis() - __logStart))
       Option(git.getRepository.resolve(revstr)).map(ObjectId.toString)
-    logger.error("getShaByRef(owner,name,revstr)={},{},{}: find query executed in {} ms", owner, name, revstr, (System.currentTimeMillis() - __logStart))
     }
   }
 

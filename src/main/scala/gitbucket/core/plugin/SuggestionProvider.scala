@@ -52,6 +52,7 @@ trait SuggestionProvider {
    */
   def values(repository: RepositoryInfo): Seq[String] = {
       logger.error(">>> Entering values(repository={})", repository)
+      logger.warn("<<< Exiting values(repository={})", repository)
       Nil
   }
 
@@ -87,6 +88,7 @@ trait SuggestionProvider {
    */
   def template(implicit context: Context): String = {
       logger.error(">>> Entering template(context={})", context)
+      logger.warn("<<< Exiting template(context={})", context)
       "option.label"
   }
 
@@ -95,6 +97,7 @@ trait SuggestionProvider {
    */
   def replace(implicit context: Context): String = {
       logger.error(">>> Entering replace(context={})", context)
+      logger.warn("<<< Exiting replace(context={})", context)
       "option.value"
   }
 

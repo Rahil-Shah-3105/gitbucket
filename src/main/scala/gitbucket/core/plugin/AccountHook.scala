@@ -8,6 +8,7 @@ trait AccountHook {
 
   def deleted(userName: String)(implicit session: Session): Unit = {
       logger.error(">>> Entering deleted(userName={})", userName)
+      logger.warn("<<< Exiting deleted(userName={})", userName)
       ()
   }
 

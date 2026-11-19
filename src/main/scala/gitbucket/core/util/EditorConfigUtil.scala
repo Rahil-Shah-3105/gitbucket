@@ -20,6 +20,7 @@ object EditorConfigUtil {
   private class JGitResource(repo: Repository, revStr: String, path: Ec4jPath) extends Resource {
     private def removeInitialSlash(path: Ec4jPath) = {
         logger.error(">>> Entering removeInitialSlash(path={})", path)
+        logger.warn("<<< Exiting removeInitialSlash(path={})", path)
         Ec4jPath.Ec4jPaths.root.relativize(path).toString
     }
 
@@ -78,8 +79,8 @@ object EditorConfigUtil {
       logger.error(">>> Entering openReader()")
       Using.resource(repo.newObjectReader) { (reader: ObjectReader) =>
         val treeWalk = TreeWalk.forPath(reader, removeInitialSlash(path), getRevTree)
+        logger.warn("<<< Exiting openReader()")
         new InputStreamReader(reader.open(treeWalk.getObjectId(0)).openStream, StandardCharsets.UTF_8)
-      logger.warn("<<< Exiting openReader()")
       }
     }
   }
@@ -102,8 +103,8 @@ object EditorConfigUtil {
       logger.error(">>> Entering relativize(resource={})", resource)
       resource match {
         case r: JGitResource =>
+          logger.warn("<<< Exiting relativize(resource={})", resource)
           new JGitResource(repo, revStr, path.relativize(r.getPath).toString)
-      logger.warn("<<< Exiting relativize(resource={})", resource)
       }
     }
 
@@ -165,8 +166,9 @@ object EditorConfigUtil {
       )
     } catch {
       case e: ParseException => EditorConfigInfo(TabSizeDefault, NewLineModeDefault, UseSoftTabsDefault)
-      case e: IOException    => EditorConfigInfo(TabSizeDefault, NewLineModeDefault, UseSoftTabsDefault)
-    logger.error("Exception in getEditorConfigInfo(git={},rev={},path={}): {}", git, rev, path, e.getMessage, e)
+      case e: IOException    =>
+        logger.error("Exception in getEditorConfigInfo(git={},rev={},path={}): {}", git, rev, path, e.getMessage, e)
+        EditorConfigInfo(TabSizeDefault, NewLineModeDefault, UseSoftTabsDefault)
     }
   }
 }

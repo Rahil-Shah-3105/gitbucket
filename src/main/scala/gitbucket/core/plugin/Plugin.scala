@@ -109,6 +109,7 @@ abstract class Plugin {
    */
   def accountHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[AccountHook] = {
       logger.error(">>> Entering accountHooks(registry={},context={},settings={})", registry, context, settings)
+      logger.warn("<<< Exiting accountHooks(registry={},context={},settings={})", registry, context, settings)
       Nil
   }
 
@@ -122,6 +123,7 @@ abstract class Plugin {
    */
   def receiveHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[ReceiveHook] = {
       logger.error(">>> Entering receiveHooks(registry={},context={},settings={})", registry, context, settings)
+      logger.warn("<<< Exiting receiveHooks(registry={},context={},settings={})", registry, context, settings)
       Nil
   }
 
@@ -149,6 +151,7 @@ abstract class Plugin {
    */
   def issueHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[IssueHook] = {
       logger.error(">>> Entering issueHooks(registry={},context={},settings={})", registry, context, settings)
+      logger.warn("<<< Exiting issueHooks(registry={},context={},settings={})", registry, context, settings)
       Nil
   }
 

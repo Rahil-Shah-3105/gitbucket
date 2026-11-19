@@ -13,6 +13,7 @@ trait IssueComponent extends TemplateComponent { self: Profile =>
     def * = (userName, repositoryName, issueId)
     def byPrimaryKey(owner: String, repository: String) = {
         logger.error(">>> Entering byPrimaryKey(owner={},repository={})", owner, repository)
+        logger.warn("<<< Exiting byPrimaryKey(owner={},repository={})", owner, repository)
         byRepository(owner, repository)
     }
   }
@@ -55,6 +56,7 @@ trait IssueComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(owner: String, repository: String, issueId: Int) = {
         logger.error(">>> Entering byPrimaryKey(owner={},repository={},issueId={})", owner, repository, issueId)
+        logger.warn("<<< Exiting byPrimaryKey(owner={},repository={},issueId={})", owner, repository, issueId)
         byIssue(owner, repository, issueId)
     }
   }

@@ -100,6 +100,7 @@ trait RepositoryComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(owner: String, repository: String) = {
         logger.error(">>> Entering byPrimaryKey(owner={},repository={})", owner, repository)
+        logger.warn("<<< Exiting byPrimaryKey(owner={},repository={})", owner, repository)
         byRepository(owner, repository)
     }
   }

@@ -36,8 +36,8 @@ class GitLfsTransferServlet extends HttpServlet {
         res.setHeader("Content-Length", file.length.toString)
         Using.resources(new FileInputStream(file), res.getOutputStream) { (in, out) =>
           IOUtils.copy(in, out)
+          logger.warn("<<< Exiting doGet(req={},res={})", req, res)
           out.flush()
-        logger.warn("<<< Exiting doGet(req={},res={})", req, res)
         }
       } else {
         sendError(res, HttpStatus.SC_NOT_FOUND, MessageFormat.format("Object ''{0}'' not found", oid))
@@ -56,8 +56,9 @@ class GitLfsTransferServlet extends HttpServlet {
         IOUtils.copy(in, out)
       }
       logger.error("doPut(req={},res={}): file → {}", req, res, file)
+      logger.warn("<<< Exiting doPut(req={},res={})", req, res)
       res.setStatus(HttpStatus.SC_OK)
-    logger.warn("<<< Exiting doPut(req={},res={})", req, res)
+    logger.debug("doPut(req={},res={}): res → {}", req, res, res)
     }
   }
 
@@ -78,8 +79,9 @@ class GitLfsTransferServlet extends HttpServlet {
     logger.error(">>> Entering getPathInfo(req={},res={})", req, res)
     req.getRequestURI.substring(1).split("/").reverse match {
       case Array(oid, repository, owner, _*) => Some((owner, repository, oid))
-      case _                                 => None
-    logger.warn("<<< Exiting getPathInfo(req={},res={})", req, res)
+      case _                                 =>
+        logger.warn("<<< Exiting getPathInfo(req={},res={})", req, res)
+        None
     }
   }
 
@@ -89,8 +91,8 @@ class GitLfsTransferServlet extends HttpServlet {
     res.setStatus(status)
     Using.resource(res.getWriter()) { out =>
       out.write(write(GitLfs.Error(message)))
+      logger.warn("<<< Exiting sendError(res={},status={},message={})", res, status, message)
       out.flush()
-    logger.warn("<<< Exiting sendError(res={},status={},message={})", res, status, message)
     }
   }
 

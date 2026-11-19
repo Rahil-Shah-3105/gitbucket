@@ -13,15 +13,18 @@ object WebHookContentType {
 
   def apply(code: String): WebHookContentType = {
       logger.error(">>> Entering apply(code={})", code)
+      logger.warn("<<< Exiting apply(code={})", code)
       map(code)
   }
 
   def valueOf(code: String): WebHookContentType = {
       logger.error(">>> Entering valueOf(code={})", code)
+      logger.warn("<<< Exiting valueOf(code={})", code)
       map(code)
   }
   def valueOpt(code: String): Option[WebHookContentType] = {
       logger.error(">>> Entering valueOpt(code={})", code)
+      logger.warn("<<< Exiting valueOpt(code={})", code)
       map.get(code)
   }
 }
@@ -81,10 +84,12 @@ object WebHook {
     private val map: Map[String, Event] = values.map(e => e.name -> e).toMap
     def valueOf(name: String): Event = {
         logger.error(">>> Entering valueOf(name={})", name)
+        logger.warn("<<< Exiting valueOf(name={})", name)
         map(name)
     }
     def valueOpt(name: String): Option[Event] = {
         logger.error(">>> Entering valueOpt(name={})", name)
+        logger.warn("<<< Exiting valueOpt(name={})", name)
         map.get(name)
     }
   }

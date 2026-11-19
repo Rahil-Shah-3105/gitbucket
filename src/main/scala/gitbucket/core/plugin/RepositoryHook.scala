@@ -8,22 +8,27 @@ trait RepositoryHook {
 
   def created(owner: String, repository: String)(implicit session: Session): Unit = {
       logger.error(">>> Entering created(owner={},repository={})", owner, repository)
+      logger.warn("<<< Exiting created(owner={},repository={})", owner, repository)
       ()
   }
   def deleted(owner: String, repository: String)(implicit session: Session): Unit = {
       logger.error(">>> Entering deleted(owner={},repository={})", owner, repository)
+      logger.warn("<<< Exiting deleted(owner={},repository={})", owner, repository)
       ()
   }
   def renamed(owner: String, repository: String, newRepository: String)(implicit session: Session): Unit = {
       logger.error(">>> Entering renamed(owner={},repository={},newRepository={})", owner, repository, newRepository)
+      logger.warn("<<< Exiting renamed(owner={},repository={},newRepository={})", owner, repository, newRepository)
       ()
   }
   def transferred(owner: String, newOwner: String, repository: String)(implicit session: Session): Unit = {
       logger.error(">>> Entering transferred(owner={},newOwner={},repository={})", owner, newOwner, repository)
+      logger.warn("<<< Exiting transferred(owner={},newOwner={},repository={})", owner, newOwner, repository)
       ()
   }
   def forked(owner: String, newOwner: String, repository: String)(implicit session: Session): Unit = {
       logger.error(">>> Entering forked(owner={},newOwner={},repository={})", owner, newOwner, repository)
+      logger.warn("<<< Exiting forked(owner={},newOwner={},repository={})", owner, newOwner, repository)
       ()
   }
 

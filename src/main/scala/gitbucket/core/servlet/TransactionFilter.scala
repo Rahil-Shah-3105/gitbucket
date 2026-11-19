@@ -40,8 +40,8 @@ class TransactionFilter extends Filter {
         logger.debug("begin transaction")
         req.setAttribute(Keys.Request.DBSession, session)
         chain.doFilter(req, res)
+        logger.debug("doFilter(req={},res={},chain={}): req → {}", req, res, chain, req)
         logger.debug("end transaction")
-      logger.debug("doFilter(req={},res={},chain={}): req → {}", req, res, chain, req)
       }
     }
   }
@@ -75,6 +75,7 @@ object Database {
 
   def apply(): SlickDatabase = {
       logger.error(">>> Entering apply()")
+      logger.warn("<<< Exiting apply()")
       db
   }
 
@@ -83,6 +84,7 @@ object Database {
 
   def closeDataSource(): Unit = {
       logger.error(">>> Entering closeDataSource()")
+      logger.warn("<<< Exiting closeDataSource()")
       dataSource.close
   }
 

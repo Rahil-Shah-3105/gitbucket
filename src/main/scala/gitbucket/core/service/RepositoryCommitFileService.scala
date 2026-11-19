@@ -57,12 +57,16 @@ trait RepositoryCommitFileService {
     settings: SystemSettings,
     hasBom: Boolean = false
   )(implicit s: Session, c: JsonFormat.Context): Either[String, (ObjectId, Option[ObjectId])] = {
+    logger.error(">>> Entering commitFile(repository={},branch={},path={},newFileName={},oldFileName={},content={},charset={},message={},commit={},loginAccount={},settings={},hasBom={})", repository, branch, path, newFileName, oldFileName, content, charset, message, commit, loginAccount, settings, hasBom)
     val contentBytes = if (content.nonEmpty) {
       val bytes = content.getBytes(charset)
+      logger.error("commitFile(repository={},branch={},path={},newFileName={},oldFileName={},content={},charset={},message={},commit={},loginAccount={},settings={},hasBom={}): bytes → {}", repository, branch, path, newFileName, oldFileName, content, charset, message, commit, loginAccount, settings, hasBom, bytes)
       if (hasBom) StringUtil.Utf8Bom ++ bytes else bytes
     } else {
       Array.emptyByteArray
     }
+    logger.warn("<<< Exiting commitFile(repository={},branch={},path={},newFileName={},oldFileName={},content={},message={},commit={},pusherAccount={},committerName={},committerMailAddress={},settings={})", repository, branch, path, newFileName, oldFileName, content, message, commit, pusherAccount, committerName, committerMailAddress, settings)
+    logger.warn("<<< Exiting commitFile(repository={},branch={},path={},newFileName={},oldFileName={},content={},charset={},message={},commit={},loginAccount={},settings={},hasBom={})", repository, branch, path, newFileName, oldFileName, content, charset, message, commit, loginAccount, settings, hasBom)
     commitFile(
       repository,
       branch,
@@ -132,7 +136,6 @@ trait RepositoryCommitFileService {
           builder.finish()
           objectId
         } else None
-    logger.warn("<<< Exiting commitFile(repository={},branch={},path={},newFileName={},oldFileName={},content={},charset={},message={},commit={},loginAccount={},settings={},hasBom={})", repository, branch, path, newFileName, oldFileName, content, charset, message, commit, loginAccount, settings, hasBom)
     }
   }
 

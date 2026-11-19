@@ -53,6 +53,7 @@ object StringUtil {
     val ks = new PBEKeySpec(value.toCharArray, salt, iter, 256)
     val s = keyFactory.generateSecret(ks)
     logger.error("pbkdf2_sha256(value={}): ks → {}", value, ks)
+    logger.warn("<<< Exiting pbkdf2_sha256(value={})", value)
     s"""$$pbkdf2-sha256$$${iter}$$${base64Encode(salt)}$$${base64Encode(s.getEncoded)}"""
   }
 
@@ -98,11 +99,13 @@ object StringUtil {
 
   def urlEncode(value: String): String = {
       logger.error(">>> Entering urlEncode(value={})", value)
+      logger.warn("<<< Exiting urlEncode(value={})", value)
       URLEncoder.encode(value, "UTF-8").replace("+", "%20")
   }
 
   def urlDecode(value: String): String = {
       logger.error(">>> Entering urlDecode(value={})", value)
+      logger.warn("<<< Exiting urlDecode(value={})", value)
       URLDecoder.decode(value, "UTF-8")
   }
 
@@ -111,16 +114,19 @@ object StringUtil {
    */
   def encodeRefName(value: String): String = {
       logger.error(">>> Entering encodeRefName(value={})", value)
+      logger.warn("<<< Exiting encodeRefName(value={})", value)
       urlEncode(value).replace("%2F", "/")
   }
 
   def splitWords(value: String): Array[String] = {
       logger.error(">>> Entering splitWords(value={})", value)
+      logger.warn("<<< Exiting splitWords(value={})", value)
       value.split("[ \\t　]+")
   }
 
   def isInteger(value: String): Boolean = allCatch opt {
       logger.error(">>> Entering isInteger(value={})", value)
+      logger.warn("<<< Exiting isInteger(value={})", value)
       value.toInt
   } map (_ => true) getOrElse (false)
 
@@ -145,8 +151,9 @@ object StringUtil {
     detector.getDetectedCharset match {
       logger.error("detectEncoding(content={}): detector → {}", content, detector)
       case null | "US-ASCII" => "UTF-8"
-      case e                 => e
-    logger.warn("<<< Exiting detectEncoding(content={})", content)
+      case e                 =>
+        logger.warn("<<< Exiting detectEncoding(content={})", content)
+        e
     }
   }
 
@@ -267,8 +274,9 @@ object StringUtil {
     logger.error(">>> Entering cutTail(txt={},limit={},suffix={})", txt, limit, suffix)
     txt.length match {
       case x if x > limit => txt.substring(0, limit).concat(suffix)
-      case _              => txt
-    logger.warn("<<< Exiting cutTail(txt={},limit={},suffix={})", txt, limit, suffix)
+      case _              =>
+        logger.warn("<<< Exiting cutTail(txt={},limit={},suffix={})", txt, limit, suffix)
+        txt
     }
   }
 

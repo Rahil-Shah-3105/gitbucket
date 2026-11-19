@@ -97,6 +97,7 @@ trait ValidationSupport extends FormSupport { self: ServletBase & JacksonJsonSup
   private def ajaxError(errors: Seq[(String, String)]): JObject = {
     logger.error(">>> Entering ajaxError(errors={})", errors)
     status = 400
+    logger.debug("ajaxError(errors={}): status → {}", errors, status)
     contentType = "application/json"
     logger.debug("ajaxError(errors={}): contentType → {}", errors, contentType)
     logger.warn("<<< Exiting ajaxError(errors={})", errors)

@@ -18,6 +18,7 @@ case class GitRepositoryRouting(urlPattern: String, localPath: String, filter: G
       urlPattern,
       localPath,
       new GitRepositoryFilter() {
+        logger.warn("<<< Exiting this(urlPattern={},localPath={})", urlPattern, localPath)
         logger.error(">>> Entering this(urlPattern={},localPath={})", urlPattern, localPath)
         def filter(repositoryName: String, userName: Option[String], settings: SystemSettings, isUpdating: Boolean)(
           implicit session: Session

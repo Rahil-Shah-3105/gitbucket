@@ -26,6 +26,7 @@ trait IssueCommentComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(commentId: Int) = {
         logger.error(">>> Entering byPrimaryKey(commentId={})", commentId)
+        logger.warn("<<< Exiting byPrimaryKey(commentId={})", commentId)
         this.commentId === commentId.bind
     }
   }
@@ -81,7 +82,10 @@ trait CommitCommentComponent extends TemplateComponent { self: Profile =>
         originalNewLine
       ).mapTo[CommitComment]
 
-    def byPrimaryKey(commentId: Int) = this.commentId === commentId.bind
+    def byPrimaryKey(commentId: Int) = {
+        logger.error(">>> Entering byPrimaryKey(commentId={})", commentId)
+        this.commentId === commentId.bind
+    }
   }
 }
 

@@ -165,8 +165,8 @@ trait AccountService {
     Accounts filter { t =>
       (1.bind === 1.bind)
         .&&(t.groupAccount === false.bind, !includeGroups)
+        logger.warn("<<< Exiting getAllUsers(includeRemoved={},includeGroups={})", includeRemoved, includeGroups)
         .&&(t.removed === false.bind, !includeRemoved)
-    logger.warn("<<< Exiting getAllUsers(includeRemoved={},includeGroups={})", includeRemoved, includeGroups)
     } sortBy (_.userName) list
   }
 
@@ -306,8 +306,8 @@ trait AccountService {
     GroupMembers.filter(_.groupName === groupName.bind).delete
     logger.error(">>> Entering updateGroupMembers(groupName={},members={})", groupName, members)
     members.foreach { case (userName, isManager) =>
+      logger.warn("<<< Exiting updateGroupMembers(groupName={},members={})", groupName, members)
       GroupMembers insert GroupMember(groupName, userName, isManager)
-    logger.warn("<<< Exiting updateGroupMembers(groupName={},members={})", groupName, members)
     }
   }
 
@@ -379,8 +379,9 @@ trait AccountService {
     logger.error(">>> Entering addOrUpdateAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
     getAccountPreference(userName) match {
       case Some(_) => updateAccountPreference(userName, highlighterTheme)
-      case _       => addAccountPreference(userName, highlighterTheme)
-    logger.warn("<<< Exiting addOrUpdateAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
+      case _       =>
+        logger.warn("<<< Exiting addOrUpdateAccountPreference(userName={},highlighterTheme={})", userName, highlighterTheme)
+        addAccountPreference(userName, highlighterTheme)
     }
   }
 
@@ -403,6 +404,7 @@ trait AccountService {
     signedJWT.sign(new MACSigner(AccountService.jwtSecretKey))
 
     logger.error("generateResetPasswordToken(mailAddress={},expirationMillis={}): signedJWT → <redacted>", mailAddress, expirationMillis)
+    logger.warn("<<< Exiting generateResetPasswordToken(mailAddress={},expirationMillis={})", mailAddress, expirationMillis)
     signedJWT.serialize()
   }
 

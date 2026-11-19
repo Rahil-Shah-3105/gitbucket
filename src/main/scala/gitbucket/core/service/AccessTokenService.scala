@@ -18,6 +18,7 @@ trait AccessTokenService {
 
   def tokenToHash(token: String): String = {
       logger.error(">>> Entering tokenToHash(token=<redacted>)")
+      logger.warn("<<< Exiting tokenToHash(token=<redacted>)")
       StringUtil.sha1(token)
   }
 

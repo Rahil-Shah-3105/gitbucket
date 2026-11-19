@@ -18,6 +18,7 @@ trait MilestoneComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(owner: String, repository: String, milestoneId: Int) = {
         logger.error(">>> Entering byPrimaryKey(owner={},repository={},milestoneId={})", owner, repository, milestoneId)
+        logger.warn("<<< Exiting byPrimaryKey(owner={},repository={},milestoneId={})", owner, repository, milestoneId)
         byMilestone(owner, repository, milestoneId)
     }
     def byPrimaryKey(userName: Rep[String], repositoryName: Rep[String], milestoneId: Rep[Int]) =

@@ -255,6 +255,7 @@ trait WikiService {
     message: String,
     currentId: Option[String]
   ): Option[String] = {
+    logger.error(">>> Entering saveWikiPage(owner={},repository={},currentPageName={},newPageName={},content={},committer={},message={},currentId={})", owner, repository, currentPageName, newPageName, content, committer, message, currentId)
     LockUtil.lock(s"${owner}/${repository}/wiki") {
       Using.resource(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
         val builder = DirCache.newInCore.builder()
@@ -311,8 +312,8 @@ trait WikiService {
 
           Some(newHeadId.getName)
         } else None
+      logger.warn("<<< Exiting saveWikiPage(owner={},repository={},currentPageName={},newPageName={},content={},committer={},message={},currentId={})", owner, repository, currentPageName, newPageName, content, committer, message, currentId)
       }
-    logger.warn("<<< Exiting saveWikiPage(owner={},repository={},currentPageName={},newPageName={},content={},committer={},message={},currentId={})", owner, repository, currentPageName, newPageName, content, committer, message, currentId)
     }
   }
 

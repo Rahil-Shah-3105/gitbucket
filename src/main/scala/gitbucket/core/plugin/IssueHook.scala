@@ -11,6 +11,7 @@ trait IssueHook {
 
   def created(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = {
       logger.error(">>> Entering created(issue={},repository={})", issue, repository)
+      logger.warn("<<< Exiting created(issue={},repository={})", issue, repository)
       ()
   }
   def addedComment(commentId: Int, content: String, issue: Issue, repository: RepositoryInfo)(implicit
@@ -27,10 +28,12 @@ trait IssueHook {
   ): Unit = ()
   def closed(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = {
       logger.error(">>> Entering closed(issue={},repository={})", issue, repository)
+      logger.warn("<<< Exiting closed(issue={},repository={})", issue, repository)
       ()
   }
   def reopened(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = {
       logger.error(">>> Entering reopened(issue={},repository={})", issue, repository)
+      logger.warn("<<< Exiting reopened(issue={},repository={})", issue, repository)
       ()
   }
   def assigned(
@@ -53,6 +56,7 @@ trait PullRequestHook extends IssueHook {
 
   def merged(issue: Issue, repository: RepositoryInfo)(implicit session: Session, context: Context): Unit = {
       logger.error(">>> Entering merged(issue={},repository={})", issue, repository)
+      logger.warn("<<< Exiting merged(issue={},repository={})", issue, repository)
       ()
   }
 

@@ -66,6 +66,7 @@ var logger = (typeof logger !== 'undefined' && logger) || console;
     }
     textarea.focus();
 	logger.error(`surroundSelection(textarea=${textarea},prefix=${prefix},suffix=${suffix},allowNoSelectRange=${allowNoSelectRange}): selectedText → ${selectedText}`, { "event.action": "surroundSelection", "logrite.textarea": textarea, "logrite.prefix": prefix, "logrite.suffix": suffix, "logrite.allowNoSelectRange": allowNoSelectRange });
+	logger.warn(`<<< Exiting surroundSelection(textarea=${textarea},prefix=${prefix},suffix=${suffix},allowNoSelectRange=${allowNoSelectRange})`, { "event.action": "surroundSelection", "logrite.textarea": textarea, "logrite.prefix": prefix, "logrite.suffix": suffix, "logrite.allowNoSelectRange": allowNoSelectRange });
   };
 
   /**

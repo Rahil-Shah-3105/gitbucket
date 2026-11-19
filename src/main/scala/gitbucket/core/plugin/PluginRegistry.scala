@@ -62,11 +62,13 @@ class PluginRegistry {
 
   def addPlugin(pluginInfo: PluginInfo): Unit = {
       logger.error(">>> Entering addPlugin(pluginInfo={})", pluginInfo)
+      logger.warn("<<< Exiting addPlugin(pluginInfo={})", pluginInfo)
       plugins.add(pluginInfo)
   }
 
   def getPlugins(): List[PluginInfo] = {
       logger.error(">>> Entering getPlugins()")
+      logger.warn("<<< Exiting getPlugins()")
       plugins.asScala.toList
   }
 
@@ -80,26 +82,31 @@ class PluginRegistry {
 
   def getImage(id: String): String = {
       logger.error(">>> Entering getImage(id={})", id)
+      logger.warn("<<< Exiting getImage(id={})", id)
       images.get(id)
   }
 
   def addController(path: String, controller: ControllerBase): Unit = {
       logger.error(">>> Entering addController(path={},controller={})", path, controller)
+      logger.warn("<<< Exiting addController(path={},controller={})", path, controller)
       controllers.add((controller, path))
   }
 
   def getControllers(): Seq[(ControllerBase, String)] = {
       logger.error(">>> Entering getControllers()")
+      logger.warn("<<< Exiting getControllers()")
       controllers.asScala.toSeq
   }
 
   def addAnonymousAccessiblePath(path: String): Unit = {
       logger.error(">>> Entering addAnonymousAccessiblePath(path={})", path)
+      logger.warn("<<< Exiting addAnonymousAccessiblePath(path={})", path)
       anonymousAccessiblePaths.add(path)
   }
 
   def getAnonymousAccessiblePaths(): Seq[String] = {
       logger.error(">>> Entering getAnonymousAccessiblePaths()")
+      logger.warn("<<< Exiting getAnonymousAccessiblePaths()")
       anonymousAccessiblePaths.asScala.toSeq
   }
 
@@ -111,11 +118,13 @@ class PluginRegistry {
 
   def addRenderer(extension: String, renderer: Renderer): Unit = {
       logger.error(">>> Entering addRenderer(extension={},renderer={})", extension, renderer)
+      logger.warn("<<< Exiting addRenderer(extension={},renderer={})", extension, renderer)
       renderers.put(extension, renderer)
   }
 
   def getRenderer(extension: String): Renderer = {
       logger.error(">>> Entering getRenderer(extension={})", extension)
+      logger.warn("<<< Exiting getRenderer(extension={})", extension)
       renderers.asScala.getOrElse(extension, DefaultRenderer)
   }
 
@@ -123,11 +132,13 @@ class PluginRegistry {
 
   def addRepositoryRouting(routing: GitRepositoryRouting): Unit = {
       logger.error(">>> Entering addRepositoryRouting(routing={})", routing)
+      logger.warn("<<< Exiting addRepositoryRouting(routing={})", routing)
       repositoryRoutings.add(routing)
   }
 
   def getRepositoryRoutings(): Seq[GitRepositoryRouting] = {
       logger.error(">>> Entering getRepositoryRoutings()")
+      logger.warn("<<< Exiting getRepositoryRoutings()")
       repositoryRoutings.asScala.toSeq
   }
 
@@ -144,6 +155,7 @@ class PluginRegistry {
 
   def addAccountHook(accountHook: AccountHook): Unit = {
       logger.error(">>> Entering addAccountHook(accountHook={})", accountHook)
+      logger.warn("<<< Exiting addAccountHook(accountHook={})", accountHook)
       accountHooks.add(accountHook)
   }
 
@@ -151,6 +163,7 @@ class PluginRegistry {
 
   def addReceiveHook(commitHook: ReceiveHook): Unit = {
       logger.error(">>> Entering addReceiveHook(commitHook={})", commitHook)
+      logger.warn("<<< Exiting addReceiveHook(commitHook={})", commitHook)
       receiveHooks.add(commitHook)
   }
 
@@ -158,6 +171,7 @@ class PluginRegistry {
 
   def addRepositoryHook(repositoryHook: RepositoryHook): Unit = {
       logger.error(">>> Entering addRepositoryHook(repositoryHook={})", repositoryHook)
+      logger.warn("<<< Exiting addRepositoryHook(repositoryHook={})", repositoryHook)
       repositoryHooks.add(repositoryHook)
   }
 
@@ -165,6 +179,7 @@ class PluginRegistry {
 
   def addIssueHook(issueHook: IssueHook): Unit = {
       logger.error(">>> Entering addIssueHook(issueHook={})", issueHook)
+      logger.warn("<<< Exiting addIssueHook(issueHook={})", issueHook)
       issueHooks.add(issueHook)
   }
 
@@ -172,6 +187,7 @@ class PluginRegistry {
 
   def addPullRequestHook(pullRequestHook: PullRequestHook): Unit = {
       logger.error(">>> Entering addPullRequestHook(pullRequestHook={})", pullRequestHook)
+      logger.warn("<<< Exiting addPullRequestHook(pullRequestHook={})", pullRequestHook)
       pullRequestHooks.add(pullRequestHook)
   }
 
@@ -184,6 +200,7 @@ class PluginRegistry {
 
   def addGlobalMenu(globalMenu: (Context) => Option[Link]): Unit = {
       logger.error(">>> Entering addGlobalMenu(globalMenu={})", globalMenu)
+      logger.warn("<<< Exiting addGlobalMenu(globalMenu={})", globalMenu)
       globalMenus.add(globalMenu)
   }
 
@@ -201,6 +218,7 @@ class PluginRegistry {
 
   def addProfileTab(profileTab: (Account, Context) => Option[Link]): Unit = {
       logger.error(">>> Entering addProfileTab(profileTab={})", profileTab)
+      logger.warn("<<< Exiting addProfileTab(profileTab={})", profileTab)
       profileTabs.add(profileTab)
   }
 
@@ -218,6 +236,7 @@ class PluginRegistry {
 
   def addDashboardTab(dashboardTab: (Context) => Option[Link]): Unit = {
       logger.error(">>> Entering addDashboardTab(dashboardTab={})", dashboardTab)
+      logger.warn("<<< Exiting addDashboardTab(dashboardTab={})", dashboardTab)
       dashboardTabs.add(dashboardTab)
   }
 
@@ -230,6 +249,7 @@ class PluginRegistry {
 
   def addAssetsMapping(assetsMapping: (String, String, ClassLoader)): Unit = {
       logger.error(">>> Entering addAssetsMapping(assetsMapping={})", assetsMapping)
+      logger.warn("<<< Exiting addAssetsMapping(assetsMapping={})", assetsMapping)
       assetsMappings.add(assetsMapping)
   }
 
@@ -237,6 +257,7 @@ class PluginRegistry {
 
   def addTextDecorator(textDecorator: TextDecorator): Unit = {
       logger.error(">>> Entering addTextDecorator(textDecorator={})", textDecorator)
+      logger.warn("<<< Exiting addTextDecorator(textDecorator={})", textDecorator)
       textDecorators.add(textDecorator)
   }
 
@@ -244,6 +265,7 @@ class PluginRegistry {
 
   def addSuggestionProvider(suggestionProvider: SuggestionProvider): Unit = {
       logger.error(">>> Entering addSuggestionProvider(suggestionProvider={})", suggestionProvider)
+      logger.warn("<<< Exiting addSuggestionProvider(suggestionProvider={})", suggestionProvider)
       suggestionProviders.add(suggestionProvider)
   }
 
@@ -273,6 +295,7 @@ object PluginRegistry {
    */
   def apply(): PluginRegistry = {
       logger.error(">>> Entering apply()")
+      logger.warn("<<< Exiting apply()")
       instance
   }
 
@@ -310,6 +333,7 @@ object PluginRegistry {
       .listFiles(new FilenameFilter {
         override def accept(dir: File, name: String): Boolean = {
             logger.error(">>> Entering accept(dir={},name={})", dir, name)
+            logger.warn("<<< Exiting accept(dir={},name={})", dir, name)
             name.endsWith(".jar")
         }
       })
@@ -327,8 +351,9 @@ object PluginRegistry {
     logger.warn("<<< Exiting getGitBucketVersion(pluginJarFileName={})", pluginJarFileName)
     pluginJarFileName match {
       case regex(all, _) => Some(all)
-      case _             => None
-    logger.error("getGitBucketVersion(pluginJarFileName={}): regex → {}", pluginJarFileName, regex)
+      case _             =>
+        logger.error("getGitBucketVersion(pluginJarFileName={}): regex → {}", pluginJarFileName, regex)
+        None
     }
   }
 
@@ -445,8 +470,8 @@ object PluginRegistry {
     extraPluginDir.foreach { extraDir =>
       if (extraWatcher == null) {
         extraWatcher = new PluginWatchThread(context, extraDir)
+        logger.debug("initialize(context={},settings={},conn={}): extraWatcher → {}", context, settings, conn, extraWatcher)
         extraWatcher.start()
-      logger.debug("initialize(context={},settings={},conn={}): extraWatcher → {}", context, settings, conn, extraWatcher)
       }
     }
   }
@@ -458,13 +483,13 @@ object PluginRegistry {
         plugin.pluginClass.shutdown(instance, context, settings)
         if (watcher != null) {
           watcher.interrupt()
-          watcher = null
           logger.debug("shutdown(context={},settings={}): watcher → {}", context, settings, watcher)
+          watcher = null
         }
         if (extraWatcher != null) {
           extraWatcher.interrupt()
-          extraWatcher = null
           logger.debug("shutdown(context={},settings={}): extraWatcher → {}", context, settings, extraWatcher)
+          extraWatcher = null
         }
       } catch {
         case e: Exception =>
@@ -480,8 +505,8 @@ object PluginRegistry {
     instance
       .getPlugins()
       .find { info =>
+        logger.warn("<<< Exiting getPluginInfoFromClassLoader(classLoader={})", classLoader)
         info.classLoader.equals(classLoader)
-      logger.warn("<<< Exiting getPluginInfoFromClassLoader(classLoader={})", classLoader)
       }
   }
 }

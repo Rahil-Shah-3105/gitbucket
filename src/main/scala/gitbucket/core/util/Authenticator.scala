@@ -12,6 +12,7 @@ import Implicits._
 trait OneselfAuthenticator { self: ControllerBase =>
   protected def oneselfOnly(action: => Any) = {
       logger.error(">>> Entering oneselfOnly(action={})", action)
+      logger.warn("<<< Exiting oneselfOnly(action={})", action)
       authenticate(action)
   }
   protected def oneselfOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }
@@ -21,8 +22,9 @@ trait OneselfAuthenticator { self: ControllerBase =>
     context.loginAccount match {
       logger.error(">>> Entering authenticate(action={})", action)
       case Some(x) if x.isAdmin                      => action
-      case Some(x) if request.paths(0) == x.userName => action
-      logger.warn("<<< Exiting authenticate(action={})", action)
+      case Some(x) if request.paths(0) == x.userName =>
+        logger.warn("<<< Exiting authenticate(action={})", action)
+        action
       case _                                         => Unauthorized()
     }
   }
@@ -34,6 +36,7 @@ trait OneselfAuthenticator { self: ControllerBase =>
 trait OwnerAuthenticator { self: ControllerBase & RepositoryService & AccountService =>
   protected def ownerOnly(action: RepositoryInfo => Any) = {
       logger.error(">>> Entering ownerOnly(action={})", action)
+      logger.warn("<<< Exiting ownerOnly(action={})", action)
       authenticate(action)
   }
   protected def ownerOnly[T](action: (T, RepositoryInfo) => Any) = (form: T) => { authenticate(action(form, _)) }
@@ -66,6 +69,7 @@ trait OwnerAuthenticator { self: ControllerBase & RepositoryService & AccountSer
 trait UsersAuthenticator { self: ControllerBase =>
   protected def usersOnly(action: => Any) = {
       logger.error(">>> Entering usersOnly(action={})", action)
+      logger.warn("<<< Exiting usersOnly(action={})", action)
       authenticate(action)
   }
   protected def usersOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }
@@ -84,6 +88,7 @@ trait UsersAuthenticator { self: ControllerBase =>
 trait AdminAuthenticator { self: ControllerBase =>
   protected def adminOnly(action: => Any) = {
       logger.error(">>> Entering adminOnly(action={})", action)
+      logger.warn("<<< Exiting adminOnly(action={})", action)
       authenticate(action)
   }
   protected def adminOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }
@@ -102,6 +107,7 @@ trait AdminAuthenticator { self: ControllerBase =>
 trait ReferrerAuthenticator { self: ControllerBase & RepositoryService & AccountService =>
   protected def referrersOnly(action: RepositoryInfo => Any) = {
       logger.error(">>> Entering referrersOnly(action={})", action)
+      logger.warn("<<< Exiting referrersOnly(action={})", action)
       authenticate(action)
   }
   protected def referrersOnly[T](action: (T, RepositoryInfo) => Any) = (form: T) => { authenticate(action(form, _)) }
@@ -169,6 +175,7 @@ trait WritableUsersAuthenticator { self: ControllerBase & RepositoryService & Ac
 trait GroupManagerAuthenticator { self: ControllerBase & AccountService =>
   protected def managersOnly(action: => Any) = {
       logger.error(">>> Entering managersOnly(action={})", action)
+      logger.warn("<<< Exiting managersOnly(action={})", action)
       authenticate(action)
   }
   protected def managersOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }

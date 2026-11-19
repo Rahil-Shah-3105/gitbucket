@@ -649,6 +649,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
     commitMessage: Option[String],
     loginAccount: Account
   ): Int = {
+    logger.error(">>> Entering createIssueAndPullRequest(repository={},baseBranch={},requestBranch={},commitIdFrom={},commitIdTo={},commitMessage={},loginAccount={})", repository, baseBranch, requestBranch, commitIdFrom, commitIdTo, commitMessage, loginAccount)
     val issueId = insertIssue(
       owner = repository.owner,
       repository = repository.name,
@@ -727,8 +728,9 @@ trait RepositoryViewerControllerBase extends ControllerBase {
           case Some(x) => x.highlighterTheme
           case _       => "github-v2"
         }
-      case _ => "github-v2"
-    logger.warn("<<< Exiting getSyntaxHighlighterTheme()")
+      case _ =>
+        logger.warn("<<< Exiting getSyntaxHighlighterTheme()")
+        "github-v2"
     }
   }
 
@@ -1225,6 +1227,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
     repository: RepositoryService.RepositoryInfo,
     path: String
   ) = {
+    logger.error(">>> Entering archiveRepository(filename={},repository={},path={})", filename, repository, path)
     def archive[A <: ArchiveEntry](revision: String, archiveFormat: String, archive: ArchiveOutputStream[A])(
       entryCreator: (String, Long, java.util.Date, Int) => A
     ): Unit = {
@@ -1235,12 +1238,15 @@ trait RepositoryViewerControllerBase extends ControllerBase {
         val sha1 = oid.getName
         val repositorySuffix = (if (sha1.startsWith(revision)) sha1 else revision).replace('/', '-')
         val pathSuffix = if (path.isEmpty) "" else s"-${path.replace('/', '-')}"
+        logger.error("archiveRepository(filename={},repository={},path={}): repositorySuffix → {}", filename, repository, path, repositorySuffix)
         val baseName = repository.name + "-" + repositorySuffix + pathSuffix
+        logger.error("archiveRepository(filename={},repository={},path={}): baseName → {}", filename, repository, path, baseName)
 
         Using.resource(new TreeWalk(git.getRepository)) { treeWalk =>
           treeWalk.addTree(commit.getTree)
           treeWalk.setRecursive(true)
           if (path.nonEmpty) {
+            logger.error("archiveRepository(filename={},repository={},path={}): commit → {}", filename, repository, path, commit)
             treeWalk.setFilter(PathFilter.create(path))
           }
           if (treeWalk != null) {
@@ -1258,6 +1264,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
                       EolStreamTypeUtil.wrapInputStream(
                         in,
                         EolStreamTypeUtil
+                        logger.error("archiveRepository(filename={},repository={},path={}): tempFile → {}", filename, repository, path, tempFile)
                           .detectStreamType(
                             OperationType.CHECKOUT_OP,
                             git.getRepository.getConfig.get(WorkingTreeOptions.KEY),
@@ -1283,10 +1290,12 @@ trait RepositoryViewerControllerBase extends ControllerBase {
       }
     }
 
+    logger.debug("archiveRepository(filename={},repository={},path={}): response → {}", filename, repository, path, response)
     val suffix =
       path.split("/").lastOption.collect { case x if x.nonEmpty => "-" + x.replace('/', '_') }.getOrElse("")
     val zipRe = """(.+)\.zip$""".r
     val tarRe = """(.+)\.tar\.(gz|bz2|xz)$""".r
+    logger.error("archiveRepository(filename={},repository={},path={}): tarRe → {}", filename, repository, path, tarRe)
 
     filename match {
       case zipRe(revision) =>
@@ -1333,8 +1342,8 @@ trait RepositoryViewerControllerBase extends ControllerBase {
         }
         ()
       case _ =>
+        logger.warn("<<< Exiting archiveRepository(filename={},repository={},path={})", filename, repository, path)
         NotFound()
-    logger.warn("<<< Exiting archiveRepository(filename={},repository={},path={})", filename, repository, path)
     }
   }
 
@@ -1363,11 +1372,11 @@ trait RepositoryViewerControllerBase extends ControllerBase {
             logger.error("validate(name={},value={},messages={}): headTip → {}", name, value, messages, headTip)
             Some("Someone pushed new commits before you. Please reload this page and re-apply your changes.")
           } else {
+            logger.error("validate(name,value,messages)={},{},{}: find query executed in {} ms", name, value, messages, (System.currentTimeMillis() - __logStart))
             None
-          logger.error("validate(name,value,messages)={},{},{}: find query executed in {} ms", name, value, messages, (System.currentTimeMillis() - __logStart))
           }
+        logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
         }
-      logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
       }
     }
   }

@@ -80,8 +80,9 @@ object CustomFieldBehavior {
       case "string" => Some(StringFieldBehavior)
       case "date"   => Some(DateFieldBehavior)
       case "enum"   => Some(EnumFieldBehavior)
-      case _        => None
-    logger.warn("<<< Exiting apply(fieldType={})", fieldType)
+      case _        =>
+        logger.warn("<<< Exiting apply(fieldType={})", fieldType)
+        None
     }
   }
 
@@ -152,6 +153,8 @@ object CustomFieldBehavior {
       value: String,
       editable: Boolean
     )(implicit context: Context): String = {
+      logger.error(">>> Entering fieldHtml(repository={},issueId={},fieldId={},fieldName={},constraints={},value={},editable={})", repository, issueId, fieldId, fieldName, constraints, value, editable)
+      logger.warn("<<< Exiting fieldHtml(repository={},issueId={},fieldId={},fieldName={},constraints={},value={},editable={})", repository, issueId, fieldId, fieldName, constraints, value, editable)
       if (!editable) {
         val sb = new StringBuilder
         sb.append("""</div>""")
@@ -268,6 +271,7 @@ object CustomFieldBehavior {
   }
 
   trait TextFieldBehavior extends CustomFieldBehavior {
+    logger.error(">>> Entering validate(name={},constraints={},value={},messages={})", name, constraints, value, messages)
     protected val fieldType = "text"
 
     logger.error("validate(name={},constraints={},value={},messages={}): fieldType → {}", name, constraints, value, messages, fieldType)
@@ -384,6 +388,6 @@ object CustomFieldBehavior {
       value: String,
       messages: Messages
     ): Option[String] = None
-  logger.warn("<<< Exiting fieldHtml(repository={},issueId={},fieldId={},fieldName={},constraints={},value={},editable={})", repository, issueId, fieldId, fieldName, constraints, value, editable)
+  logger.warn("<<< Exiting validate(name={},constraints={},value={},messages={})", name, constraints, value, messages)
   }
 }

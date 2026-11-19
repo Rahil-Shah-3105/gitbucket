@@ -28,15 +28,17 @@ object JDBCUtil {
     }
 
     def find[T](sql: String, params: Any*)(f: ResultSet => T): Option[T] = {
+      logger.error(">>> Entering find(sql={},params={})", sql, params)
       execute(sql, params*) { stmt =>
         Using.resource(stmt.executeQuery()) { rs =>
           if (rs.next) Some(f(rs)) else None
+        logger.warn("<<< Exiting find(sql={},params={})", sql, params)
         }
-      logger.warn("<<< Exiting find(sql={},params={})", sql, params)
       }
     }
 
     def select[T](sql: String, params: Any*)(f: ResultSet => T): Seq[T] = {
+      logger.error(">>> Entering select(sql={},params={})", sql, params)
       execute(sql, params*) { stmt =>
         Using.resource(stmt.executeQuery()) { rs =>
           val list = new ListBuffer[T]
@@ -44,8 +46,8 @@ object JDBCUtil {
             list += f(rs)
           }
           list.toSeq
+        logger.warn("<<< Exiting select(sql={},params={})", sql, params)
         }
-      logger.warn("<<< Exiting select(sql={},params={})", sql, params)
       }
     }
 
@@ -142,8 +144,8 @@ object JDBCUtil {
         allTablesInDatabase.reverse.foreach { tableName =>
           if (targetTables.contains(tableName)) {
             val __logStart = System.currentTimeMillis()
+            logger.error("exportAsSQL(targetTables)={}: find query executed in {} ms", targetTables, (System.currentTimeMillis() - __logStart))
             out.write(s"DELETE FROM ${tableName};\n".getBytes("UTF-8"))
-          logger.error("exportAsSQL(targetTables)={}: find query executed in {} ms", targetTables, (System.currentTimeMillis() - __logStart))
           }
         }
 
@@ -217,8 +219,8 @@ object JDBCUtil {
         if (meta.getDatabaseProductName == "PostgreSQL") {
           tableName.toLowerCase
         } else {
+          logger.warn("<<< Exiting childTables(meta={},tableName={})", meta, tableName)
           tableName
-        logger.warn("<<< Exiting childTables(meta={},tableName={})", meta, tableName)
         }
 
       Using.resource(meta.getExportedKeys(null, null, normalizedTableName)) { rs =>

@@ -227,6 +227,7 @@ abstract class ControllerBase
   protected def trim2[T](valueType: SingleValueType[T]): SingleValueType[T] = new SingleValueType[T]() {
     def convert(value: String, messages: Messages): T = {
         logger.error(">>> Entering convert(value={},messages={})", value, messages)
+        logger.warn("<<< Exiting convert(value={},messages={})", value, messages)
         valueType.convert(trim(value), messages)
     }
 
@@ -240,6 +241,7 @@ abstract class ControllerBase
 
     private def trim(value: String): String = {
         logger.error(">>> Entering trim(value={})", value)
+        logger.warn("<<< Exiting trim(value={})", value)
         if (value == null) null else value.replace("\r\n", "").trim
     }
   }
@@ -268,14 +270,16 @@ abstract class ControllerBase
     (request.contentType.map(_.split(";").head.toLowerCase) match {
       case Some("application/x-www-form-urlencoded") => multiParams.keys.headOption.map(parse(_))
       case Some("application/json")                  => Some(parsedBody)
-      case _                                         => Some(parse(request.body))
-    logger.warn("<<< Exiting extractFromJsonBody(request={},mf={})", request, mf)
+      case _                                         =>
+        logger.warn("<<< Exiting extractFromJsonBody(request={},mf={})", request, mf)
+        Some(parse(request.body))
     }).filterNot(_ == JNothing).flatMap(j => Try(j.extract[A]).toOption)
   }
 
   protected def getPathObjectId(git: Git, path: String, revCommit: RevCommit): Option[ObjectId] = {
     logger.error(">>> Entering getPathObjectId(git={},path={},revCommit={})", git, path, revCommit)
     @scala.annotation.tailrec
+    logger.warn("<<< Exiting getPathObjectId(git={},path={},revCommit={})", git, path, revCommit)
     def _getPathObjectId(path: String, walk: TreeWalk): Option[ObjectId] = walk.next match {
       case true if walk.getPathString == path => Some(walk.getObjectId(0))
       case true                               => _getPathObjectId(path, walk)
@@ -295,13 +299,16 @@ abstract class ControllerBase
     path: String,
     repository: RepositoryService.RepositoryInfo
   ): Unit = {
+    logger.error(">>> Entering responseRawFile(git={},objectId={},path={},repository={})", git, objectId, path, repository)
     JGitUtil.getObjectLoaderFromId(git, objectId) { loader =>
       contentType = FileUtil.getSafeMimeType(path, repository.repository.options.safeMode)
 
+      logger.debug("responseRawFile(git={},objectId={},path={},repository={}): contentType → {}", git, objectId, path, repository, contentType)
       if (loader.isLarge) {
         response.setContentLength(loader.getSize.toInt)
         loader.copyTo(response.outputStream)
       } else {
+        logger.debug("responseRawFile(git={},objectId={},path={},repository={}): response → {}", git, objectId, path, repository, response)
         val bytes = loader.getCachedBytes
         val text = new String(bytes, "UTF-8")
 
@@ -317,8 +324,8 @@ abstract class ControllerBase
           response.setContentLength(loader.getSize.toInt)
           response.getOutputStream.write(bytes)
         }
+      logger.warn("<<< Exiting responseRawFile(git={},objectId={},path={},repository={})", git, objectId, path, repository)
       }
-    logger.warn("<<< Exiting responseRawFile(git={},objectId={},path={},repository={})", git, objectId, path, repository)
     }
   }
 
@@ -342,6 +349,7 @@ abstract class ControllerBase
         Using.resource(new FileInputStream(loginAccountFile)) { in =>
           val json = IOUtils.toString(in, StandardCharsets.UTF_8)
           val account = parse(json).extract[Account]
+          logger.error("getLoginAccountFromLocalFile(): account → {}", account)
           logger.error("getLoginAccountFromLocalFile(): json → {}", json)
           logger.debug("getLoginAccountFromLocalFile(): session → {}", session)
           session.setAttribute(Keys.Session.LoginAccount, account)
@@ -399,8 +407,9 @@ case class Context(
     logger.error(">>> Entering withLoginAccount(f={})", f)
     loginAccount match {
       case Some(loginAccount) => f(loginAccount)
-      case None               => Unauthorized()
-    logger.warn("<<< Exiting withLoginAccount(f={})", f)
+      case None               =>
+        logger.warn("<<< Exiting withLoginAccount(f={})", f)
+        Unauthorized()
     }
   }
 
@@ -501,8 +510,8 @@ trait AccountManagementControllerBase extends ControllerBase {
       val extraMailAddresses = params.view.filterKeys(k => k.startsWith("extraMailAddresses"))
       if (
         params.optionValue("mailAddress").contains(value) || extraMailAddresses.count { case (k, v) =>
+          logger.error("validate(name={},value={},params={},messages={}): extraMailAddresses → {}", name, value, params, messages, extraMailAddresses)
           v.contains(value)
-        logger.error("validate(name={},value={},params={},messages={}): extraMailAddresses → {}", name, value, params, messages, extraMailAddresses)
         } > 1
       ) {
         Some("These mail addresses are duplicated.")

@@ -17,6 +17,7 @@ trait AccountWebHookEventComponent extends TemplateComponent { self: Profile =>
 
     def byAccountWebHook(userName: String, url: String) = {
         logger.error(">>> Entering byAccountWebHook(userName={},url={})", userName, url)
+        logger.warn("<<< Exiting byAccountWebHook(userName={},url={})", userName, url)
         (this.userName === userName.bind) && (this.url === url.bind)
     }
 

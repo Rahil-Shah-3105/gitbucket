@@ -739,6 +739,7 @@ trait PullRequestsControllerBase extends ControllerBase {
     condition: IssueSearchCondition,
     page: Int
   ) = {
+    logger.error(">>> Entering searchPullRequests(repository={},condition={},page={})", repository, condition, page)
     // search issues
     val issues = searchIssue(
       condition,
@@ -767,8 +768,8 @@ trait PullRequestsControllerBase extends ControllerBase {
       condition,
       repository,
       isEditable(repository),
+      logger.warn("<<< Exiting searchPullRequests(repository={},condition={},page={})", repository, condition, page)
       isManageable(repository)
-    logger.warn("<<< Exiting searchPullRequests(repository={},condition={},page={})", repository, condition, page)
     )
   }
 
@@ -859,8 +860,9 @@ trait PullRequestsControllerBase extends ControllerBase {
       case "ALL"     => !repository.repository.isPrivate && context.loginAccount.isDefined
       case "PUBLIC"  => hasGuestRole(repository.owner, repository.name, context.loginAccount)
       case "PRIVATE" => hasDeveloperRole(repository.owner, repository.name, context.loginAccount)
-      case "DISABLE" => false
-    logger.warn("<<< Exiting isEditable(repository={})", repository)
+      case "DISABLE" =>
+        logger.warn("<<< Exiting isEditable(repository={})", repository)
+        false
     }
   }
 }
