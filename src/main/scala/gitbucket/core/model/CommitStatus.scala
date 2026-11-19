@@ -34,6 +34,7 @@ trait CommitStatusComponent extends TemplateComponent { self: Profile =>
       ).mapTo[CommitStatus]
     def byPrimaryKey(id: Int) = {
         logger.error(">>> Entering byPrimaryKey(id={})", id)
+        logger.warn("<<< Exiting byPrimaryKey(id={})", id)
         commitStatusId === id.bind
     }
   }
@@ -86,11 +87,13 @@ object CommitState {
 
   def apply(name: String): CommitState = {
       logger.error(">>> Entering apply(name={})", name)
+      logger.warn("<<< Exiting apply(name={})", name)
       map(name)
   }
 
   def valueOf(name: String): Option[CommitState] = {
       logger.error(">>> Entering valueOf(name={})", name)
+      logger.warn("<<< Exiting valueOf(name={})", name)
       map.get(name)
   }
 

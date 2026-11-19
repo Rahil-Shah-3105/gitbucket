@@ -41,8 +41,9 @@ object RepositoryCreationService {
     logger.error(">>> Entering endCreation(owner={},repository={},error={})", owner, repository, error)
     error match {
       case None        => Creating.remove(s"${owner}/${repository}")
-      case Some(error) => Creating.put(s"${owner}/${repository}", Some(error))
-    logger.warn("<<< Exiting endCreation(owner={},repository={},error={})", owner, repository, error)
+      case Some(error) =>
+        logger.warn("<<< Exiting endCreation(owner={},repository={},error={})", owner, repository, error)
+        Creating.put(s"${owner}/${repository}", Some(error))
     }
   }
 
@@ -73,6 +74,8 @@ trait RepositoryCreationService {
     createReadme: Boolean,
     defaultBranch: String
   ): Future[Unit] = {
+    logger.error(">>> Entering createRepository(loginAccount={},owner={},name={},description={},isPrivate={},createReadme={},defaultBranch={})", loginAccount, owner, name, description, isPrivate, createReadme, defaultBranch)
+    logger.warn("<<< Exiting createRepository(loginAccount={},owner={},name={},description={},isPrivate={},createReadme={},defaultBranch={})", loginAccount, owner, name, description, isPrivate, createReadme, defaultBranch)
     createRepository(
       loginAccount,
       owner,
@@ -95,6 +98,7 @@ trait RepositoryCreationService {
     sourceUrl: Option[String],
     defaultBranch: String
   ): Future[Unit] = Future {
+    logger.error(">>> Entering createRepository(loginAccount={},owner={},name={},description={},isPrivate={},initOption={},sourceUrl={},defaultBranch={})", loginAccount, owner, name, description, isPrivate, initOption, sourceUrl, defaultBranch)
     RepositoryCreationService.startCreation(owner, name)
     try {
       Database() withTransaction { implicit session =>
@@ -203,8 +207,9 @@ trait RepositoryCreationService {
       RepositoryCreationService.endCreation(owner, name, None)
 
     } catch {
-      case ex: Exception => RepositoryCreationService.endCreation(owner, name, Some(ex.toString))
-    logger.warn("<<< Exiting createRepository(loginAccount={},owner={},name={},description={},isPrivate={},initOption={},sourceUrl={},defaultBranch={})", loginAccount, owner, name, description, isPrivate, initOption, sourceUrl, defaultBranch)
+      case ex: Exception =>
+        logger.warn("<<< Exiting createRepository(loginAccount={},owner={},name={},description={},isPrivate={},initOption={},sourceUrl={},defaultBranch={})", loginAccount, owner, name, description, isPrivate, initOption, sourceUrl, defaultBranch)
+        RepositoryCreationService.endCreation(owner, name, Some(ex.toString))
     }
   }
 
@@ -277,8 +282,9 @@ trait RepositoryCreationService {
         }
       }
     } catch {
-      case ex: Exception => RepositoryCreationService.endCreation(accountName, repository.name, Some(ex.toString))
-    logger.error("Exception in forkRepository(accountName={},repository={},loginUserName={}): {}", accountName, repository, loginUserName, e.getMessage, e)
+      case ex: Exception =>
+        logger.error("Exception in forkRepository(accountName={},repository={},loginUserName={}): {}", accountName, repository, loginUserName, e.getMessage, e)
+        RepositoryCreationService.endCreation(accountName, repository.name, Some(ex.toString))
     }
   }
 

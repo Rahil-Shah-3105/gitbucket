@@ -17,6 +17,7 @@ trait AccountWebHookComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(userName: String, url: String) = {
         logger.error(">>> Entering byPrimaryKey(userName={},url={})", userName, url)
+        logger.warn("<<< Exiting byPrimaryKey(userName={},url={})", userName, url)
         (this.userName === userName.bind) && (this.url === url.bind)
     }
   }

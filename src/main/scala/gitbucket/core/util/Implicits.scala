@@ -29,6 +29,7 @@ object Implicits {
 
     def splitWith(condition: (A, A) => Boolean): Seq[Seq[A]] = {
         logger.error(">>> Entering splitWith(condition={})", condition)
+        logger.warn("<<< Exiting splitWith(condition={})", condition)
         split(seq)(condition)
     }
 
@@ -83,6 +84,7 @@ object Implicits {
 
     def hasAttribute(name: String): Boolean = {
         logger.error(">>> Entering hasAttribute(name={})", name)
+        logger.warn("<<< Exiting hasAttribute(name={})", name)
         request.getAttribute(name) != null
     }
 

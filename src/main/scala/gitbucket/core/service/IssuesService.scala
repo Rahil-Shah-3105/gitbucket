@@ -928,7 +928,7 @@ trait IssuesService {
           case (issue, _, content, commentCount) => (issue, commentCount, content.getOrElse(""))
         }
       }
-    logger.warn("<<< Exiting searchIssuesByKeyword(owner={},repository={},query={},pullRequest={})", owner, repository, query, pullRequest)
+      logger.warn("<<< Exiting searchIssuesByKeyword(owner={},repository={},query={},pullRequest={})", owner, repository, query, pullRequest)
       .toList
   }
 
@@ -981,8 +981,8 @@ trait IssuesService {
               }
             )
           }
+        logger.error("createReferComment(owner,repository,fromIssue,message,loginAccount)={},{},{},{},{}: find query executed in {} ms", owner, repository, fromIssue, message, loginAccount, (System.currentTimeMillis() - __logStart))
         }
-      logger.error("createReferComment(owner,repository,fromIssue,message,loginAccount)={},{},{},{},{}: find query executed in {} ms", owner, repository, fromIssue, message, loginAccount, (System.currentTimeMillis() - __logStart))
       }
     }
   }
@@ -1008,8 +1008,8 @@ trait IssuesService {
         case Some(_) =>
           List(owner)
         case None =>
+          logger.warn("<<< Exiting getAssignableUserNames(owner={},repository={})", owner, repository)
           Nil
-      logger.warn("<<< Exiting getAssignableUserNames(owner={},repository={})", owner, repository)
       })).distinct.sorted
   }
 

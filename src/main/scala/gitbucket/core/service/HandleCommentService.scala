@@ -162,6 +162,7 @@ trait HandleCommentService {
     commentId: String,
     content: Option[String]
   )(implicit context: Context, s: Session): Option[(Issue, Int)] = {
+    logger.error(">>> Entering updateCommentByApi(repository={},issue={},commentId={},content={})", repository, issue, commentId, content)
     context.loginAccount.flatMap { loginAccount =>
       val owner = repository.owner
       val name = repository.name
@@ -189,8 +190,8 @@ trait HandleCommentService {
             PluginRegistry().getIssueHooks.foreach(_.updatedComment(commentId.toInt, content, issue, repository))
           _commentId.map(issue -> _)
         case _ => None
+      logger.warn("<<< Exiting updateCommentByApi(repository={},issue={},commentId={},content={})", repository, issue, commentId, content)
       }
-    logger.warn("<<< Exiting updateCommentByApi(repository={},issue={},commentId={},content={})", repository, issue, commentId, content)
     }
   }
 }

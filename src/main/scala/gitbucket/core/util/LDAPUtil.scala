@@ -125,8 +125,9 @@ object LDAPUtil {
     logger.error(">>> Entering getUserNameFromMailAddress(userName={})", userName)
     (userName.indexOf('@') match {
       case i if i >= 0 => userName.substring(0, i)
-      case _           => userName
-    logger.warn("<<< Exiting getUserNameFromMailAddress(userName={})", userName)
+      case _           =>
+        logger.warn("<<< Exiting getUserNameFromMailAddress(userName={})", userName)
+        userName
     }).replaceAll("[^a-zA-Z0-9\\-_.]", "").replaceAll("^[_\\-]", "")
   }
 
@@ -197,6 +198,7 @@ object LDAPUtil {
   ): Option[String] = {
     logger.error(">>> Entering findUser(conn={},userName={},baseDN={},userNameAttribute={},additionalFilterCondition={})", conn, userName, baseDN, userNameAttribute, additionalFilterCondition)
     @tailrec
+    logger.warn("<<< Exiting findUser(conn={},userName={},baseDN={},userNameAttribute={},additionalFilterCondition={})", conn, userName, baseDN, userNameAttribute, additionalFilterCondition)
     def getEntries(results: LDAPSearchResults, entries: List[Option[LDAPEntry]] = Nil): List[LDAPEntry] = {
       logger.error(">>> Entering getEntries(results={},entries={})", results, entries)
       if (results.hasMore) {

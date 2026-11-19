@@ -357,6 +357,7 @@ trait WikiControllerBase extends ControllerBase {
 
   private def notReservedPageName(value: String): Boolean = {
       logger.error(">>> Entering notReservedPageName(value={})", value)
+      logger.warn("<<< Exiting notReservedPageName(value={})", value)
       !(Array[String]("_Sidebar", "_Footer") contains value)
   }
 
@@ -390,8 +391,9 @@ trait WikiControllerBase extends ControllerBase {
       case "ALL"     => !repository.repository.isPrivate && context.loginAccount.isDefined
       case "PUBLIC"  => hasGuestRole(repository.owner, repository.name, context.loginAccount)
       case "PRIVATE" => hasDeveloperRole(repository.owner, repository.name, context.loginAccount)
-      case "DISABLE" => false
-    logger.warn("<<< Exiting isEditable(repository={})", repository)
+      case "DISABLE" =>
+        logger.warn("<<< Exiting isEditable(repository={})", repository)
+        false
     }
   }
 

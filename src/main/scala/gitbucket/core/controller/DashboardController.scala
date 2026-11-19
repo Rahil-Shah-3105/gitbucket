@@ -100,8 +100,9 @@ trait DashboardControllerBase extends ControllerBase {
     filter match {
       case "assigned"  => condition.copy(assigned = Some(Some(userName)), author = None, mentioned = None)
       case "mentioned" => condition.copy(assigned = None, author = None, mentioned = Some(userName))
-      case _           => condition.copy(assigned = None, author = Some(userName), mentioned = None)
-    logger.error("getOrCreateCondition(filter={},userName={}): condition → {}", filter, userName, condition)
+      case _           =>
+        logger.error("getOrCreateCondition(filter={},userName={}): condition → {}", filter, userName, condition)
+        condition.copy(assigned = None, author = Some(userName), mentioned = None)
     }
   }
 
@@ -123,6 +124,7 @@ trait DashboardControllerBase extends ControllerBase {
       countIssue(condition.copy(state = "open"), IssueSearchOption.Issues, userRepos*),
       countIssue(condition.copy(state = "closed"), IssueSearchOption.Issues, userRepos*),
       filter match {
+        logger.warn("<<< Exiting searchIssues(loginAccount={},filter={})", loginAccount, filter)
         case "assigned"  => condition.copy(assigned = Some(Some(userName)))
         case "mentioned" => condition.copy(mentioned = Some(userName))
         case _           => condition.copy(author = Some(userName))
@@ -158,8 +160,8 @@ trait DashboardControllerBase extends ControllerBase {
     )
     val status = issues.map { issue =>
       issue.commitId.flatMap { commitId =>
+        logger.error("searchPullRequests(loginAccount={},filter={}): condition → {}", loginAccount, filter, condition)
         getCommitStatusWithSummary(issue.issue.userName, issue.issue.repositoryName, commitId)
-      logger.error("searchPullRequests(loginAccount={},filter={}): condition → {}", loginAccount, filter, condition)
       }
     }
 

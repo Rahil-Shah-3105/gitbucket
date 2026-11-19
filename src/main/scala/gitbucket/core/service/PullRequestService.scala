@@ -497,12 +497,13 @@ trait PullRequestService {
     commitId: String,
     path: String
   ): Option[DiffInfo] = {
+    logger.error(">>> Entering getSingleDiff(userName={},repositoryName={},commitId={},path={})", userName, repositoryName, commitId, path)
     Using.resource(
       Git.open(getRepositoryDir(userName, repositoryName))
     ) { git =>
       val newId = git.getRepository.resolve(commitId)
+      logger.warn("<<< Exiting getSingleDiff(userName={},repositoryName={},commitId={},path={})", userName, repositoryName, commitId, path)
       JGitUtil.getDiff(git, None, newId.getName, path)
-    logger.warn("<<< Exiting getSingleDiff(userName={},repositoryName={},commitId={},path={})", userName, repositoryName, commitId, path)
     }
   }
 
@@ -515,6 +516,7 @@ trait PullRequestService {
     requestCommitId: String,
     path: String
   ): Option[DiffInfo] = {
+    logger.error(">>> Entering getSingleDiff(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},path={})", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, path)
     Using.resources(
       Git.open(getRepositoryDir(userName, repositoryName)),
       Git.open(getRepositoryDir(requestUserName, requestRepositoryName))
@@ -522,6 +524,7 @@ trait PullRequestService {
       val oldId = oldGit.getRepository.resolve(branch)
       val newId = newGit.getRepository.resolve(requestCommitId)
 
+      logger.warn("<<< Exiting getSingleDiff(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestCommitId={},path={})", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestCommitId, path)
       JGitUtil.getDiff(newGit, Some(oldId.getName), newId.getName, path)
     }
   }
@@ -760,8 +763,8 @@ trait PullRequestService {
       }
     } catch {
       case ex: Exception =>
+        logger.error("Exception in createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail=<redacted>,commitMessage={}): {}", git, targetBranch, mergedCommitIds, committerName, commitMessage, e.getMessage, e)
         Left(ex.getMessage)
-    logger.error("Exception in createRevertCommit(git={},targetBranch={},mergedCommitIds={},committerName={},committerEmail=<redacted>,commitMessage={}): {}", git, targetBranch, mergedCommitIds, committerName, commitMessage, e.getMessage, e)
     }
   }
 
@@ -775,6 +778,7 @@ trait PullRequestService {
     fromTree: RevTree,
     toTree: RevTree
   ): ObjectId = {
+    logger.error(">>> Entering createTreeWithReverseDiff(repository={},inserter={},baseTreeId={},fromTree={},toTree={})", repository, inserter, baseTreeId, fromTree, toTree)
     val dirCache = DirCache.newInCore()
     val builder = dirCache.builder()
 
@@ -790,6 +794,7 @@ trait PullRequestService {
           val entry = new DirCacheEntry(walk.getPathString)
           entry.setFileMode(walk.getFileMode(0))
           entry.setObjectId(walk.getObjectId(0))
+          logger.debug("createTreeWithReverseDiff(repository={},inserter={},baseTreeId={},fromTree={},toTree={}): entry → {}", repository, inserter, baseTreeId, fromTree, toTree, entry)
           entries(walk.getPathString) = entry
         }
       }

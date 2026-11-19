@@ -25,6 +25,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def datetime(date: Date): String = {
       logger.error(">>> Entering datetime(date={})", date)
+      logger.warn("<<< Exiting datetime(date={})", date)
       new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date)
   }
 
@@ -48,8 +49,9 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
       case Some((unitValue, unitString)) =>
         val value = duration / unitValue
         s"${value} ${unitString}${if (value > 1) "s" else ""} ago"
-      case None => "just now"
-    logger.error("datetimeAgo(date={}): duration → {}", date, duration)
+      case None =>
+        logger.error("datetimeAgo(date={}): duration → {}", date, duration)
+        "just now"
     }
   }
 
@@ -67,8 +69,9 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
       case Some((unitValue, unitString)) =>
         val value = duration / unitValue
         s"${value} ${unitString}${if (value > 1) "s" else ""} ago"
-      case None => "just now"
-    logger.error("datetimeAgoRecentOnly(date={}): duration → {}", date, duration)
+      case None =>
+        logger.error("datetimeAgoRecentOnly(date={}): duration → {}", date, duration)
+        "just now"
     }
   }
 
@@ -90,6 +93,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def date(date: Date): String = {
       logger.error(">>> Entering date(date={})", date)
+      logger.warn("<<< Exiting date(date={})", date)
       new SimpleDateFormat("yyyy-MM-dd").format(date)
   }
 
@@ -98,6 +102,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def hashDate(date: Date): String = {
       logger.error(">>> Entering hashDate(date={})", date)
+      logger.warn("<<< Exiting hashDate(date={})", date)
       new SimpleDateFormat("yyyyMMddHHmmss").format(date)
   }
 
@@ -317,6 +322,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def removeHtml(html: Html): Html = {
       logger.error(">>> Entering removeHtml(html={})", html)
+      logger.warn("<<< Exiting removeHtml(html={})", html)
       Html(html.body.replaceAll("<.+?>", ""))
   }
 
@@ -325,6 +331,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def encodeRefName(value: String): String = {
       logger.error(">>> Entering encodeRefName(value={})", value)
+      logger.warn("<<< Exiting encodeRefName(value={})", value)
       StringUtil.encodeRefName(value)
   }
 
@@ -332,6 +339,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
 
   def urlEncode(value: Option[String]): String = {
       logger.error(">>> Entering urlEncode(value={})", value)
+      logger.warn("<<< Exiting urlEncode(value={})", value)
       value.map(urlEncode).getOrElse("")
   }
 
@@ -365,6 +373,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   def assets(implicit context: Context): String = {
       logger.error(">>> Entering assets(context={})", context)
       logger.error(">>> Entering assets(path={})", path)
+      logger.warn("<<< Exiting assets(context={})", context)
       s"${context.path}/assets"
   }
 
@@ -441,11 +450,13 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def isPast(date: Date): Boolean = {
       logger.error(">>> Entering isPast(date={})", date)
+      logger.warn("<<< Exiting isPast(date={})", date)
       System.currentTimeMillis > date.getTime
   }
 
   def pre(value: Html): Html = {
       logger.error(">>> Entering pre(value={})", value)
+      logger.warn("<<< Exiting pre(value={})", value)
       Html(s"<pre>${value.body.trim.split("\n").map(_.trim).mkString("\n")}</pre>")
   }
 
@@ -566,6 +577,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    */
   def readableSize(size: Option[Long]): String = {
       logger.error(">>> Entering readableSize(size={})", size)
+      logger.warn("<<< Exiting readableSize(size={})", size)
       FileUtil.readableSize(size.getOrElse(0))
   }
 
@@ -636,6 +648,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
 
   def md5(value: String): String = {
       logger.error(">>> Entering md5(value={})", value)
+      logger.warn("<<< Exiting md5(value={})", value)
       DigestUtils.md5Hex(value)
   }
 

@@ -19,6 +19,7 @@ trait ReleaseTagComponent extends TemplateComponent { self: Profile =>
       (userName, repositoryName, name, tag, author, content, registeredDate, updatedDate).mapTo[ReleaseTag]
     def byPrimaryKey(owner: String, repository: String, tag: String) = {
         logger.error(">>> Entering byPrimaryKey(owner={},repository={},tag={})", owner, repository, tag)
+        logger.warn("<<< Exiting byPrimaryKey(owner={},repository={},tag={})", owner, repository, tag)
         byTag(owner, repository, tag)
     }
     def byTag(owner: String, repository: String, tag: String) =

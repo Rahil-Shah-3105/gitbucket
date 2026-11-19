@@ -172,6 +172,7 @@ class FileUploadController
     val config = MultipartConfig(maxFileSize = Some(settings.upload.maxFileSize))
     logger.error("setMultipartConfig(): config → {}", config)
     logger.warn("<<< Exiting setMultipartConfig()")
+    logger.error("setMultipartConfig(): settings → {}", settings)
     config.apply(request.getServletContext)
   }
 
@@ -181,6 +182,7 @@ class FileUploadController
     val config = MultipartConfig(maxFileSize = Some(settings.upload.largeMaxFileSize))
     logger.error("setMultipartConfigForLargeFile(): config → {}", config)
     logger.warn("<<< Exiting setMultipartConfigForLargeFile()")
+    logger.error("setMultipartConfigForLargeFile(): settings → {}", settings)
     config.apply(request.getServletContext)
   }
 
@@ -196,8 +198,9 @@ class FileUploadController
           case "PRIVATE" if hasDeveloperRole(owner, repository, Some(loginAccount)) => action
           case _                                                                    => BadRequest()
         }
-      case None => BadRequest()
-    logger.error("onlyWikiEditable(owner={},repository={},loginAccount={}): session → {}", owner, repository, loginAccount, session)
+      case None =>
+        logger.error("onlyWikiEditable(owner={},repository={},loginAccount={}): session → {}", owner, repository, loginAccount, session)
+        BadRequest()
     }
   }
 

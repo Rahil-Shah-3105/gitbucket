@@ -36,8 +36,8 @@ trait MergeService {
   def checkConflict(userName: String, repositoryName: String, branch: String, issueId: Int): Option[String] = {
     logger.error(">>> Entering checkConflict(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     Using.resource(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
+      logger.warn("<<< Exiting checkConflict(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
       new MergeCacheInfo(git, userName, repositoryName, branch, issueId, Nil).checkConflict()
-    logger.warn("<<< Exiting checkConflict(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     }
   }
 
@@ -55,8 +55,8 @@ trait MergeService {
   ): Option[Option[String]] = {
     logger.error(">>> Entering checkConflictCache(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     Using.resource(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
+      logger.warn("<<< Exiting checkConflictCache(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
       new MergeCacheInfo(git, userName, repositoryName, branch, issueId, Nil).checkConflictCache()
-    logger.warn("<<< Exiting checkConflictCache(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     }
   }
 
@@ -189,6 +189,7 @@ trait MergeService {
     remoteRepositoryName: String,
     remoteBranch: String
   ): Either[String, (ObjectId, ObjectId, ObjectId)] = {
+    logger.error(">>> Entering tryMergeRemote(localUserName={},localRepositoryName={},localBranch={},remoteUserName={},remoteRepositoryName={},remoteBranch={})", localUserName, localRepositoryName, localBranch, remoteUserName, remoteRepositoryName, remoteBranch)
     Using.resource(Git.open(getRepositoryDir(localUserName, localRepositoryName))) { git =>
       val remoteRefName = s"refs/heads/${remoteBranch}"
       val tmpRefName = s"refs/remote-temp/${remoteUserName}/${remoteRepositoryName}/${remoteBranch}"
@@ -211,13 +212,14 @@ trait MergeService {
           }
         } catch {
           case e: NoMergeBaseException => Left(e.toString)
+        logger.error("Exception in tryMergeRemote(localUserName={},localRepositoryName={},localBranch={},remoteUserName={},remoteRepositoryName={},remoteBranch={}): {}", localUserName, localRepositoryName, localBranch, remoteUserName, remoteRepositoryName, remoteBranch, e.getMessage, e)
         }
       } finally {
         val refUpdate = git.getRepository.updateRef(refSpec.getDestination)
         refUpdate.setForceUpdate(true)
         refUpdate.delete()
+      logger.warn("<<< Exiting tryMergeRemote(localUserName={},localRepositoryName={},localBranch={},remoteUserName={},remoteRepositoryName={},remoteBranch={})", localUserName, localRepositoryName, localBranch, remoteUserName, remoteRepositoryName, remoteBranch)
       }
-    logger.warn("<<< Exiting tryMergeRemote(localUserName={},localRepositoryName={},localBranch={},remoteUserName={},remoteRepositoryName={},remoteBranch={})", localUserName, localRepositoryName, localBranch, remoteUserName, remoteRepositoryName, remoteBranch)
     }
   }
 
@@ -345,8 +347,8 @@ trait MergeService {
           }
         }
       }
+      logger.warn("<<< Exiting pullRemote(localRepository={},localBranch={},remoteRepository={},remoteBranch={},loginAccount={},message={},pullRequest={},settings={})", localRepository, localBranch, remoteRepository, remoteBranch, loginAccount, message, pullRequest, settings)
       oldBaseId
-    logger.warn("<<< Exiting pullRemote(localRepository={},localBranch={},remoteRepository={},remoteBranch={},loginAccount={},message={},pullRequest={},settings={})", localRepository, localBranch, remoteRepository, remoteBranch, loginAccount, message, pullRequest, settings)
     }.toOption
   }
 
@@ -602,8 +604,8 @@ object MergeService {
       Using.resource(repository.newObjectInserter) { inserter =>
         val mergeCommitId = inserter.insert(mergeCommit)
         inserter.flush()
+        logger.warn("<<< Exiting createMergeCommit(repository={},treeId={},committer={},message={},parents={})", repository, treeId, committer, message, parents)
         mergeCommitId
-      logger.warn("<<< Exiting createMergeCommit(repository={},treeId={},committer={},message={},parents={})", repository, treeId, committer, message, parents)
       }
     }
 
@@ -654,6 +656,7 @@ object MergeService {
         .orElse(Option(git.getRepository.resolve(conflictedBranchName)).flatMap { conflicted =>
           val commit = parseCommit(conflicted)
           if (commit.getParents.toSet == Set(mergeBaseTip, mergeTip)) {
+            logger.error("checkConflictCache(): commit → {}", commit)
             logger.warn("<<< Exiting checkConflictCache()")
             // conflict branch exists
             Some(Some(commit.getFullMessage))
@@ -664,6 +667,8 @@ object MergeService {
     }
 
     def checkConflict(): Option[String] = {
+      logger.error(">>> Entering checkConflict()")
+      logger.warn("<<< Exiting checkConflict()")
       checkConflictCache().getOrElse(checkConflictForce())
     }
 
@@ -678,8 +683,8 @@ object MergeService {
           logger.error("checkConflictForce(): update query executed in {} ms", (System.currentTimeMillis() - __logStart))
           case e: NoMergeBaseException =>
             logger.error("checkConflictForce(): merger → {}", merger)
+            logger.error("Exception in checkConflictForce(): {}", e.getMessage, e)
             true
-        logger.error("Exception in checkConflictForce(): {}", e.getMessage, e)
         }
       val mergeTipCommit = Using.resource(new RevWalk(git.getRepository))(_.parseCommit(mergeTip))
       val committer = mergeTipCommit.getCommitterIdent
@@ -890,6 +895,7 @@ object MergeService {
 
     private def parseCommit(id: ObjectId) = {
         logger.error(">>> Entering parseCommit(id={})", id)
+        logger.warn("<<< Exiting parseCommit(id={})", id)
         Using.resource(new RevWalk(git.getRepository))(_.parseCommit(id))
     }
 

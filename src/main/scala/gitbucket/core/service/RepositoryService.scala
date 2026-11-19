@@ -557,8 +557,9 @@ trait RepositoryService {
       case Some(a) if a.userName == owner                                                               => true
       case Some(a) if getGroupMembers(owner).exists(_.userName == a.userName)                           => true
       case Some(a) if getCollaboratorUserNames(owner, repository, Seq(Role.ADMIN)).contains(a.userName) => true
-      case _                                                                                            => false
-    logger.warn("<<< Exiting hasOwnerRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+      case _                                                                                            =>
+        logger.warn("<<< Exiting hasOwnerRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+        false
     }
   }
 
@@ -588,8 +589,9 @@ trait RepositoryService {
           if getCollaboratorUserNames(owner, repository, Seq(Role.ADMIN, Role.DEVELOPER, Role.GUEST))
             .contains(a.userName) =>
         true
-      case _ => false
-    logger.warn("<<< Exiting hasGuestRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+      case _ =>
+        logger.warn("<<< Exiting hasGuestRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+        false
     }
   }
 
@@ -620,8 +622,9 @@ trait RepositoryService {
           if getCollaboratorUserNames(repository.userName, repository.repositoryName, Seq(Role.ADMIN, Role.DEVELOPER))
             .contains(x.userName) =>
         true
-      case _ => false
-    logger.warn("<<< Exiting isWritable(repository={},loginAccount={})", repository, loginAccount)
+      case _ =>
+        logger.warn("<<< Exiting isWritable(repository={},loginAccount={})", repository, loginAccount)
+        false
     }
   }
 
@@ -668,7 +671,7 @@ trait RepositoryService {
     val withExtFilenames = templateExtensions.map(extension => s"${fileBaseName.toLowerCase()}.${extension}")
 
     logger.error("getContentTemplate(repository={},fileBaseName={}): withExtFilenames → {}", repository, fileBaseName, withExtFilenames)
-logger.warn("<<< Exiting getContentTemplate(repository={},fileBaseName={})", repository, fileBaseName)
+    logger.warn("<<< Exiting getContentTemplate(repository={},fileBaseName={})", repository, fileBaseName)
     def choiceTemplate(files: List[FileInfo]): Option[FileInfo] =
       files
         .find { f =>
@@ -749,6 +752,7 @@ object RepositoryService {
 
     def httpUrl(implicit context: Context): String = {
         logger.error(">>> Entering httpUrl(context={})", context)
+        logger.warn("<<< Exiting httpUrl(context={})", context)
         RepositoryService.httpUrl(owner, name)
     }
     def sshUrl(implicit context: Context): Option[String] = {

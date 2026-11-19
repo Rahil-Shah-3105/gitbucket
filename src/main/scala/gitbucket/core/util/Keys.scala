@@ -41,6 +41,7 @@ object Keys {
      */
     def Issues(owner: String, name: String) = {
         logger.error(">>> Entering Issues(owner={},name={})", owner, name)
+        logger.warn("<<< Exiting Issues(owner={},name={})", owner, name)
         s"${owner}/${name}/issues"
     }
 
@@ -49,6 +50,7 @@ object Keys {
      */
     def Pulls(owner: String, name: String) = {
         logger.error(">>> Entering Pulls(owner={},name={})", owner, name)
+        logger.warn("<<< Exiting Pulls(owner={},name={})", owner, name)
         s"${owner}/${name}/pulls"
     }
 
@@ -57,6 +59,7 @@ object Keys {
      */
     def Upload(fileId: String) = {
         logger.error(">>> Entering Upload(fileId={})", fileId)
+        logger.warn("<<< Exiting Upload(fileId={})", fileId)
         s"upload_${fileId}"
     }
 
@@ -111,6 +114,7 @@ object Keys {
      */
     def Cache(key: String) = {
         logger.error(">>> Entering Cache(key={})", key)
+        logger.warn("<<< Exiting Cache(key={})", key)
         s"cache.${key}"
     }
 

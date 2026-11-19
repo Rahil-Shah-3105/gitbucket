@@ -44,6 +44,7 @@ trait AccountFederationService {
 
   private def extractSafeStringForUserName(s: String) = {
       logger.error(">>> Entering extractSafeStringForUserName(s={})", s)
+      logger.warn("<<< Exiting extractSafeStringForUserName(s={})", s)
       """^[a-zA-Z0-9][a-zA-Z0-9\-_.]*""".r.findPrefixOf(s)
   }
 

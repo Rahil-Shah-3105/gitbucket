@@ -14,6 +14,7 @@ trait AccountPreferenceComponent { self: Profile =>
 
     def byPrimaryKey(userName: String): Rep[Boolean] = {
         logger.error(">>> Entering byPrimaryKey(userName={})", userName)
+        logger.warn("<<< Exiting byPrimaryKey(userName={})", userName)
         this.userName === userName.bind
     }
   }

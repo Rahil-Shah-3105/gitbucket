@@ -10,6 +10,7 @@ protected[model] trait TemplateComponent { self: Profile =>
 
     def byAccount(userName: String) = {
         logger.error(">>> Entering byAccount(userName={})", userName)
+        logger.warn("<<< Exiting byAccount(userName={})", userName)
         (this.userName === userName.bind)
     }
 

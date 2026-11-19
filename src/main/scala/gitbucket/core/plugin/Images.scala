@@ -8,6 +8,7 @@ object Images {
 
   def dataURI(id: String) = {
       logger.error(">>> Entering dataURI(id={})", id)
+      logger.warn("<<< Exiting dataURI(id={})", id)
       s"data:image/png;base64,${PluginRegistry().getImage(id)}"
   }
 

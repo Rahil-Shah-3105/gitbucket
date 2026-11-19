@@ -21,6 +21,7 @@ trait LinkConverter { self: RequestCache =>
           else "issues"}/${issueId}"><strong>${StringUtil
             .escapeHtml(title)}</strong> #${issueId}</a>"""
       case None =>
+      logger.warn("<<< Exiting createIssueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
         s"Unknown #${issueId}"
     }
   }
@@ -33,6 +34,7 @@ trait LinkConverter { self: RequestCache =>
   ): String = {
     logger.error(">>> Entering createGlobalIssueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
     getIssueFromCache(owner, repository, issueId.toString) match {
+      logger.warn("<<< Exiting createGlobalIssueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
       case Some(issue) =>
         s"""<a href="${context.path}/${owner}/${repository}/${if (issue.isPullRequest) "pull"
           else "issues"}/${issueId}"><strong>${StringUtil
