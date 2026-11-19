@@ -8,12 +8,16 @@ import gitbucket.core.util.Directory
 import org.scalatra._
 
 class ScalatraBootstrap extends LifeCycle with SystemSettingsService {
+  private val logger = LoggerFactory.getLogger(getClass)
   override def init(context: ServletContext): Unit = {
+    logger.error(">>> Entering init(context={})", context)
 
     val settings = loadSystemSettings()
     if (settings.baseUrl.exists(_.startsWith("https://"))) {
+      logger.error("init(context={}): settings → {}", context, settings)
       context.getSessionCookieConfig.setSecure(true)
     }
+    logger.debug("init(context={}): getSessionCookieConfig → <redacted>", context)
 
     // Register TransactionFilter at first
     context.addFilter("transactionFilter", new TransactionFilter)
@@ -55,6 +59,7 @@ class ScalatraBootstrap extends LifeCycle with SystemSettingsService {
     filter.mount(new ReleaseController, "/*")
     filter.mount(new RepositorySettingsController, "/*")
 
+    logger.error("init(context={}): filter → {}", context, filter)
     context.addFilter("compositeScalatraFilter", filter)
     context
       .getFilterRegistration("compositeScalatraFilter")
@@ -63,11 +68,15 @@ class ScalatraBootstrap extends LifeCycle with SystemSettingsService {
     // Create GITBUCKET_HOME directory if it does not exist
     val dir = new java.io.File(Directory.GitBucketHome)
     if (!dir.exists) {
+      logger.warn("<<< Exiting init(context={})", context)
+      logger.error("init(context={}): dir → {}", context, dir)
       dir.mkdirs()
     }
   }
 
   override def destroy(context: ServletContext): Unit = {
+    logger.error(">>> Entering destroy(context={})", context)
+    logger.warn("<<< Exiting destroy(context={})", context)
     Database.closeDataSource()
   }
 }

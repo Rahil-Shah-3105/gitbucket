@@ -40,6 +40,7 @@ trait OpenIDConnectService {
    * @return Authentication request
    */
   def createOIDCAuthenticationRequest(issuer: Issuer, clientID: ClientID, redirectURI: URI): AuthenticationRequest = {
+    logger.error(">>> Entering createOIDCAuthenticationRequest(issuer={},clientID={},redirectURI={})", issuer, clientID, redirectURI)
     val metadata = OIDCProviderMetadata.resolve(issuer)
     new AuthenticationRequest(
       metadata.getAuthorizationEndpointURI,
@@ -49,11 +50,15 @@ trait OpenIDConnectService {
       redirectURI,
       new State(),
       new Nonce()
+    logger.warn("<<< Exiting createOIDCAuthenticationRequest(issuer={},clientID={},redirectURI={})", issuer, clientID, redirectURI)
     )
   }
 
   def createOIDLogoutRequest(issuer: Issuer, clientID: ClientID, redirectURI: URI, token: JWT): LogoutRequest = {
+    logger.error(">>> Entering createOIDLogoutRequest(issuer={},clientID={},redirectURI={},token=<redacted>)", issuer, clientID, redirectURI)
     val metadata = OIDCProviderMetadata.resolve(issuer)
+    logger.warn("<<< Exiting createOIDLogoutRequest(issuer={},clientID={},redirectURI={},token=<redacted>)", issuer, clientID, redirectURI)
+    logger.error("createOIDLogoutRequest(issuer={},clientID={},redirectURI={},token=<redacted>): metadata → {}", issuer, clientID, redirectURI, metadata)
     new LogoutRequest(metadata.getEndSessionEndpointURI, token, null, clientID, redirectURI, null, null)
   }
 
@@ -145,6 +150,7 @@ trait OpenIDConnectService {
     redirectURI: URI,
     oidc: SystemSettingsService.OIDC
   ): Option[(JWT, IDTokenClaimsSet)] = {
+    logger.error(">>> Entering obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={})", redirectURI, oidc)
     val metadata = OIDCProviderMetadata.resolve(oidc.issuer)
     val tokenRequest = new TokenRequest(
       metadata.getTokenEndpointURI,
@@ -154,17 +160,21 @@ trait OpenIDConnectService {
     )
     val httpResponse = tokenRequest.toHTTPRequest.send()
     try {
+      logger.error("obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={}): metadata → {}", redirectURI, oidc, metadata)
+      logger.error("obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={}): tokenRequest → <redacted>", redirectURI, oidc)
       OIDCTokenResponseParser.parse(httpResponse) match {
         case response: OIDCTokenResponse =>
           validateOIDCTokenResponse(response, metadata, nonce, oidc)
         case response: TokenErrorResponse =>
           logger.info(s"OIDC token response has error: ${response.getErrorObject.toJSONObject}")
+          logger.error("obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={}): httpResponse → {}", redirectURI, oidc, httpResponse)
           None
       }
     } catch {
       case e: ParseException =>
         logger.info(s"OIDC token response has error: $e")
         None
+    logger.warn("<<< Exiting obtainOIDCToken(authorizationCode=<redacted>,nonce=<redacted>,redirectURI={},oidc={})", redirectURI, oidc)
     }
   }
 

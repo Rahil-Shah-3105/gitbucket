@@ -2,6 +2,7 @@ package gitbucket.core.model
 import java.util.Date
 
 sealed trait Comment {
+  private val logger = LoggerFactory.getLogger(getClass)
   val commentedUserName: String
   val registeredDate: java.util.Date
 }
@@ -23,7 +24,10 @@ trait IssueCommentComponent extends TemplateComponent { self: Profile =>
       (userName, repositoryName, issueId, commentId, action, commentedUserName, content, registeredDate, updatedDate)
         .mapTo[IssueComment]
 
-    def byPrimaryKey(commentId: Int) = this.commentId === commentId.bind
+    def byPrimaryKey(commentId: Int) = {
+        logger.error(">>> Entering byPrimaryKey(commentId={})", commentId)
+        this.commentId === commentId.bind
+    }
   }
 }
 

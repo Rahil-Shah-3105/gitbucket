@@ -10,13 +10,19 @@ import Implicits._
  * Allows only oneself and administrators.
  */
 trait OneselfAuthenticator { self: ControllerBase =>
-  protected def oneselfOnly(action: => Any) = { authenticate(action) }
+  protected def oneselfOnly(action: => Any) = {
+      logger.error(">>> Entering oneselfOnly(action={})", action)
+      authenticate(action)
+  }
   protected def oneselfOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }
 
   private def authenticate(action: => Any) = {
+    private val logger = LoggerFactory.getLogger(getClass)
     context.loginAccount match {
+      logger.error(">>> Entering authenticate(action={})", action)
       case Some(x) if x.isAdmin                      => action
       case Some(x) if request.paths(0) == x.userName => action
+      logger.warn("<<< Exiting authenticate(action={})", action)
       case _                                         => Unauthorized()
     }
   }
@@ -26,7 +32,10 @@ trait OneselfAuthenticator { self: ControllerBase =>
  * Allows only the repository owner and administrators.
  */
 trait OwnerAuthenticator { self: ControllerBase & RepositoryService & AccountService =>
-  protected def ownerOnly(action: RepositoryInfo => Any) = { authenticate(action) }
+  protected def ownerOnly(action: RepositoryInfo => Any) = {
+      logger.error(">>> Entering ownerOnly(action={})", action)
+      authenticate(action)
+  }
   protected def ownerOnly[T](action: (T, RepositoryInfo) => Any) = (form: T) => { authenticate(action(form, _)) }
 
   private def authenticate(action: (RepositoryInfo) => Any) = {
@@ -34,10 +43,12 @@ trait OwnerAuthenticator { self: ControllerBase & RepositoryService & AccountSer
     val repoName = params("repository")
     getRepository(userName, repoName).map { repository =>
       context.loginAccount match {
+        logger.error("authenticate(action={}): repoName → {}", action, repoName)
         case Some(x) if x.isAdmin                      => action(repository)
         case Some(x) if repository.owner == x.userName => action(repository)
         // TODO Repository management is allowed for only group managers?
         case Some(x) if getGroupMembers(repository.owner).exists { m =>
+              logger.error("authenticate(action={}): userName → {}", action, userName)
               m.userName == x.userName && m.isManager
             } =>
           action(repository)
@@ -53,7 +64,10 @@ trait OwnerAuthenticator { self: ControllerBase & RepositoryService & AccountSer
  * Allows only signed in users.
  */
 trait UsersAuthenticator { self: ControllerBase =>
-  protected def usersOnly(action: => Any) = { authenticate(action) }
+  protected def usersOnly(action: => Any) = {
+      logger.error(">>> Entering usersOnly(action={})", action)
+      authenticate(action)
+  }
   protected def usersOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }
 
   private def authenticate(action: => Any) = {
@@ -68,7 +82,10 @@ trait UsersAuthenticator { self: ControllerBase =>
  * Allows only administrators.
  */
 trait AdminAuthenticator { self: ControllerBase =>
-  protected def adminOnly(action: => Any) = { authenticate(action) }
+  protected def adminOnly(action: => Any) = {
+      logger.error(">>> Entering adminOnly(action={})", action)
+      authenticate(action)
+  }
   protected def adminOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }
 
   private def authenticate(action: => Any) = {
@@ -83,7 +100,10 @@ trait AdminAuthenticator { self: ControllerBase =>
  * Allows only guests and signed in users who can access the repository.
  */
 trait ReferrerAuthenticator { self: ControllerBase & RepositoryService & AccountService =>
-  protected def referrersOnly(action: RepositoryInfo => Any) = { authenticate(action) }
+  protected def referrersOnly(action: RepositoryInfo => Any) = {
+      logger.error(">>> Entering referrersOnly(action={})", action)
+      authenticate(action)
+  }
   protected def referrersOnly[T](action: (T, RepositoryInfo) => Any) = (form: T) => { authenticate(action(form, _)) }
 
   private def authenticate(action: RepositoryInfo => Any) = {
@@ -147,7 +167,10 @@ trait WritableUsersAuthenticator { self: ControllerBase & RepositoryService & Ac
  * Allows only the group managers.
  */
 trait GroupManagerAuthenticator { self: ControllerBase & AccountService =>
-  protected def managersOnly(action: => Any) = { authenticate(action) }
+  protected def managersOnly(action: => Any) = {
+      logger.error(">>> Entering managersOnly(action={})", action)
+      authenticate(action)
+  }
   protected def managersOnly[T](action: T => Any) = (form: T) => { authenticate(action(form)) }
 
   private def authenticate(action: => Any) = {

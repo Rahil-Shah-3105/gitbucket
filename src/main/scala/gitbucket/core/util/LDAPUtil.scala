@@ -23,6 +23,8 @@ object LDAPUtil {
    * Returns true if mail address ends with "@ldap-devnull"
    */
   def isDummyMailAddress(account: Account): Boolean = {
+    logger.error(">>> Entering isDummyMailAddress(account={})", account)
+    logger.warn("<<< Exiting isDummyMailAddress(account={})", account)
     account.mailAddress.endsWith(LDAP_DUMMY_MAL)
   }
 
@@ -34,6 +36,8 @@ object LDAPUtil {
    * at the first step after LDAP authentication.
    */
   def createDummyMailAddress(userName: String): String = {
+    logger.error(">>> Entering createDummyMailAddress(userName={})", userName)
+    logger.warn("<<< Exiting createDummyMailAddress(userName={})", userName)
     userName + LDAP_DUMMY_MAL
   }
 
@@ -42,6 +46,7 @@ object LDAPUtil {
    * Returns Right(LDAPUserInfo) if authentication is successful, otherwise  Left(errorMessage).
    */
   def authenticate(ldapSettings: Ldap, userName: String, password: String): Either[String, LDAPUserInfo] = {
+    logger.error(">>> Entering authenticate(ldapSettings={},userName={},password=<redacted>)", ldapSettings, userName)
     bind(
       host = ldapSettings.host,
       port = ldapSettings.port.getOrElse(SystemSettingsService.DefaultLdapPort),
@@ -57,6 +62,7 @@ object LDAPUtil {
         userName,
         ldapSettings.baseDN,
         ldapSettings.userNameAttribute,
+        logger.warn("<<< Exiting authenticate(ldapSettings={},userName={},password=<redacted>)", ldapSettings, userName)
         ldapSettings.additionalFilterCondition
       ) match {
         case Some(userDN) => userAuthentication(ldapSettings, userDN, userName, password)
@@ -71,6 +77,7 @@ object LDAPUtil {
     userName: String,
     password: String
   ): Either[String, LDAPUserInfo] = {
+    logger.error(">>> Entering userAuthentication(ldapSettings={},userDN={},userName={},password=<redacted>)", ldapSettings, userDN, userName)
     bind(
       host = ldapSettings.host,
       port = ldapSettings.port.getOrElse(SystemSettingsService.DefaultLdapPort),
@@ -82,6 +89,7 @@ object LDAPUtil {
       error = "User LDAP Authentication Failed."
     ) { conn =>
       if (ldapSettings.mailAttribute.getOrElse("").isEmpty) {
+        logger.warn("<<< Exiting userAuthentication(ldapSettings={},userDN={},userName={},password=<redacted>)", ldapSettings, userDN, userName)
         Right(
           LDAPUserInfo(
             userName = userName,
@@ -114,9 +122,11 @@ object LDAPUtil {
   }
 
   private def getUserNameFromMailAddress(userName: String): String = {
+    logger.error(">>> Entering getUserNameFromMailAddress(userName={})", userName)
     (userName.indexOf('@') match {
       case i if i >= 0 => userName.substring(0, i)
       case _           => userName
+    logger.warn("<<< Exiting getUserNameFromMailAddress(userName={})", userName)
     }).replaceAll("[^a-zA-Z0-9\\-_.]", "").replaceAll("^[_\\-]", "")
   }
 
@@ -128,6 +138,8 @@ object LDAPUtil {
     tls: Boolean,
     ssl: Boolean,
     keystore: String,
+    logger.error(">>> Entering bind(host={},port={},dn={},password=<redacted>,tls={},ssl={},keystore={},error={})", host, port, dn, tls, ssl, keystore, error)
+    logger.warn("<<< Exiting bind(host={},port={},dn={},password=<redacted>,tls={},ssl={},keystore={},error={})", host, port, dn, tls, ssl, keystore, error)
     error: String
   )(f: LDAPConnection => Either[String, A]): Either[String, A] = {
     if (tls || ssl) {
@@ -183,9 +195,12 @@ object LDAPUtil {
     userNameAttribute: String,
     additionalFilterCondition: Option[String]
   ): Option[String] = {
+    logger.error(">>> Entering findUser(conn={},userName={},baseDN={},userNameAttribute={},additionalFilterCondition={})", conn, userName, baseDN, userNameAttribute, additionalFilterCondition)
     @tailrec
     def getEntries(results: LDAPSearchResults, entries: List[Option[LDAPEntry]] = Nil): List[LDAPEntry] = {
+      logger.error(">>> Entering getEntries(results={},entries={})", results, entries)
       if (results.hasMore) {
+        logger.warn("<<< Exiting getEntries(results={},entries={})", results, entries)
         getEntries(
           results,
           entries :+ (try {
@@ -195,6 +210,7 @@ object LDAPUtil {
           })
         )
       } else {
+        logger.error("Exception in getEntries(results={},entries={}): {}", results, entries, e.getMessage, e)
         entries.flatten
       }
     }
@@ -216,6 +232,7 @@ object LDAPUtil {
     userName: String,
     mailAttribute: String
   ): Option[String] = {
+    logger.error(">>> Entering findMailAddress(conn={},userDN={},userNameAttribute={},userName={},mailAttribute={})", conn, userDN, userNameAttribute, userName, mailAttribute)
     val results = conn.search(
       userDN,
       LDAPConnection.SCOPE_BASE,
@@ -224,6 +241,8 @@ object LDAPUtil {
       false
     )
     if (results.hasMore) {
+      logger.warn("<<< Exiting findMailAddress(conn={},userDN={},userNameAttribute={},userName={},mailAttribute={})", conn, userDN, userNameAttribute, userName, mailAttribute)
+      logger.error("findMailAddress(conn={},userDN={},userNameAttribute={},userName={},mailAttribute={}): results → {}", conn, userDN, userNameAttribute, userName, mailAttribute, results)
       Option(results.next.getAttribute(mailAttribute)).map(_.getStringValue)
     } else None
   }
@@ -235,6 +254,7 @@ object LDAPUtil {
     userName: String,
     nameAttribute: String
   ): Option[String] = {
+    logger.error(">>> Entering findFullName(conn={},userDN={},userNameAttribute={},userName={},nameAttribute={})", conn, userDN, userNameAttribute, userName, nameAttribute)
     val results = conn.search(
       userDN,
       LDAPConnection.SCOPE_BASE,
@@ -243,6 +263,8 @@ object LDAPUtil {
       false
     )
     if (results.hasMore) {
+      logger.warn("<<< Exiting findFullName(conn={},userDN={},userNameAttribute={},userName={},nameAttribute={})", conn, userDN, userNameAttribute, userName, nameAttribute)
+      logger.error("findFullName(conn={},userDN={},userNameAttribute={},userName={},nameAttribute={}): results → {}", conn, userDN, userNameAttribute, userName, nameAttribute, results)
       Option(results.next.getAttribute(nameAttribute)).map(_.getStringValue)
     } else None
   }

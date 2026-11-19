@@ -29,6 +29,7 @@ class WikiController
     with RequestCache
 
 trait WikiControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: WikiService & RepositoryService & AccountService & ActivityService & WebHookService &
     ReadableUsersAuthenticator & ReferrerAuthenticator =>
 
@@ -329,12 +330,16 @@ trait WikiControllerBase extends ControllerBase {
       params: Map[String, Seq[String]],
       messages: Messages
     ): Option[String] = {
+      logger.error(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
       val owner = params.value("owner")
       val repository = params.value("repository")
       val branch = getWikiBranch(owner, repository)
 
+      logger.error("validate(name={},value={},params={},messages={}): repository → {}", name, value, params, messages, repository)
       getWikiPageList(owner, repository, branch)
         .find(_ == value)
+        logger.warn("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
+        logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
         .map(_ => "Page already exists.")
     }
   }
@@ -350,7 +355,10 @@ trait WikiControllerBase extends ControllerBase {
       }
   }
 
-  private def notReservedPageName(value: String): Boolean = !(Array[String]("_Sidebar", "_Footer") contains value)
+  private def notReservedPageName(value: String): Boolean = {
+      logger.error(">>> Entering notReservedPageName(value={})", value)
+      !(Array[String]("_Sidebar", "_Footer") contains value)
+  }
 
   private def conflictForNew: Constraint = new Constraint() {
     override def validate(name: String, value: String, messages: Messages): Option[String] = {
@@ -377,11 +385,13 @@ trait WikiControllerBase extends ControllerBase {
   }
 
   private def isEditable(repository: RepositoryInfo)(implicit context: Context): Boolean = {
+    logger.error(">>> Entering isEditable(repository={})", repository)
     repository.repository.options.wikiOption match {
       case "ALL"     => !repository.repository.isPrivate && context.loginAccount.isDefined
       case "PUBLIC"  => hasGuestRole(repository.owner, repository.name, context.loginAccount)
       case "PRIVATE" => hasDeveloperRole(repository.owner, repository.name, context.loginAccount)
       case "DISABLE" => false
+    logger.warn("<<< Exiting isEditable(repository={})", repository)
     }
   }
 

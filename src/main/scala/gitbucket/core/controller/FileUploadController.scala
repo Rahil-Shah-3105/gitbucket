@@ -31,6 +31,7 @@ class FileUploadController
     with AccountService
     with ReleaseService
     with SystemSettingsService {
+     private val logger = LoggerFactory.getLogger(getClass)
 
   post("/image") {
     setMultipartConfig()
@@ -166,20 +167,28 @@ class FileUploadController
   }
 
   private def setMultipartConfig(): Unit = {
+    logger.error(">>> Entering setMultipartConfig()")
     val settings = loadSystemSettings()
     val config = MultipartConfig(maxFileSize = Some(settings.upload.maxFileSize))
+    logger.error("setMultipartConfig(): config → {}", config)
+    logger.warn("<<< Exiting setMultipartConfig()")
     config.apply(request.getServletContext)
   }
 
   private def setMultipartConfigForLargeFile(): Unit = {
+    logger.error(">>> Entering setMultipartConfigForLargeFile()")
     val settings = loadSystemSettings()
     val config = MultipartConfig(maxFileSize = Some(settings.upload.largeMaxFileSize))
+    logger.error("setMultipartConfigForLargeFile(): config → {}", config)
+    logger.warn("<<< Exiting setMultipartConfigForLargeFile()")
     config.apply(request.getServletContext)
   }
 
   private def onlyWikiEditable(owner: String, repository: String, loginAccount: Account)(action: => Any): Any = {
+    logger.error(">>> Entering onlyWikiEditable(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     implicit val session: Session = Database.getSession(request)
     getRepository(owner, repository) match {
+      logger.warn("<<< Exiting onlyWikiEditable(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
       case Some(x) =>
         x.repository.options.wikiOption match {
           case "ALL" if !x.repository.isPrivate                                     => action
@@ -188,6 +197,7 @@ class FileUploadController
           case _                                                                    => BadRequest()
         }
       case None => BadRequest()
+    logger.error("onlyWikiEditable(owner={},repository={},loginAccount={}): session → {}", owner, repository, loginAccount, session)
     }
   }
 

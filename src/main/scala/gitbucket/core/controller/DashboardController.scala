@@ -28,6 +28,7 @@ class DashboardController
     with RequestCache
 
 trait DashboardControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: IssuesService & PullRequestService & RepositoryService & AccountService & CommitStatusService &
     UsersAuthenticator =>
 
@@ -92,24 +93,30 @@ trait DashboardControllerBase extends ControllerBase {
   })
 
   private def getOrCreateCondition(filter: String, userName: String) = {
+    logger.error(">>> Entering getOrCreateCondition(filter={},userName={})", filter, userName)
     val condition = IssueSearchCondition(request)
 
+    logger.warn("<<< Exiting getOrCreateCondition(filter={},userName={})", filter, userName)
     filter match {
       case "assigned"  => condition.copy(assigned = Some(Some(userName)), author = None, mentioned = None)
       case "mentioned" => condition.copy(assigned = None, author = None, mentioned = Some(userName))
       case _           => condition.copy(assigned = None, author = Some(userName), mentioned = None)
+    logger.error("getOrCreateCondition(filter={},userName={}): condition → {}", filter, userName, condition)
     }
   }
 
   private def searchIssues(loginAccount: Account, filter: String) = {
+    logger.error(">>> Entering searchIssues(loginAccount={},filter={})", loginAccount, filter)
     import IssuesService.*
 
     val userName = loginAccount.userName
+    logger.error("searchIssues(loginAccount={},filter={}): userName → {}", loginAccount, filter, userName)
     val condition = getOrCreateCondition(filter, userName)
     val userRepos = getUserRepositories(userName, withoutPhysicalInfo = true).map(repo => repo.owner -> repo.name)
     val page = IssueSearchCondition.page(request)
     val issues = searchIssue(condition, IssueSearchOption.Issues, (page - 1) * IssueLimit, IssueLimit, userRepos*)
 
+    logger.error("searchIssues(loginAccount={},filter={}): condition → {}", loginAccount, filter, condition)
     html.issues(
       issues.map(issue => (issue, None)),
       page,
@@ -133,10 +140,12 @@ trait DashboardControllerBase extends ControllerBase {
   }
 
   private def searchPullRequests(loginAccount: Account, filter: String) = {
+    logger.error(">>> Entering searchPullRequests(loginAccount={},filter={})", loginAccount, filter)
     import IssuesService.*
     import PullRequestService.*
 
     val userName = loginAccount.userName
+    logger.error("searchPullRequests(loginAccount={},filter={}): userName → {}", loginAccount, filter, userName)
     val condition = getOrCreateCondition(filter, userName)
     val allRepos = getAllRepositories(userName)
     val page = IssueSearchCondition.page(request)
@@ -150,9 +159,11 @@ trait DashboardControllerBase extends ControllerBase {
     val status = issues.map { issue =>
       issue.commitId.flatMap { commitId =>
         getCommitStatusWithSummary(issue.issue.userName, issue.issue.repositoryName, commitId)
+      logger.error("searchPullRequests(loginAccount={},filter={}): condition → {}", loginAccount, filter, condition)
       }
     }
 
+    logger.warn("<<< Exiting searchPullRequests(loginAccount={},filter={})", loginAccount, filter)
     html.pulls(
       issues.zip(status),
       page,

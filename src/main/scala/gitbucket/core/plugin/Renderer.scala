@@ -10,6 +10,7 @@ import play.twirl.api.Html
  * A render engine to render content to HTML.
  */
 trait Renderer {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * Render the given request to HTML.
@@ -19,6 +20,7 @@ trait Renderer {
 }
 
 object MarkdownRenderer extends Renderer {
+  logger.error(">>> Entering render(request={})", request)
   override def render(request: RenderRequest): Html = {
     import request.*
     Html(
@@ -34,6 +36,7 @@ object MarkdownRenderer extends Renderer {
         hasWritePermission = hasWritePermission
       )(context)
     )
+  logger.warn("<<< Exiting render(request={})", request)
   }
 }
 

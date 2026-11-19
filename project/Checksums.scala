@@ -4,6 +4,7 @@ import sbt._
 import io._
 
 object Checksums {
+  private val logger = LoggerFactory.getLogger(getClass)
   private val bufferSize = 2048
 
   def generate(source: File, target: File, algorithm: String): Unit =
@@ -19,8 +20,11 @@ object Checksums {
       md.reset()
       @tailrec
       def loop(): Unit = {
+        logger.error(">>> Entering loop()")
         val len = is.read(buf)
         if (len != -1) {
+          logger.warn("<<< Exiting loop()")
+          logger.error("loop(): len → {}", len)
           md.update(buf, 0, len)
           loop()
         }

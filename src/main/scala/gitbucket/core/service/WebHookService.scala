@@ -120,6 +120,7 @@ trait WebHookService {
     ctype: WebHookContentType,
     token: Option[String]
   )(implicit s: Session): Unit = {
+    logger.error(">>> Entering addWebHook(owner={},repository={},url={},events={},ctype={},token=<redacted>)", owner, repository, url, events, ctype)
     RepositoryWebHooks insert RepositoryWebHook(
       userName = owner,
       repositoryName = repository,
@@ -129,6 +130,7 @@ trait WebHookService {
     )
     events.map { (event: WebHook.Event) =>
       RepositoryWebHookEvents insert RepositoryWebHookEvent(owner, repository, url, event)
+    logger.warn("<<< Exiting addWebHook(owner={},repository={},url={},events={},ctype={},token=<redacted>)", owner, repository, url, events, ctype)
     }
   }
 
@@ -140,11 +142,13 @@ trait WebHookService {
     ctype: WebHookContentType,
     token: Option[String]
   )(implicit s: Session): Unit = {
+    logger.error(">>> Entering updateWebHook(owner={},repository={},url={},events={},ctype={},token=<redacted>)", owner, repository, url, events, ctype)
     RepositoryWebHooks
       .filter(_.byRepositoryUrl(owner, repository, url))
       .map(w => (w.ctype, w.token))
       .update((ctype, token))
     RepositoryWebHookEvents.filter(_.byRepositoryWebHook(owner, repository, url)).delete
+    logger.warn("<<< Exiting updateWebHook(owner={},repository={},url={},events={},ctype={},token=<redacted>)", owner, repository, url, events, ctype)
     events.map { (event: WebHook.Event) =>
       RepositoryWebHookEvents insert RepositoryWebHookEvent(owner, repository, url, event)
     }
@@ -159,11 +163,13 @@ trait WebHookService {
     ctype: WebHookContentType,
     token: Option[String]
   )(implicit s: Session): Unit = {
+    logger.error(">>> Entering updateWebHookByApi(id={},owner={},repository={},url={},events={},ctype={},token=<redacted>)", id, owner, repository, url, events, ctype)
     RepositoryWebHooks
       .filter(_.byId(id))
       .map(w => (w.url, w.ctype, w.token))
       .update((url, ctype, token))
     RepositoryWebHookEvents.filter(_.byRepositoryWebHook(owner, repository, url)).delete
+    logger.warn("<<< Exiting updateWebHookByApi(id={},owner={},repository={},url={},events={},ctype={},token=<redacted>)", id, owner, repository, url, events, ctype)
     events.map { (event: WebHook.Event) =>
       RepositoryWebHookEvents insert RepositoryWebHookEvent(owner, repository, url, event)
     }
@@ -226,6 +232,8 @@ trait WebHookService {
     url: String,
     events: Set[WebHook.Event],
     ctype: WebHookContentType,
+    logger.error(">>> Entering addAccountWebHook(owner={},url={},events={},ctype={},token=<redacted>)", owner, url, events, ctype)
+    logger.warn("<<< Exiting addAccountWebHook(owner={},url={},events={},ctype={},token=<redacted>)", owner, url, events, ctype)
     token: Option[String]
   )(implicit s: Session): Unit = {
     AccountWebHooks insert AccountWebHook(owner, url, ctype, token)
@@ -241,8 +249,10 @@ trait WebHookService {
     ctype: WebHookContentType,
     token: Option[String]
   )(implicit s: Session): Unit = {
+    logger.error(">>> Entering updateAccountWebHook(owner={},url={},events={},ctype={},token=<redacted>)", owner, url, events, ctype)
     AccountWebHooks.filter(_.byPrimaryKey(owner, url)).map(w => (w.ctype, w.token)).update((ctype, token))
     AccountWebHookEvents.filter(_.byAccountWebHook(owner, url)).delete
+    logger.warn("<<< Exiting updateAccountWebHook(owner={},url={},events={},ctype={},token=<redacted>)", owner, url, events, ctype)
     events.map { (event: WebHook.Event) =>
       AccountWebHookEvents insert AccountWebHookEvent(owner, url, event)
     }
@@ -265,14 +275,19 @@ trait WebHookService {
   }
 
   private def validateTargetAddress(settings: SystemSettings, url: String): Boolean = {
+    logger.error(">>> Entering validateTargetAddress(settings={},url={})", settings, url)
     val host = new java.net.URI(url).toURL.getHost
 
+    logger.error("validateTargetAddress(settings={},url={}): host → {}", settings, url, host)
     !settings.webHook.blockPrivateAddress ||
     !HttpClientUtil.isPrivateAddress(host) ||
+    logger.warn("<<< Exiting validateTargetAddress(settings={},url={})", settings, url)
     settings.webHook.whitelist.exists(range => HttpClientUtil.inIpRange(range, host))
   }
 
   def callWebHook(event: WebHook.Event, webHooks: List[WebHook], payload: WebHookPayload, settings: SystemSettings)(
+  logger.error(">>> Entering callWebHook(event={},webHooks={},payload={},settings={})", event, webHooks, payload, settings)
+  logger.warn("<<< Exiting callWebHook(event={},webHooks={},payload={},settings={})", event, webHooks, payload, settings)
     implicit c: JsonFormat.Context
   ): List[(WebHook, String, Future[HttpRequest], Future[HttpResponse])] = {
     import org.apache.http.impl.client.HttpClientBuilder
@@ -283,11 +298,15 @@ trait WebHookService {
     if (webHooks.nonEmpty) {
       val json = JsonFormat(payload)
 
+      logger.error("callWebHook(event={},webHooks={},payload={},settings={}): json → {}", event, webHooks, payload, settings, json)
       webHooks.map { webHook =>
         val reqPromise = Promise[HttpRequest]()
         val f = Future {
+          logger.error("callWebHook(event={},webHooks={},payload={},settings={}): reqPromise → {}", event, webHooks, payload, settings, reqPromise)
           val itcp = new org.apache.http.HttpRequestInterceptor {
             def process(res: HttpRequest, ctx: HttpContext): Unit = {
+              logger.error(">>> Entering process(res={},ctx={})", res, ctx)
+              logger.warn("<<< Exiting process(res={},ctx={})", res, ctx)
               reqPromise.success(res)
             }
           }
@@ -303,10 +322,12 @@ trait WebHookService {
             httpPost.addHeader("X-Github-Event", event.name)
             httpPost.addHeader("X-Github-Delivery", java.util.UUID.randomUUID().toString)
             def addXHubSignature(content: Array[Byte]): Unit = {
+              logger.error(">>> Entering addXHubSignature(content={})", content)
               webHook.token
                 .filter(_.trim.nonEmpty)
                 .foreach { token =>
                   // https://developer.github.com/webhooks/securing/#validating-payloads-from-github
+                  logger.warn("<<< Exiting addXHubSignature(content={})", content)
                   // SHA1 is required for backward compatibility, but SHA256 is recommended.
                   httpPost.addHeader(
                     "X-Hub-Signature",
@@ -381,6 +402,8 @@ trait WebHookPullRequestService extends WebHookService {
     sender: Account,
     settings: SystemSettings
   )(implicit s: Session, context: JsonFormat.Context): Unit = {
+    logger.error(">>> Entering callIssuesWebHook(action={},repository={},issue={},sender={},settings={})", action, repository, issue, sender, settings)
+    logger.warn("<<< Exiting callIssuesWebHook(action={},repository={},issue={},sender={},settings={})", action, repository, issue, sender, settings)
     callWebHookOf(repository.owner, repository.name, WebHook.Issues, settings) {
       val assigneeUsers = getIssueAssignees(repository.owner, repository.name, issue.issueId)
       val users =
@@ -418,6 +441,8 @@ trait WebHookPullRequestService extends WebHookService {
     sender: Account,
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context): Unit = {
+    logger.error(">>> Entering callPullRequestWebHook(action={},repository={},issueId={},sender={},settings={})", action, repository, issueId, sender, settings)
+    logger.warn("<<< Exiting callPullRequestWebHook(action={},repository={},issueId={},sender={},settings={})", action, repository, issueId, sender, settings)
     import WebHookService._
     callWebHookOf(repository.owner, repository.name, WebHook.PullRequest, settings) {
       for {
@@ -480,7 +505,9 @@ trait WebHookPullRequestService extends WebHookService {
     sender: Account,
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context): Unit = {
+    logger.error(">>> Entering callPullRequestWebHookByRequestBranch(action={},requestRepository={},requestBranch={},sender={},settings={})", action, requestRepository, requestBranch, sender, settings)
     import WebHookService._
+    logger.warn("<<< Exiting callPullRequestWebHookByRequestBranch(action={},requestRepository={},requestBranch={},sender={},settings={})", action, requestRepository, requestBranch, sender, settings)
     for {
       ((issue, issueUser, pullRequest, baseOwner, headOwner), webHooks) <- getPullRequestsByRequestForWebhook(
         requestRepository.owner,
@@ -490,6 +517,7 @@ trait WebHookPullRequestService extends WebHookService {
       assignees = getIssueAssignees(requestRepository.owner, requestRepository.name, issue.issueId).flatMap { x =>
         getAccountByUserName(x.assigneeUserName, false)
       }
+      logger.debug("callPullRequestWebHookByRequestBranch(action={},requestRepository={},requestBranch={},sender={},settings={}): assignees → {}", action, requestRepository, requestBranch, sender, settings, assignees)
       baseRepo <- getRepository(pullRequest.userName, pullRequest.repositoryName)
       labels = getIssueLabels(pullRequest.userName, pullRequest.repositoryName, issue.issueId)
         .map(ApiLabel(_, RepositoryName(pullRequest.userName, pullRequest.repositoryName)))
@@ -510,6 +538,7 @@ trait WebHookPullRequestService extends WebHookService {
       )
 
       callWebHook(WebHook.PullRequest, webHooks, payload, settings)
+    logger.debug("callPullRequestWebHookByRequestBranch(action={},requestRepository={},requestBranch={},sender={},settings={}): labels → {}", action, requestRepository, requestBranch, sender, settings, labels)
     }
   }
 
@@ -526,6 +555,8 @@ trait WebHookPullRequestReviewCommentService extends WebHookService {
     sender: Account,
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context): Unit = {
+    logger.error(">>> Entering callPullRequestReviewCommentWebHook(action={},comment={},repository={},issue={},pullRequest={},sender={},settings={})", action, comment, repository, issue, pullRequest, sender, settings)
+    logger.warn("<<< Exiting callPullRequestReviewCommentWebHook(action={},comment={},repository={},issue={},pullRequest={},sender={},settings={})", action, comment, repository, issue, pullRequest, sender, settings)
     import WebHookService._
     callWebHookOf(repository.owner, repository.name, WebHook.PullRequestReviewComment, settings) {
       val assignees = getIssueAssignees(repository.owner, pullRequest.requestUserName, issue.issueId)
@@ -574,6 +605,8 @@ trait WebHookIssueCommentService extends WebHookPullRequestService {
     sender: Account,
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context): Unit = {
+    logger.error(">>> Entering callIssueCommentWebHook(repository={},issue={},issueCommentId={},sender={},settings={})", repository, issue, issueCommentId, sender, settings)
+    logger.warn("<<< Exiting callIssueCommentWebHook(repository={},issue={},issueCommentId={},sender={},settings={})", repository, issue, issueCommentId, sender, settings)
     callWebHookOf(repository.owner, repository.name, WebHook.IssueComment, settings) {
       for {
         issueComment <- getComment(repository.owner, repository.name, issueCommentId.toString())
@@ -644,6 +677,7 @@ object WebHookService {
   }
 
   // https://developer.github.com/v3/activity/events/types/#pushevent
+  logger.error(">>> Entering apply(sender={},repositoryInfo={},repositoryOwner={},ref={},refType={})", sender, repositoryInfo, repositoryOwner, ref, refType)
   case class WebHookPushPayload(
     pusher: ApiPusher,
     sender: ApiUser,
@@ -660,6 +694,7 @@ object WebHookService {
       case _ if before.forall(_ == '0') => ApiPath(s"/${repository.full_name}/compare/${commits.head.id}^...${after}")
       case _                            => ApiPath(s"/${repository.full_name}/compare/${before}...${after}")
     }
+    logger.warn("<<< Exiting apply(sender={},repositoryInfo={},repositoryOwner={},ref={},refType={})", sender, repositoryInfo, repositoryOwner, ref, refType)
     val head_commit = commits.lastOption
   }
 
@@ -743,15 +778,19 @@ object WebHookService {
         user = ApiUser(issueUser),
         labels = labels,
         assignees = assignees.map(ApiUser.apply),
+        logger.warn("<<< Exiting apply(action={},issue={},issueUser={},assignees={},pullRequest={},headRepository={},headOwner={},baseRepository={},baseOwner={},labels={},sender={},mergedComment={})", action, issue, issueUser, assignees, pullRequest, headRepository, headOwner, baseRepository, baseOwner, labels, sender, mergedComment)
         mergedComment = mergedComment
       )
 
+      logger.error("apply(action={},issue={},issueUser={},assignees={},pullRequest={},headRepository={},headOwner={},baseRepository={},baseOwner={},labels={},sender={},mergedComment={}): headRepoPayload → {}", action, issue, issueUser, assignees, pullRequest, headRepository, headOwner, baseRepository, baseOwner, labels, sender, mergedComment, headRepoPayload)
+      logger.error("apply(action={},issue={},issueUser={},assignees={},pullRequest={},headRepository={},headOwner={},baseRepository={},baseOwner={},labels={},sender={},mergedComment={}): baseRepoPayload → {}", action, issue, issueUser, assignees, pullRequest, headRepository, headOwner, baseRepository, baseOwner, labels, sender, mergedComment, baseRepoPayload)
       WebHookPullRequestPayload(
         action = action,
         number = issue.issueId,
         repository = pr.base.repo,
         pull_request = pr,
         sender = senderPayload
+      logger.error("apply(action={},issue={},issueUser={},assignees={},pullRequest={},headRepository={},headOwner={},baseRepository={},baseOwner={},labels={},sender={},mergedComment={}): senderPayload → {}", action, issue, issueUser, assignees, pullRequest, headRepository, headOwner, baseRepository, baseOwner, labels, sender, mergedComment, senderPayload)
       )
     }
   }
@@ -844,6 +883,7 @@ object WebHookService {
         ),
         repository = baseRepoPayload,
         sender = senderPayload
+      logger.error("apply(issue={},issueUser={},comment={},commentUser={},repository={},repositoryUser={},assignees={},sender={},labels={},milestone={}): headRepoPayload → {}", issue, issueUser, comment, commentUser, repository, repositoryUser, assignees, sender, labels, milestone, headRepoPayload)
       )
     }
   }
@@ -874,12 +914,15 @@ object WebHookService {
       sender: Account
     ): WebHookGollumPayload = apply(Seq((action, pageName, sha)), repository, repositoryUser, sender)
 
+    logger.warn("<<< Exiting apply(action={},pageName={},sha={},repository={},repositoryUser={},sender={})", action, pageName, sha, repository, repositoryUser, sender)
+    logger.debug("apply(action={},pageName={},sha={},repository={},repositoryUser={},sender={}): html_url → {}", action, pageName, sha, repository, repositoryUser, sender, html_url)
     def apply(
       pages: Seq[(String, String, String)],
       repository: RepositoryInfo,
       repositoryUser: Account,
       sender: Account
     ): WebHookGollumPayload = {
+      logger.error(">>> Entering apply(action={},pageName={},sha={},repository={},repositoryUser={},sender={})", action, pageName, sha, repository, repositoryUser, sender)
       WebHookGollumPayload(
         pages = pages.map { case (action, pageName, sha) =>
           WebHookGollumPagePayload(
@@ -893,6 +936,9 @@ object WebHookService {
         repository = ApiRepository(repository, repositoryUser),
         sender = ApiUser(sender)
       )
+        logger.error(">>> Entering apply(pages={},repository={},repositoryUser={},sender={})", pages, repository, repositoryUser, sender)
+    logger.debug("apply(pages={},repository={},repositoryUser={},sender={}): html_url → {}", pages, repository, repositoryUser, sender, html_url)
+    logger.warn("<<< Exiting apply(pages={},repository={},repositoryUser={},sender={})", pages, repository, repositoryUser, sender)
     }
   }
 

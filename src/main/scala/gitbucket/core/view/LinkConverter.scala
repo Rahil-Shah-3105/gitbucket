@@ -13,7 +13,9 @@ trait LinkConverter { self: RequestCache =>
   protected def createIssueLink(owner: String, repository: String, issueId: Int, title: String)(implicit
     context: Context
   ): String = {
+    private val logger = LoggerFactory.getLogger(getClass)
     getIssueFromCache(owner, repository, issueId.toString) match {
+      logger.error(">>> Entering createIssueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
       case Some(issue) =>
         s"""<a href="${context.path}/${owner}/${repository}/${if (issue.isPullRequest) "pull"
           else "issues"}/${issueId}"><strong>${StringUtil
@@ -29,6 +31,7 @@ trait LinkConverter { self: RequestCache =>
   protected def createGlobalIssueLink(owner: String, repository: String, issueId: Int, title: String)(implicit
     context: Context
   ): String = {
+    logger.error(">>> Entering createGlobalIssueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
     getIssueFromCache(owner, repository, issueId.toString) match {
       case Some(issue) =>
         s"""<a href="${context.path}/${owner}/${repository}/${if (issue.isPullRequest) "pull"

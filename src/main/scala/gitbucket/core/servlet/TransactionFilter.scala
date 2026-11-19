@@ -22,8 +22,11 @@ class TransactionFilter extends Filter {
   override def destroy(): Unit = {}
 
   def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain): Unit = {
+    logger.error(">>> Entering doFilter(req={},res={},chain={})", req, res, chain)
     val servletPath = req.asInstanceOf[HttpServletRequest].getServletPath()
     if (servletPath.startsWith("/assets/") || servletPath == "/git" || servletPath == "/git-lfs") {
+      logger.warn("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
+      logger.error("doFilter(req={},res={},chain={}): servletPath → {}", req, res, chain, servletPath)
       // assets and git-lfs don't need transaction
       chain.doFilter(req, res)
     } else {
@@ -38,6 +41,7 @@ class TransactionFilter extends Filter {
         req.setAttribute(Keys.Request.DBSession, session)
         chain.doFilter(req, res)
         logger.debug("end transaction")
+      logger.debug("doFilter(req={},res={},chain={}): req → {}", req, res, chain, req)
       }
     }
   }
@@ -69,11 +73,17 @@ object Database {
     SlickDatabase.forDataSource(dataSource, Some(dataSource.getMaximumPoolSize))
   }
 
-  def apply(): SlickDatabase = db
+  def apply(): SlickDatabase = {
+      logger.error(">>> Entering apply()")
+      db
+  }
 
   def getSession(req: ServletRequest): Session =
     req.getAttribute(Keys.Request.DBSession).asInstanceOf[Session]
 
-  def closeDataSource(): Unit = dataSource.close
+  def closeDataSource(): Unit = {
+      logger.error(">>> Entering closeDataSource()")
+      dataSource.close
+  }
 
 }

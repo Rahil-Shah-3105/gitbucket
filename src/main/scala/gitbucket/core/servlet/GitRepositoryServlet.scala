@@ -56,32 +56,41 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
   private implicit val jsonFormats: Formats = gitbucket.core.api.JsonFormat.jsonFormats
 
   override def init(config: ServletConfig): Unit = {
+    logger.error(">>> Entering init(config={})", config)
     setReceivePackFactory(new GitBucketReceivePackFactory())
     setRepositoryResolver(new GitBucketRepositoryResolver)
+    logger.warn("<<< Exiting init(config={})", config)
     super.init(config)
   }
 
   override def service(req: HttpServletRequest, res: HttpServletResponse): Unit = {
+    logger.error(">>> Entering service(req={},res={})", req, res)
     val agent = req.getHeader("USER-AGENT")
     val index = req.getRequestURI.indexOf(".git")
     if (index >= 0 && (agent == null || agent.toLowerCase.indexOf("git") < 0)) {
+      logger.warn("<<< Exiting service(req={},res={})", req, res)
+      logger.error("service(req={},res={}): agent → {}", req, res, agent)
       // redirect for browsers
       val paths = req.getRequestURI.substring(0, index).split("/")
+      logger.error("service(req={},res={}): paths → {}", req, res, paths)
       res.sendRedirect(baseUrl(req) + "/" + paths.dropRight(1).last + "/" + paths.last)
 
     } else if (req.getMethod.toUpperCase == "POST" && req.getRequestURI.endsWith("/info/lfs/objects/batch")) {
       withLockRepository(req) {
+        logger.warn("<<< Exiting withLockRepository(req={})", req)
         serviceGitLfsBatchAPI(req, res)
       }
     } else {
       // response for git client
       withLockRepository(req) {
+        logger.error(">>> Entering withLockRepository(req={})", req)
         super.service(req, res)
       }
     }
   }
 
   private def withLockRepository[T](req: HttpServletRequest)(f: => T): T = {
+    logger.error(">>> Entering withLockRepository(req={})", req)
     if (req.hasAttribute(Keys.Request.RepositoryLockKey)) {
       LockUtil.lock(req.getAttribute(Keys.Request.RepositoryLockKey).asInstanceOf[String]) {
         f
@@ -96,11 +105,16 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
    * https://github.com/git-lfs/git-lfs/blob/master/docs/api/batch.md
    */
   protected def serviceGitLfsBatchAPI(req: HttpServletRequest, res: HttpServletResponse): Unit = {
+    logger.error(">>> Entering serviceGitLfsBatchAPI(req={},res={})", req, res)
     val batchRequest = read[GitLfs.BatchRequest](req.getInputStream)
     val settings = loadSystemSettings()
 
+    logger.error("serviceGitLfsBatchAPI(req={},res={}): settings → {}", req, res, settings)
     settings.baseUrl match {
-      case None => {
+      case None =>
+        logger.error("Throwing IllegalStateException from serviceGitLfsBatchAPI(req={},res={})", req, res)
+        logger.error("serviceGitLfsBatchAPI(req={},res={}): batchRequest → {}", req, res, batchRequest)
+        {
         throw new IllegalStateException("lfs.server_url is not configured.")
       }
       case Some(baseUrl) => {
@@ -129,6 +143,7 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
                           )
                         )
                       )
+                    logger.error("serviceGitLfsBatchAPI(req={},res={}): timeout → {}", req, res, timeout)
                     }
                   )
                 case "download" =>
@@ -150,6 +165,7 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
                           )
                         )
                       )
+                    logger.debug("serviceGitLfsBatchAPI(req={},res={}): expires_at → {}", req, res, expires_at)
                     }
                   )
               }
@@ -159,9 +175,11 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
                 out.print(write(batchResponse))
                 out.flush()
               }
+          logger.debug("serviceGitLfsBatchAPI(req={},res={}): res → {}", req, res, res)
           }
         }
       }
+    logger.warn("<<< Exiting serviceGitLfsBatchAPI(req={},res={})", req, res)
     }
   }
 }
@@ -169,6 +187,7 @@ class GitRepositoryServlet extends GitServlet with SystemSettingsService {
 class GitBucketRepositoryResolver extends RepositoryResolver[HttpServletRequest] {
 
   override def open(req: HttpServletRequest, name: String): Repository = {
+    logger.error(">>> Entering open(req={},name={})", req, name)
     // Rewrite repository path if routing is marched
     PluginRegistry()
       .getRepositoryRouting("/" + name)
@@ -177,6 +196,7 @@ class GitBucketRepositoryResolver extends RepositoryResolver[HttpServletRequest]
         new FileRepository(new File(Directory.GitBucketHome, path))
       }
       .getOrElse {
+        logger.warn("<<< Exiting open(req={},name={})", req, name)
         new FileRepository(new File(Directory.RepositoryHome, name))
       }
   }
@@ -188,6 +208,7 @@ class GitBucketReceivePackFactory extends ReceivePackFactory[HttpServletRequest]
   private val logger = LoggerFactory.getLogger(classOf[GitBucketReceivePackFactory])
 
   override def create(request: HttpServletRequest, db: Repository): ReceivePack = {
+    logger.error(">>> Entering create(request={},db={})", request, db)
     val receivePack = new ReceivePack(db)
 
     if (PluginRegistry().getRepositoryRouting(request.gitRepositoryPath).isEmpty) {
@@ -206,11 +227,14 @@ class GitBucketReceivePackFactory extends ReceivePackFactory[HttpServletRequest]
       val baseUrl = settings.baseUrl(request)
       val sshUrl = settings.sshUrl
 
+      val __logStart = System.currentTimeMillis()
       if (!repository.endsWith(".wiki")) {
         val hook = new CommitLogHook(owner, repository, pusher, baseUrl, sshUrl)
         receivePack.setPreReceiveHook(hook)
         receivePack.setPostReceiveHook(hook)
       }
+      logger.debug("create(request={},db={}): receivePack → {}", request, db, receivePack)
+      logger.error("create(request,db)={},{}: database query executed in {} ms", request, db, (System.currentTimeMillis() - __logStart))
 
       if (repository.endsWith(".wiki")) {
         receivePack.setPostReceiveHook(
@@ -219,6 +243,7 @@ class GitBucketReceivePackFactory extends ReceivePackFactory[HttpServletRequest]
       }
     }
 
+    logger.warn("<<< Exiting create(request={},db={})", request, db)
     receivePack
   }
 }
@@ -249,8 +274,10 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
   private var newCommitIds: Seq[String] = Nil
 
   def onPreReceive(receivePack: ReceivePack, commands: java.util.Collection[ReceiveCommand]): Unit = {
+    logger.error(">>> Entering onPreReceive(receivePack={},commands={})", receivePack, commands)
     Database() withTransaction { implicit session =>
       try {
+        logger.warn("<<< Exiting onPreReceive(receivePack={},commands={})", receivePack, commands)
         commands.asScala.foreach { command =>
           // call pre-commit hook
           PluginRegistry().getReceiveHooks
@@ -264,14 +291,17 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
           commands.asScala.foreach { command =>
             val commits = getCommits(git, command)
             if (commits.size < 100) {
+              logger.error("onPreReceive(receivePack={},commands={}): commits → {}", receivePack, commands, commits)
               newCommitIds = commits
                 .takeWhile { commit =>
                   !existCommit(git, commit)
                 }
+                logger.debug("onPreReceive(receivePack={},commands={}): newCommitIds → {}", receivePack, commands, newCommitIds)
                 .map(_.id)
             } else {
               val allCommits = JGitUtil.getAllCommitIds(git)
               newCommitIds = commits.collect {
+                logger.error("onPreReceive(receivePack={},commands={}): allCommits → {}", receivePack, commands, allCommits)
                 case commit if !allCommits.contains(commit.id) =>
                   commit.id
               }
@@ -287,12 +317,17 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
   }
 
   private def existCommit(git: Git, commit: CommitInfo): Boolean = {
+    logger.error(">>> Entering existCommit(git={},commit={})", git, commit)
+    logger.warn("<<< Exiting existCommit(git={},commit={})", git, commit)
     JGitUtil.getBranchesOfCommit(git, commit.id).nonEmpty
   }
 
   private def getCommits(git: Git, command: ReceiveCommand): Seq[CommitInfo] = {
+    logger.error(">>> Entering getCommits(git={},command={})", git, command)
     val refName = command.getRefName.split("/")
     if (refName(1) == "tags") {
+      logger.warn("<<< Exiting getCommits(git={},command={})", git, command)
+      logger.error("getCommits(git={},command={}): refName → {}", git, command, refName)
       Nil
     } else {
       command.getType match {
@@ -303,8 +338,11 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
   }
 
   def onPostReceive(receivePack: ReceivePack, commands: java.util.Collection[ReceiveCommand]): Unit = {
+    logger.error(">>> Entering onPostReceive(receivePack={},commands={})", receivePack, commands)
     val settings = loadSystemSettings()
 
+    logger.warn("<<< Exiting onPostReceive(receivePack={},commands={})", receivePack, commands)
+    logger.error("onPostReceive(receivePack={},commands={}): settings → {}", receivePack, commands, settings)
     Database() withTransaction { implicit session =>
       try {
         Using.resource(Git.open(Directory.getRepositoryDir(owner, repository))) { git =>
@@ -317,7 +355,9 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
             val branchName = refName.drop(2).mkString("/")
             val commits = getCommits(git, command)
 
+            logger.error("onPostReceive(receivePack={},commands={}): apiContext → {}", receivePack, commands, apiContext)
             val repositoryInfo = getRepository(owner, repository).get
+            logger.error("onPostReceive(receivePack={},commands={}): repositoryInfo → {}", receivePack, commands, repositoryInfo)
 
             // Update default branch if repository is empty and pushed branch is not current default branch
             if (JGitUtil.isEmpty(git) && commits.nonEmpty && branchName != repositoryInfo.repository.defaultBranch) {
@@ -337,6 +377,7 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
             val defaultBranch = repositoryInfo.repository.defaultBranch
             val pushedIds = scala.collection.mutable.Set[String]()
             val newCommits = commits.collect {
+              logger.error("onPostReceive(receivePack={},commands={}): pushedIds → {}", receivePack, commands, pushedIds)
               case commit if newCommitIds.contains(commit.id) && !pushedIds.contains(commit.id) =>
                 if (issueCount > 0) {
                   pushedIds.add(commit.id)
@@ -368,6 +409,7 @@ class CommitLogHook(owner: String, repository: String, pusher: String, baseUrl: 
             val pulls = getPullRequestsByBranch(owner, repository, branchName, Some(false))
             pulls.foreach { pull =>
               if (
+              logger.error("onPostReceive(receivePack={},commands={}): pulls → {}", receivePack, commands, pulls)
                 commits.exists { c =>
                   c.id == pull.commitIdTo
                 }
@@ -506,6 +548,7 @@ class WikiCommitHook(owner: String, repository: String, pusher: String, baseUrl:
                   case diff if diff.newPath.toLowerCase.endsWith(".md") =>
                     val action = mapToAction(diff.changeType)
                     val fileName = diff.newPath
+                    logger.error("onPostReceive(receivePack={},commands={}): action → {}", receivePack, commands, action)
                     updateLastActivityDate(owner, repository)
                     buildWikiRecord(action, owner, repository, commit, fileName).foreach(recordActivity)
                     (action, fileName, commit.id)
@@ -554,6 +597,8 @@ class WikiCommitHook(owner: String, repository: String, pusher: String, baseUrl:
     owner: String,
     repo: String,
     commit: CommitInfo,
+    logger.error(">>> Entering buildWikiRecord(action={},owner={},repo={},commit={},fileName={})", action, owner, repo, commit, fileName)
+    logger.warn("<<< Exiting buildWikiRecord(action={},owner={},repo={},commit={},fileName={})", action, owner, repo, commit, fileName)
     fileName: String
   ): Option[BaseActivityInfo] = {
     val pageName = fileName.dropRight(".md".length)

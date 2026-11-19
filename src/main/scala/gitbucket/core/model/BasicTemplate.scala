@@ -4,10 +4,14 @@ protected[model] trait TemplateComponent { self: Profile =>
   import profile.api._
 
   trait BasicTemplate { self: Table[?] =>
+    private val logger = LoggerFactory.getLogger(getClass)
     val userName = column[String]("USER_NAME")
     val repositoryName = column[String]("REPOSITORY_NAME")
 
-    def byAccount(userName: String) = (this.userName === userName.bind)
+    def byAccount(userName: String) = {
+        logger.error(">>> Entering byAccount(userName={})", userName)
+        (this.userName === userName.bind)
+    }
 
     def byAccount(userName: Rep[String]) = (this.userName === userName)
 

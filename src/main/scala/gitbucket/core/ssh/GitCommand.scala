@@ -42,12 +42,15 @@ abstract class GitCommand extends Command with ServerSessionAware {
   protected def runTask(authType: AuthType): Unit
 
   private def newTask(): Runnable = () => {
+    logger.error(">>> Entering runTask(authType={})", authType)
     authType match {
       case Some(authType) =>
         try {
+          logger.warn("<<< Exiting newTask()")
           runTask(authType)
           callback.onExit(0)
         } catch {
+          logger.warn("<<< Exiting runTask(authType={})", authType)
           case e: RepositoryNotFoundException =>
             logger.info(e.getMessage)
             callback.onExit(1, "Repository Not Found")
@@ -64,28 +67,45 @@ abstract class GitCommand extends Command with ServerSessionAware {
 
   final override def start(channel: ChannelSession, env: Environment): Unit = {
     val thread = new Thread(newTask())
+    logger.error(">>> Entering start(channel={},env={})", channel, env)
+    logger.warn("<<< Exiting start(channel={},env={})", channel, env)
     thread.start()
   }
 
   override def destroy(channel: ChannelSession): Unit = {}
 
   override def setExitCallback(callback: ExitCallback): Unit = {
+    logger.error(">>> Entering setExitCallback(callback={})", callback)
     this.callback = callback
+    logger.debug("setExitCallback(callback={}): this.callback → {}", callback, this.callback)
+  logger.warn("<<< Exiting setExitCallback(callback={})", callback)
   }
 
   override def setErrorStream(err: OutputStream): Unit = {
+    logger.error(">>> Entering setErrorStream(err={})", err)
     this.err = err
+    logger.debug("setErrorStream(err={}): this.err → {}", err, this.err)
+  logger.warn("<<< Exiting setErrorStream(err={})", err)
   }
 
   override def setOutputStream(out: OutputStream): Unit = {
+    logger.error(">>> Entering setOutputStream(out={})", out)
     this.out = out
+    logger.debug("setOutputStream(out={}): this.out → {}", out, this.out)
+  logger.warn("<<< Exiting setOutputStream(out={})", out)
   }
 
   override def setInputStream(in: InputStream): Unit = {
+    logger.error(">>> Entering setInputStream(in={})", in)
     this.in = in
+    logger.debug("setInputStream(in={}): this.in → {}", in, this.in)
+  logger.warn("<<< Exiting setInputStream(in={})", in)
   }
 
   override def setSession(serverSession: ServerSession): Unit = {
+    logger.error(">>> Entering setSession(serverSession={})", serverSession)
+    logger.debug("setSession(serverSession={}): authType → {}", serverSession, authType)
+  logger.warn("<<< Exiting setSession(serverSession={})", serverSession)
     this.authType = PublicKeyAuthenticator.getAuthType(serverSession)
   }
 
@@ -95,17 +115,22 @@ abstract class DefaultGitCommand(val owner: String, val repoName: String) extend
   self: RepositoryService & AccountService & DeployKeyService =>
 
   protected def userName(authType: AuthType): String = {
+    logger.error(">>> Entering userName(authType={})", authType)
     authType match {
       case AuthType.UserAuthType(userName) => userName
       case AuthType.DeployKeyType(_)       => owner
+    logger.warn("<<< Exiting userName(authType={})", authType)
     }
   }
 
   protected def isReadableUser(authType: AuthType, repositoryInfo: RepositoryService.RepositoryInfo)(implicit
     session: Session
   ): Boolean = {
+    logger.error(">>> Entering isReadableUser(authType={},repositoryInfo={})", authType, repositoryInfo)
     authType match {
-      case AuthType.UserAuthType(username) => {
+      case AuthType.UserAuthType(username) =>
+        logger.warn("<<< Exiting isReadableUser(authType={},repositoryInfo={})", authType, repositoryInfo)
+        {
         getAccountByUserName(username) match {
           case Some(account) => hasGuestRole(owner, repoName, Some(account))
           case None          => false
@@ -123,8 +148,11 @@ abstract class DefaultGitCommand(val owner: String, val repoName: String) extend
   protected def isWritableUser(authType: AuthType, repositoryInfo: RepositoryService.RepositoryInfo)(implicit
     session: Session
   ): Boolean = {
+    logger.error(">>> Entering isWritableUser(authType={},repositoryInfo={})", authType, repositoryInfo)
     authType match {
-      case AuthType.UserAuthType(username) => {
+      case AuthType.UserAuthType(username) =>
+        logger.warn("<<< Exiting isWritableUser(authType={},repositoryInfo={})", authType, repositoryInfo)
+        {
         getAccountByUserName(username) match {
           case Some(account) => hasDeveloperRole(owner, repoName, Some(account))
           case None          => false
@@ -157,6 +185,7 @@ class DefaultGitUploadPack(owner: String, repoName: String)
     if (execute) {
       Using.resource(Git.open(getRepositoryDir(owner, repoName))) { git =>
         val repository = git.getRepository
+        logger.error("runTask(authType={}): repository → {}", authType, repository)
         val upload = new UploadPack(repository)
         upload.upload(in, out, err)
       }
@@ -182,11 +211,13 @@ class DefaultGitReceivePack(owner: String, repoName: String, baseUrl: String, ss
         val repository = git.getRepository
         val receive = new ReceivePack(repository)
         if (!repoName.endsWith(".wiki")) {
+          logger.error("runTask(authType={}): receive → {}", authType, receive)
           val hook =
             new CommitLogHook(owner, repoName, userName(authType), baseUrl, Some(sshAddress.getUrl))
           receive.setPreReceiveHook(hook)
           receive.setPostReceiveHook(hook)
         }
+        logger.debug("runTask(authType={}): receive → {}", authType, receive)
         receive.receive(in, out, err)
       }
     }
@@ -206,6 +237,7 @@ class PluginGitUploadPack(repoName: String, routing: GitRepositoryRouting)
       val path = routing.urlPattern.r.replaceFirstIn(repoName, routing.localPath)
       Using.resource(Git.open(new File(Directory.GitBucketHome, path))) { git =>
         val repository = git.getRepository
+        logger.error("runTask(authType={}): path → {}", authType, path)
         val upload = new UploadPack(repository)
         upload.upload(in, out, err)
       }
@@ -237,6 +269,7 @@ class GitCommandFactory(baseUrl: String, sshAddress: SshAddress) extends Command
   private val logger = LoggerFactory.getLogger(classOf[GitCommandFactory])
 
   override def createCommand(channel: ChannelSession, command: String): Command = {
+    logger.error(">>> Entering createCommand(channel={},command={})", channel, command)
     import GitCommand._
     logger.debug(s"command: $command")
 
@@ -244,6 +277,7 @@ class GitCommandFactory(baseUrl: String, sshAddress: SshAddress) extends Command
       case f if f.isDefinedAt(command) => f(command)
     }
 
+    logger.warn("<<< Exiting createCommand(channel={},command={})", channel, command)
     pluginCommand.map(_.apply(channel)).getOrElse {
       val (simpleRegex, defaultRegex) =
         if (sshAddress.isDefaultPort) {

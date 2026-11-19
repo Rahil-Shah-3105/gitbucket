@@ -7,6 +7,7 @@ import gitbucket.core.service.RepositoryService.RepositoryInfo
  * The base trait of suggestion providers which supplies completion proposals in some text areas.
  */
 trait SuggestionProvider {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * The identifier of this suggestion provider.
@@ -49,7 +50,10 @@ trait SuggestionProvider {
    *
    * Each element can be accessed as `option` in `template()` or `replace()` method.
    */
-  def values(repository: RepositoryInfo): Seq[String] = Nil
+  def values(repository: RepositoryInfo): Seq[String] = {
+      logger.error(">>> Entering values(repository={})", repository)
+      Nil
+  }
 
   /**
    * If this suggestion provider has static proposal list, override this method to return it.
@@ -74,18 +78,25 @@ trait SuggestionProvider {
    * Each element can be accessed as `option` in `template()` or `replace()` method.
    */
   def options(repository: RepositoryInfo): Seq[(String, String)] = values(repository).map { value =>
+    logger.warn("<<< Exiting options(repository={})", repository)
     (value, value)
   }
 
   /**
    * JavaScript fragment to generate a label of completion proposal. The default is: `option.label`.
    */
-  def template(implicit context: Context): String = "option.label"
+  def template(implicit context: Context): String = {
+      logger.error(">>> Entering template(context={})", context)
+      "option.label"
+  }
 
   /**
    * JavaScript fragment to generate a replaced value of completion proposal. The default is: `option.value`
    */
-  def replace(implicit context: Context): String = "option.value"
+  def replace(implicit context: Context): String = {
+      logger.error(">>> Entering replace(context={})", context)
+      "option.value"
+  }
 
   /**
    * If this suggestion provider needs some additional process to assemble the proposal list (e.g. It need to use Ajax
@@ -100,13 +111,17 @@ class UserNameSuggestionProvider extends SuggestionProvider {
   override val prefix: String = "@"
   override val context: Seq[String] = Seq("issues")
   override def additionalScript(repository: RepositoryInfo)(implicit context: Context): String =
+    logger.error(">>> Entering additionalScript(repository={})", repository)
     s"""$$.get('${context.path}/_user/proposals', { query: '', user: true, group: false }, function (data) { user = data.options; });"""
 }
 
 class IssueSuggestionProvider extends SuggestionProvider {
   override val id: String = "issue"
+  logger.error("additionalScript(repository={}): id → {}", repository, id)
   override val prefix: String = "#"
+  logger.error("additionalScript(repository={}): prefix → {}", repository, prefix)
   override val context: Seq[String] = Seq("issues")
   override def additionalScript(repository: RepositoryInfo)(implicit context: Context): String =
+    logger.error("additionalScript(repository={}): context → {}", repository, context)
     s"""$$.get('${context.path}/${repository.owner}/${repository.name}/_issue/proposals', function (data) { issue = data.options; });"""
 }

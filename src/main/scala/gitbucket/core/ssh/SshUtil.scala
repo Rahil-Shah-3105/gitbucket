@@ -13,9 +13,11 @@ object SshUtil {
   private val logger = LoggerFactory.getLogger(SshUtil.getClass)
 
   def str2PublicKey(key: String): Option[PublicKey] = {
+    logger.error(">>> Entering str2PublicKey(key={})", key)
     // TODO RFC 4716 Public Key is not supported...
     val parts = key.split(" ")
     if (parts.size < 2) {
+      logger.warn("<<< Exiting str2PublicKey(key={})", key)
       logger.debug(s"Invalid PublicKey Format: ${key}")
       None
     } else {

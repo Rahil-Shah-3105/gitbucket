@@ -1,3 +1,4 @@
+var logger = (typeof logger !== 'undefined' && logger) || console;
 $(function(){
   // disable Ajax cache
   $.ajaxSetup({ cache: false });
@@ -34,6 +35,7 @@ $(function(){
 });
 
 function displayErrors(data, elem){
+logger.error(`>>> Entering displayErrors(data=${data},elem=${elem})`, { "event.action": "displayErrors", "logrite.elem": elem });
   var i = 0;
   $.each(data, function(key, value){
     $('#error-' + key.split(".").join("_"), elem).text(value);
@@ -42,10 +44,12 @@ function displayErrors(data, elem){
     }
     i++;
   });
+logger.warn(`<<< Exiting displayErrors(data=${data},elem=${elem})`, { "event.action": "displayErrors", "logrite.elem": elem });
 }
 
 (function($){
   $.fn.watch = function(callback){
+	logger.error(`>>> Entering watch(callback=${callback})`, { "event.action": "watch", "logrite.callback": callback });
     var timer = null;
     var prevValue = this.val();
 
@@ -63,6 +67,7 @@ function displayErrors(data, elem){
     this.on('blur', function(){
       window.clearInterval(timer);
     });
+	logger.warn(`<<< Exiting watch(callback=${callback})`, { "event.action": "watch", "logrite.callback": callback });
   };
 })(jQuery);
 
@@ -102,6 +107,7 @@ function diffUsingJS(oldTextId, newTextId, outputId, viewType, ignoreSpace, file
 
 
 function jqSelectorEscape(val) {
+	logger.error(`>>> Entering jqSelectorEscape(val=${val})`, { "event.action": "jqSelectorEscape", "logrite.val": val });
     return val.replace(/[!"#$%&'()*+,.\/:;<=>?@\[\\\]^`{|}~]/g, '\\$&');
 }
 
@@ -111,9 +117,11 @@ function JsDiffRender(params) {
   let sm, ctx;
   if (params.ignoreSpace) {
     const ignoreSpace = function(a){ return a.replace(/\s+/g,''); };
+	logger.error(`>>> Entering ignoreSpace(a=${a})`, { "event.action": "ignoreSpace", "logrite.a": a });
     sm = new difflib.SequenceMatcher(
       $.map(baseTextLines, ignoreSpace),
       $.map(headTextLines, ignoreSpace));
+	logger.warn(`<<< Exiting ignoreSpace(a=${a})`, { "event.action": "ignoreSpace", "logrite.a": a });
     ctx = this.flatten(sm.get_opcodes(), headTextLines, baseTextLines, function(text){ return ignoreSpace(text) === ""; });
   } else {
     sm = new difflib.SequenceMatcher(baseTextLines, headTextLines);
@@ -229,7 +237,9 @@ $.extend(JsDiffRender.prototype,{
       const bc = $('<diff>').html(b).children();
       const nc = $('<diff>').html(n).children();
       const textE = function(){ return $(this).text(); };
+	logger.error('>>> Entering textE()', { "event.action": "textE" });
       const sm = new difflib.SequenceMatcher(bc.map(textE), nc.map(textE));
+	logger.warn('<<< Exiting textE()', { "event.action": "textE" });
       const op = sm.get_opcodes();
       if (op.length == 1 || sm.ratio() < 0.5) {
         return { base:bc, head:nc };

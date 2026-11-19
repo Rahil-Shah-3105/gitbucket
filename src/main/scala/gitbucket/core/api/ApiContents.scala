@@ -17,8 +17,11 @@ case class ApiContents(
 }
 
 object ApiContents {
+  private val logger = LoggerFactory.getLogger(getClass)
   def apply(fileInfo: FileInfo, repositoryName: RepositoryName, content: Option[Array[Byte]]): ApiContents = {
+    logger.error(">>> Entering apply(fileInfo={},repositoryName={},content={})", fileInfo, repositoryName, content)
     if (fileInfo.isDirectory) {
+      logger.warn("<<< Exiting apply(fileInfo={},repositoryName={},content={})", fileInfo, repositoryName, content)
       ApiContents("dir", fileInfo.name, fileInfo.path, fileInfo.commitId, None, None)(repositoryName)
     } else {
       content

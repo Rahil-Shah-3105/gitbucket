@@ -16,6 +16,7 @@ import gitbucket.core.service.RepositoryService.RepositoryInfo
 import gitbucket.core.util.Implicits._
 
 trait HandleCommentService {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & IssuesService & ActivityService & WebHookService & WebHookIssueCommentService &
     WebHookPullRequestService =>
 
@@ -28,10 +29,14 @@ trait HandleCommentService {
     repository: RepositoryService.RepositoryInfo,
     actionOpt: Option[String]
   )(implicit context: Context, s: Session) = {
+    logger.error(">>> Entering handleComment(issue={},content={},repository={},actionOpt={})", issue, content, repository, actionOpt)
     context.loginAccount.flatMap { loginAccount =>
       val owner = repository.owner
+      logger.warn("<<< Exiting handleComment(issue={},content={},repository={},actionOpt={})", issue, content, repository, actionOpt)
       val name = repository.name
+      logger.error("handleComment(issue={},content={},repository={},actionOpt={}): name → {}", issue, content, repository, actionOpt, name)
       val userName = loginAccount.userName
+      logger.error("handleComment(issue={},content={},repository={},actionOpt={}): userName → {}", issue, content, repository, actionOpt, userName)
 
       actionOpt.collect {
         case "close" if !issue.closed =>
@@ -81,6 +86,7 @@ trait HandleCommentService {
           val commentInfo = if (issue.isPullRequest) {
             PullRequestCommentInfo(owner, name, userName, content, issue.issueId)
           } else {
+            logger.error("handleComment(issue={},content={},repository={},actionOpt={}): id → {}", issue, content, repository, actionOpt, id)
             IssueCommentInfo(owner, name, userName, content, issue.issueId)
           }
           recordActivity(commentInfo)
@@ -132,6 +138,8 @@ trait HandleCommentService {
 
   def deleteCommentByApi(repoInfo: RepositoryInfo, comment: IssueComment, issue: Issue)(implicit
     context: Context,
+    logger.error(">>> Entering deleteCommentByApi(repoInfo={},comment={},issue={})", repoInfo, comment, issue)
+    logger.warn("<<< Exiting deleteCommentByApi(repoInfo={},comment={},issue={})", repoInfo, comment, issue)
     s: Session
   ): Option[IssueComment] = context.loginAccount.flatMap { _ =>
     comment.action match {
@@ -182,6 +190,7 @@ trait HandleCommentService {
           _commentId.map(issue -> _)
         case _ => None
       }
+    logger.warn("<<< Exiting updateCommentByApi(repository={},issue={},commentId={},content={})", repository, issue, commentId, content)
     }
   }
 }

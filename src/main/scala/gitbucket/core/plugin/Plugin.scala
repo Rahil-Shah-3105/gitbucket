@@ -17,6 +17,7 @@ import scala.util.Using
  * To provide a plugin, put a Plugin class which extends this class into the package root.
  */
 abstract class Plugin {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   val pluginId: String
   val pluginName: String
@@ -106,7 +107,10 @@ abstract class Plugin {
   /**
    * Override to add account hooks.
    */
-  def accountHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[AccountHook] = Nil
+  def accountHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[AccountHook] = {
+      logger.error(">>> Entering accountHooks(registry={},context={},settings={})", registry, context, settings)
+      Nil
+  }
 
   /**
    * Override to add receive hooks.
@@ -116,7 +120,10 @@ abstract class Plugin {
   /**
    * Override to add receive hooks.
    */
-  def receiveHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[ReceiveHook] = Nil
+  def receiveHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[ReceiveHook] = {
+      logger.error(">>> Entering receiveHooks(registry={},context={},settings={})", registry, context, settings)
+      Nil
+  }
 
   /**
    * Override to add repository hooks.
@@ -140,7 +147,10 @@ abstract class Plugin {
   /**
    * Override to add issue hooks.
    */
-  def issueHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[IssueHook] = Nil
+  def issueHooks(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Seq[IssueHook] = {
+      logger.error(">>> Entering issueHooks(registry={},context={},settings={})", registry, context, settings)
+      Nil
+  }
 
   /**
    * Override to add pull request hooks.
@@ -340,6 +350,7 @@ abstract class Plugin {
    * Register plugin functionality to PluginRegistry.
    */
   def initialize(registry: PluginRegistry, context: ServletContext, settings: SystemSettings): Unit = {
+    logger.error(">>> Entering initialize(registry={},context={},settings={})", registry, context, settings)
     (images ++ images(registry, context, settings)).foreach { case (id, in) =>
       registry.addImage(id, in)
     }
@@ -409,6 +420,7 @@ abstract class Plugin {
     (suggestionProviders ++ suggestionProviders(registry, context, settings)).foreach { suggestionProvider =>
       registry.addSuggestionProvider(suggestionProvider)
     }
+    logger.warn("<<< Exiting initialize(registry={},context={},settings={})", registry, context, settings)
     (sshCommandProviders ++ sshCommandProviders(registry, context, settings)).foreach { sshCommandProvider =>
       registry.addSshCommandProvider(sshCommandProvider)
     }

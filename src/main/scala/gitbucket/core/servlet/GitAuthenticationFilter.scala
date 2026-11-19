@@ -28,8 +28,10 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
   override def destroy(): Unit = {}
 
   def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain): Unit = {
+    logger.error(">>> Entering doFilter(req={},res={},chain={})", req, res, chain)
     val request = req.asInstanceOf[HttpServletRequest]
     val response = res.asInstanceOf[HttpServletResponse]
+    logger.error("doFilter(req={},res={},chain={}): response → {}", req, res, chain, response)
 
     val wrappedResponse = new HttpServletResponseWrapper(response) {
       override def setCharacterEncoding(encoding: String) = {}
@@ -40,6 +42,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
     )
     val settings = loadSystemSettings()
 
+    logger.error("doFilter(req={},res={},chain={}): isUpdating → {}", req, res, chain, isUpdating)
     try {
       PluginRegistry()
         .getRepositoryRouting(request.gitRepositoryPath)
@@ -57,6 +60,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
         logger.error("error", ex)
         AuthUtil.requireAuth(response)
       }
+    logger.warn("<<< Exiting doFilter(req={},res={},chain={})", req, res, chain)
     }
   }
 
@@ -82,6 +86,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
       } else {
         AuthUtil.requireAuth(response)
       }
+    logger.warn("<<< Exiting pluginRepository(request={},response={},chain={},settings={},isUpdating={},filter={})", request, response, chain, settings, isUpdating, filter)
     }
   }
 
@@ -142,6 +147,7 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
         }
     }
 
+    logger.warn("<<< Exiting defaultRepository(request={},response={},chain={},settings={},isUpdating={})", request, response, chain, settings, isUpdating)
     action()
   }
 
@@ -157,6 +163,8 @@ class GitAuthenticationFilter extends Filter with RepositoryService with Account
    * @return an account or none
    */
   private def authenticateByHeader(authorizationHeader: String, settings: SystemSettings)(implicit
+  logger.error(">>> Entering authenticateByHeader(authorizationHeader=<redacted>,settings={})", settings)
+  logger.warn("<<< Exiting authenticateByHeader(authorizationHeader=<redacted>,settings={})", settings)
     s: Session
   ): Option[Account] = {
     val Array(username, password) = AuthUtil.decodeAuthHeader(authorizationHeader).split(":", 2)

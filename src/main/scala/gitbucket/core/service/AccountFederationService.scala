@@ -42,7 +42,10 @@ trait AccountFederationService {
         }
     }
 
-  private def extractSafeStringForUserName(s: String) = """^[a-zA-Z0-9][a-zA-Z0-9\-_.]*""".r.findPrefixOf(s)
+  private def extractSafeStringForUserName(s: String) = {
+      logger.error(">>> Entering extractSafeStringForUserName(s={})", s)
+      """^[a-zA-Z0-9][a-zA-Z0-9\-_.]*""".r.findPrefixOf(s)
+  }
 
   /**
    * Find an available username from the preferred username or mail address.
@@ -52,6 +55,8 @@ trait AccountFederationService {
    * @return Available username
    */
   def findAvailableUserName(preferredUserName: Option[String], mailAddress: String)(implicit
+  logger.error(">>> Entering findAvailableUserName(preferredUserName={},mailAddress={})", preferredUserName, mailAddress)
+  logger.warn("<<< Exiting findAvailableUserName(preferredUserName={},mailAddress={})", preferredUserName, mailAddress)
     s: Session
   ): Option[String] = {
     preferredUserName

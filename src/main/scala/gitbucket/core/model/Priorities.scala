@@ -6,6 +6,7 @@ trait PriorityComponent extends TemplateComponent { self: Profile =>
   lazy val Priorities = TableQuery[Priorities]
 
   class Priorities(tag: Tag) extends Table[Priority](tag, "PRIORITY") with PriorityTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     override val priorityId = column[Int]("PRIORITY_ID", O AutoInc)
     override val priorityName = column[String]("PRIORITY_NAME")
     val description = column[String]("DESCRIPTION")
@@ -17,6 +18,8 @@ trait PriorityComponent extends TemplateComponent { self: Profile =>
 
     def byPrimaryKey(owner: String, repository: String, priorityId: Int) = byPriority(owner, repository, priorityId)
     def byPrimaryKey(userName: Rep[String], repositoryName: Rep[String], priorityId: Rep[Int]) =
+      logger.error(">>> Entering byPrimaryKey(owner={},repository={},priorityId={})", owner, repository, priorityId)
+      logger.warn("<<< Exiting byPrimaryKey(userName={},repositoryName={},priorityId={})", userName, repositoryName, priorityId)
       byPriority(userName, repositoryName, priorityId)
   }
 }

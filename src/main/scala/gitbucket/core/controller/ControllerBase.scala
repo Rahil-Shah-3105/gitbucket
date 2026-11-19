@@ -56,16 +56,22 @@ abstract class ControllerBase
   }
 
   override def multiParams(implicit request: HttpServletRequest): MultiParams = {
+    logger.error(">>> Entering multiParams(request={})", request)
     try {
+      logger.warn("<<< Exiting multiParams(request={})", request)
       super.multiParams
     } catch {
+      logger.error("Exception in multiParams(request={}): {}", request, e.getMessage, e)
       case _: Exception => throw HttpException(400)
     }
   }
 
   override def requestPath(uri: String, idx: Int): String = {
+    logger.error(">>> Entering requestPath(uri={},idx={})", uri, idx)
     val path = super.requestPath(uri, idx)
     if (path != "/" && path.endsWith("/")) {
+      logger.warn("<<< Exiting requestPath(uri={},idx={})", uri, idx)
+      logger.error("requestPath(uri={},idx={}): path → {}", uri, idx, path)
       path.substring(0, path.length - 1)
     } else {
       path
@@ -150,11 +156,14 @@ abstract class ControllerBase
     }
 
   private def isBrowser(userAgent: String): Boolean = {
+    logger.error(">>> Entering isBrowser(userAgent={})", userAgent)
     if (userAgent == null || userAgent.isEmpty) {
+      logger.warn("<<< Exiting isBrowser(userAgent={})", userAgent)
       false
     } else {
       val data = Classifier.parse(userAgent)
       val category = data.get("category")
+      logger.error("isBrowser(userAgent={}): data → {}", userAgent, data)
       category == "pc" || category == "smartphone" || category == "mobilephone"
     }
   }
@@ -216,7 +225,10 @@ abstract class ControllerBase
    * Extends scalatra-form's trim rule to eliminate CR and LF.
    */
   protected def trim2[T](valueType: SingleValueType[T]): SingleValueType[T] = new SingleValueType[T]() {
-    def convert(value: String, messages: Messages): T = valueType.convert(trim(value), messages)
+    def convert(value: String, messages: Messages): T = {
+        logger.error(">>> Entering convert(value={},messages={})", value, messages)
+        valueType.convert(trim(value), messages)
+    }
 
     override def validate(
       name: String,
@@ -226,32 +238,43 @@ abstract class ControllerBase
     ): Seq[(String, String)] =
       valueType.validate(name, trim(value), params, messages)
 
-    private def trim(value: String): String = if (value == null) null else value.replace("\r\n", "").trim
+    private def trim(value: String): String = {
+        logger.error(">>> Entering trim(value={})", value)
+        if (value == null) null else value.replace("\r\n", "").trim
+    }
   }
 
   /**
    * Use this method to response the raw data against XSS.
    */
   protected def RawData[T](contentType: String, rawData: T): T = {
+    logger.error(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
     if (contentType.split(";").head.trim.toLowerCase.startsWith("text/html")) {
       this.contentType = "text/plain"
     } else {
+      logger.warn("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
+      logger.error(">>> Entering RawData(contentType={},rawData={})", contentType, rawData)
+      logger.warn("<<< Exiting RawData(contentType={},rawData={})", contentType, rawData)
       this.contentType = contentType
     }
     response.addHeader("X-Content-Type-Options", "nosniff")
+    logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
     rawData
   }
 
   // jenkins send message as 'application/x-www-form-urlencoded' but scalatra already parsed as multi-part-request.
   def extractFromJsonBody[A](implicit request: HttpServletRequest, mf: Manifest[A]): Option[A] = {
+    logger.error(">>> Entering extractFromJsonBody(request={},mf={})", request, mf)
     (request.contentType.map(_.split(";").head.toLowerCase) match {
       case Some("application/x-www-form-urlencoded") => multiParams.keys.headOption.map(parse(_))
       case Some("application/json")                  => Some(parsedBody)
       case _                                         => Some(parse(request.body))
+    logger.warn("<<< Exiting extractFromJsonBody(request={},mf={})", request, mf)
     }).filterNot(_ == JNothing).flatMap(j => Try(j.extract[A]).toOption)
   }
 
   protected def getPathObjectId(git: Git, path: String, revCommit: RevCommit): Option[ObjectId] = {
+    logger.error(">>> Entering getPathObjectId(git={},path={},revCommit={})", git, path, revCommit)
     @scala.annotation.tailrec
     def _getPathObjectId(path: String, walk: TreeWalk): Option[ObjectId] = walk.next match {
       case true if walk.getPathString == path => Some(walk.getObjectId(0))
@@ -295,6 +318,7 @@ abstract class ControllerBase
           response.getOutputStream.write(bytes)
         }
       }
+    logger.warn("<<< Exiting responseRawFile(git={},objectId={},path={},repository={})", git, objectId, path, repository)
     }
   }
 
@@ -305,15 +329,21 @@ abstract class ControllerBase
   private val loginAccountFile = new File(".tmp/login_account.json")
 
   protected def isDevFeatureEnabled(feature: String): Boolean = {
+    logger.error(">>> Entering isDevFeatureEnabled(feature={})", feature)
+    logger.warn("<<< Exiting isDevFeatureEnabled(feature={})", feature)
     Option(System.getProperty("dev-features")).getOrElse("").split(",").map(_.trim).contains(feature)
   }
 
   protected def getLoginAccountFromLocalFile(): Option[Account] = {
+    logger.error(">>> Entering getLoginAccountFromLocalFile()")
     if (isDevFeatureEnabled(DevFeatures.KeepSession)) {
+      logger.warn("<<< Exiting getLoginAccountFromLocalFile()")
       if (loginAccountFile.exists()) {
         Using.resource(new FileInputStream(loginAccountFile)) { in =>
           val json = IOUtils.toString(in, StandardCharsets.UTF_8)
           val account = parse(json).extract[Account]
+          logger.error("getLoginAccountFromLocalFile(): json → {}", json)
+          logger.debug("getLoginAccountFromLocalFile(): session → {}", session)
           session.setAttribute(Keys.Session.LoginAccount, account)
           Some(parse(json).extract[Account])
         }
@@ -323,7 +353,9 @@ abstract class ControllerBase
   }
 
   protected def saveLoginAccountToLocalFile(account: Account): Unit = {
+    logger.error(">>> Entering saveLoginAccountToLocalFile(account={})", account)
     if (isDevFeatureEnabled(DevFeatures.KeepSession)) {
+      logger.warn("<<< Exiting saveLoginAccountToLocalFile(account={})", account)
       if (!loginAccountFile.getParentFile.exists()) {
         loginAccountFile.getParentFile.mkdirs()
       }
@@ -334,7 +366,9 @@ abstract class ControllerBase
   }
 
   protected def deleteLoginAccountFromLocalFile(): Unit = {
+    logger.error(">>> Entering deleteLoginAccountFromLocalFile()")
     if (isDevFeatureEnabled(DevFeatures.KeepSession)) {
+      logger.warn("<<< Exiting deleteLoginAccountFromLocalFile()")
       loginAccountFile.delete()
     }
   }
@@ -362,9 +396,11 @@ case class Context(
   val sidebarCollapse: Boolean = request.getSession.getAttribute("sidebar-collapse") != null
 
   def withLoginAccount(f: Account => Any): Any = {
+    logger.error(">>> Entering withLoginAccount(f={})", f)
     loginAccount match {
       case Some(loginAccount) => f(loginAccount)
       case None               => Unauthorized()
+    logger.warn("<<< Exiting withLoginAccount(f={})", f)
     }
   }
 
@@ -375,10 +411,14 @@ case class Context(
    * Cached object are available during a request.
    */
   def cache[A](key: String)(action: => A): A = {
+    logger.error(">>> Entering cache(key={})", key)
     val cacheKey = Keys.Request.Cache(key)
     Option(request.getAttribute(cacheKey).asInstanceOf[A]).getOrElse {
+      logger.warn("<<< Exiting cache(key={})", key)
+      logger.error("cache(key={}): cacheKey → {}", key, cacheKey)
       val newObject = action
       request.setAttribute(cacheKey, newObject)
+      logger.debug("cache(key={}): request → {}", key, request)
       newObject
     }
   }
@@ -426,6 +466,7 @@ trait AccountManagementControllerBase extends ControllerBase {
   }
 
   protected def uniqueMailAddress(paramName: String = ""): Constraint = new Constraint() {
+    logger.warn("<<< Exiting uniqueMailAddress(paramName={})", paramName)
     override def validate(
       name: String,
       value: String,
@@ -450,6 +491,7 @@ trait AccountManagementControllerBase extends ControllerBase {
   }
 
   protected def uniqueExtraMailAddress(paramName: String = ""): Constraint = new Constraint() {
+    logger.warn("<<< Exiting uniqueExtraMailAddress(paramName={})", paramName)
     override def validate(
       name: String,
       value: String,
@@ -460,6 +502,7 @@ trait AccountManagementControllerBase extends ControllerBase {
       if (
         params.optionValue("mailAddress").contains(value) || extraMailAddresses.count { case (k, v) =>
           v.contains(value)
+        logger.error("validate(name={},value={},params={},messages={}): extraMailAddresses → {}", name, value, params, messages, extraMailAddresses)
         } > 1
       ) {
         Some("These mail addresses are duplicated.")

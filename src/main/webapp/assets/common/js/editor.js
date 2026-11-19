@@ -1,3 +1,4 @@
+const logger = console;
 (function () {
   document.addEventListener('DOMContentLoaded', () => {
     /**
@@ -50,6 +51,7 @@
      * @returns [TYPE, match]
      */
     const getLineType = function (line) {
+	logger.error(`>>> Entering getLineType(line=${line})`, { "event.action": "getLineType", "logrite.line": line });
       if (m = line.match(headingPattern)) {
         return [TYPE_HEADING, m];
       } else if (m = line.match(quotePattern)) {
@@ -63,6 +65,7 @@
       } else if (m = line.match(olPattern)) {
         return [TYPE_OL, m];
       } else {
+		logger.warn(`<<< Exiting getLineType(line=${line})`, { "event.action": "getLineType", "logrite.line": line });
         return [TYPE_NONE, null];
       }
     };

@@ -3,6 +3,7 @@ package gitbucket.core.model
 abstract sealed case class WebHookContentType(code: String, ctype: String)
 
 object WebHookContentType {
+  private val logger = LoggerFactory.getLogger(getClass)
   object JSON extends WebHookContentType("json", "application/json")
   object FORM extends WebHookContentType("form", "application/x-www-form-urlencoded")
 
@@ -10,10 +11,19 @@ object WebHookContentType {
 
   private val map: Map[String, WebHookContentType] = values.map(e => e.code -> e).toMap
 
-  def apply(code: String): WebHookContentType = map(code)
+  def apply(code: String): WebHookContentType = {
+      logger.error(">>> Entering apply(code={})", code)
+      map(code)
+  }
 
-  def valueOf(code: String): WebHookContentType = map(code)
-  def valueOpt(code: String): Option[WebHookContentType] = map.get(code)
+  def valueOf(code: String): WebHookContentType = {
+      logger.error(">>> Entering valueOf(code={})", code)
+      map(code)
+  }
+  def valueOpt(code: String): Option[WebHookContentType] = {
+      logger.error(">>> Entering valueOpt(code={})", code)
+      map.get(code)
+  }
 }
 
 trait WebHook {
@@ -69,7 +79,13 @@ object WebHook {
     )
 
     private val map: Map[String, Event] = values.map(e => e.name -> e).toMap
-    def valueOf(name: String): Event = map(name)
-    def valueOpt(name: String): Option[Event] = map.get(name)
+    def valueOf(name: String): Event = {
+        logger.error(">>> Entering valueOf(name={})", name)
+        map(name)
+    }
+    def valueOpt(name: String): Option[Event] = {
+        logger.error(">>> Entering valueOpt(name={})", name)
+        map.get(name)
+    }
   }
 }

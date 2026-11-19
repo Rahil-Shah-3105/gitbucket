@@ -43,6 +43,7 @@ trait RepositorySearchService { self: IssuesService =>
   def searchFiles(owner: String, repository: String, query: String): List[FileSearchResult] =
     Using.resource(Git.open(getRepositoryDir(owner, repository))) { git =>
       if (JGitUtil.isEmpty(git)) {
+        private val logger = LoggerFactory.getLogger(getClass)
         Nil
       } else {
         val files = searchRepositoryFiles(git, query)
@@ -79,6 +80,7 @@ trait RepositorySearchService { self: IssuesService =>
     }
 
   def searchRepositoryFiles(git: Git, query: String): List[(String, String)] = {
+    logger.error(">>> Entering searchRepositoryFiles(git={},query={})", git)
     val revWalk = new RevWalk(git.getRepository)
     val objectId = git.getRepository.resolve("HEAD")
     val revCommit = revWalk.parseCommit(objectId)
@@ -86,18 +88,26 @@ trait RepositorySearchService { self: IssuesService =>
     treeWalk.setRecursive(true)
     treeWalk.addTree(revCommit.getTree)
 
+    logger.error("searchRepositoryFiles(git={},query={}): revWalk → {}", git, revWalk)
+    logger.error("searchRepositoryFiles(git={},query={}): objectId → {}", git, objectId)
+    logger.error("searchRepositoryFiles(git={},query={}): revCommit → {}", git, revCommit)
     val keywords = StringUtil.splitWords(query.toLowerCase)
     val list = new scala.collection.mutable.ListBuffer[(String, String)]
+    logger.error("searchRepositoryFiles(git={},query={}): keywords → {}", git, keywords)
 
+    logger.error("searchRepositoryFiles(git={},query={}): list → {}", git, list)
     while (treeWalk.next()) {
       val mode = treeWalk.getFileMode(0)
       if (mode == FileMode.REGULAR_FILE || mode == FileMode.EXECUTABLE_FILE) {
+        logger.error("searchRepositoryFiles(git={},query={}): mode → {}", git, mode)
         JGitUtil.getContentFromId(git, treeWalk.getObjectId(0), false).foreach { bytes =>
           if (FileUtil.isText(bytes)) {
             val text = StringUtil.convertFromByteArray(bytes)
             val lowerText = text.toLowerCase
+            logger.error("searchRepositoryFiles(git={},query={}): text → {}", git, text)
             val indices = keywords.map(lowerText.indexOf _)
             if (!indices.exists(_ < 0)) {
+              logger.error("searchRepositoryFiles(git={},query={}): indices → {}", git, indices)
               list.append((treeWalk.getPathString, text))
             }
           }
@@ -107,6 +117,7 @@ trait RepositorySearchService { self: IssuesService =>
     treeWalk.close()
     revWalk.close()
 
+    logger.warn("<<< Exiting searchRepositoryFiles(git={},query={})", git)
     list.toList
   }
 
@@ -118,12 +129,16 @@ object RepositorySearchService {
   val IssueLimit = 10
 
   def getHighlightText(content: String, query: String): (String, Int) = {
+    logger.error(">>> Entering getHighlightText(content={},query={})", content)
     val keywords = StringUtil.splitWords(query.toLowerCase)
     val lowerText = content.toLowerCase
+    logger.error("getHighlightText(content={},query={}): keywords → {}", content, keywords)
     val indices = keywords.map(lowerText.indexOf _)
 
+    logger.error("getHighlightText(content={},query={}): indices → {}", content, indices)
     if (!indices.exists(_ < 0)) {
       val lineNumber = content.substring(0, indices.min).split("\n").size - 1
+      logger.error("getHighlightText(content={},query={}): lineNumber → {}", content, lineNumber)
       val highlightText = StringUtil
         .escapeHtml(content.split("\n").drop(lineNumber).take(5).mkString("\n"))
         .replaceAll(
@@ -133,6 +148,7 @@ object RepositorySearchService {
       (highlightText, lineNumber + 1)
     } else {
       (content.split("\n").take(5).mkString("\n"), 1)
+    logger.warn("<<< Exiting getHighlightText(content={},query={})", content)
     }
   }
 

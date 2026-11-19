@@ -4,6 +4,7 @@ package gitbucket.core.util
  * Define key strings for request attributes, session attributes or flash attributes.
  */
 object Keys {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * Define session keys.
@@ -38,17 +39,26 @@ object Keys {
     /**
      * Generate session key for the issue search condition.
      */
-    def Issues(owner: String, name: String) = s"${owner}/${name}/issues"
+    def Issues(owner: String, name: String) = {
+        logger.error(">>> Entering Issues(owner={},name={})", owner, name)
+        s"${owner}/${name}/issues"
+    }
 
     /**
      * Generate session key for the pull request search condition.
      */
-    def Pulls(owner: String, name: String) = s"${owner}/${name}/pulls"
+    def Pulls(owner: String, name: String) = {
+        logger.error(">>> Entering Pulls(owner={},name={})", owner, name)
+        s"${owner}/${name}/pulls"
+    }
 
     /**
      * Generate session key for the upload filename.
      */
-    def Upload(fileId: String) = s"upload_${fileId}"
+    def Upload(fileId: String) = {
+        logger.error(">>> Entering Upload(fileId={})", fileId)
+        s"upload_${fileId}"
+    }
 
   }
 
@@ -99,7 +109,10 @@ object Keys {
     /**
      * Generate request key for the request cache.
      */
-    def Cache(key: String) = s"cache.${key}"
+    def Cache(key: String) = {
+        logger.error(">>> Entering Cache(key={})", key)
+        s"cache.${key}"
+    }
 
   }
 

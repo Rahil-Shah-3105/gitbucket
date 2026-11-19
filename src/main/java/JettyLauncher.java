@@ -30,6 +30,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toSet;
 
 public class JettyLauncher {
+private val logger = LoggerFactory.getLogger(getClass)
 
     private interface Defaults {
 
@@ -212,9 +213,11 @@ public class JettyLauncher {
         } else {
             tmpDir = new File(tmpDirPath);
             if(!tmpDir.exists()){
+				logger.error("Throwing FileNotFoundException from main(args={})", args);
                 throw new java.io.FileNotFoundException(
                     String.format("temp_dir \"%s\" not found", tmpDirPath));
             } else if(!tmpDir.isDirectory()) {
+				logger.error("Throwing IllegalArgumentException from main(args={})", args);
                 throw new IllegalArgumentException(
                     String.format("temp_dir \"%s\" is not a directory", tmpDirPath));
             }
@@ -256,7 +259,8 @@ public class JettyLauncher {
         if(home != null && home.length() > 0){
             return new File(home);
         }
-        return new File(System.getProperty("user.home"), ".gitbucket");
+        File result = new File(System.getProperty("user.home"), ".gitbucket");
+        return result;
     }
 
     private static String getEnvironmentVariable(String key){
@@ -269,7 +273,8 @@ public class JettyLauncher {
     }
 
     private static <T, R> T fallback(R value, T defaultValue, Function<R, T> converter) {
-        return value == null ? defaultValue : converter.apply(value);
+        T result = value == null ? defaultValue : converter.apply(value);
+        return result;
     }
 
     private static <T> T fallback(T value, T defaultValue) {
@@ -278,6 +283,7 @@ public class JettyLauncher {
 
     private static void require(boolean condition, String message) {
         if (!condition) {
+			logger.error("Throwing IllegalArgumentException from require(condition={},message={})", condition, message);
             throw new IllegalArgumentException(message);
         }
     }
@@ -289,6 +295,7 @@ public class JettyLauncher {
 
     private static void mkdir(File dir) {
         if (!dir.mkdirs()) {
+			logger.error("Throwing RuntimeException from mkdir(dir={})", dir);
             throw new RuntimeException("Unable to create directory: " + dir);
         }
     }

@@ -26,6 +26,7 @@ class MilestonesController
     with WritableUsersAuthenticator
 
 trait MilestonesControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: MilestonesService & RepositoryService & CommitStatusService & ReferrerAuthenticator &
     WritableUsersAuthenticator =>
 
@@ -140,6 +141,7 @@ trait MilestonesControllerBase extends ControllerBase {
       params: Map[String, Seq[String]],
       messages: Messages
     ): Option[String] = {
+      logger.error(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
       for {
         owner <- params.optionValue("owner")
         repository <- params.optionValue("repository")
@@ -155,6 +157,7 @@ trait MilestonesControllerBase extends ControllerBase {
         }
       } yield {
         "Milestone already exists."
+      logger.warn("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
       }
     }
   }

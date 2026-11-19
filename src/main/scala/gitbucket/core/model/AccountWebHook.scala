@@ -9,12 +9,16 @@ trait AccountWebHookComponent extends TemplateComponent { self: Profile =>
   lazy val AccountWebHooks = TableQuery[AccountWebHooks]
 
   class AccountWebHooks(tag: Tag) extends Table[AccountWebHook](tag, "ACCOUNT_WEB_HOOK") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val url = column[String]("URL")
     val token = column[Option[String]]("TOKEN")
     val ctype = column[WebHookContentType]("CTYPE")
     def * = (userName, url, ctype, token).mapTo[AccountWebHook]
 
-    def byPrimaryKey(userName: String, url: String) = (this.userName === userName.bind) && (this.url === url.bind)
+    def byPrimaryKey(userName: String, url: String) = {
+        logger.error(">>> Entering byPrimaryKey(userName={},url={})", userName, url)
+        (this.userName === userName.bind) && (this.url === url.bind)
+    }
   }
 }
 

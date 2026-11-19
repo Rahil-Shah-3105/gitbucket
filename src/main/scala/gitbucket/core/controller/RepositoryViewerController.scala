@@ -64,6 +64,7 @@ class RepositoryViewerController
  * The repository viewer.
  */
 trait RepositoryViewerControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & RepositoryCommitFileService & AccountService & ActivityService & IssuesService &
     WebHookService & CommitsService & ReadableUsersAuthenticator & ReferrerAuthenticator & WritableUsersAuthenticator &
     PullRequestService & CommitStatusService & WebHookPullRequestService & WebHookPullRequestReviewCommentService &
@@ -308,6 +309,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
       newFiles: Seq[CommitFile],
       loginAccount: Account
     ): Either[String, ObjectId] = {
+      logger.error(">>> Entering _commit(branchName={},newFiles={},loginAccount={})", branchName, newFiles, loginAccount)
       commitFiles(
         repository = repository,
         branch = branchName,
@@ -317,6 +319,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
       ) { case (git, headTip, builder, inserter) =>
         JGitUtil.processTree(git, headTip) { (path, tree) =>
           if (!newFiles.exists(_.name.contains(path))) {
+            logger.warn("<<< Exiting _commit(branchName={},newFiles={},loginAccount={})", branchName, newFiles, loginAccount)
             builder.add(JGitUtil.createDirCacheEntry(path, tree.getEntryFileMode, tree.getEntryObjectId))
           }
         }
@@ -484,6 +487,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
 
   post("/:owner/:repository/update", editorForm)(writableUsersOnly { (form, repository) =>
     def _commit(branchName: String, loginAccount: Account): Either[String, ObjectId] = {
+      logger.error(">>> Entering _commit(branchName={},loginAccount={})", branchName, loginAccount)
       commitFile(
         repository = repository,
         branch = branchName,
@@ -493,6 +497,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
         content = appendNewLine(convertLineSeparator(form.content, form.lineSeparator), form.lineSeparator),
         charset = form.charset,
         message = if (form.oldFileName.contains(form.newFileName)) {
+          logger.warn("<<< Exiting _commit(branchName={},loginAccount={})", branchName, loginAccount)
           form.message.getOrElse(s"Update ${form.newFileName}")
         } else {
           form.message.getOrElse(s"Rename ${form.oldFileName.get} to ${form.newFileName}")
@@ -592,11 +597,14 @@ trait RepositoryViewerControllerBase extends ControllerBase {
   })
 
   private def getNewBranchName(repository: RepositoryInfo, loginAccount: Account): String = {
+    logger.error(">>> Entering getNewBranchName(repository={},loginAccount={})", repository, loginAccount)
     var i = 1
     val branchNamePrefix = cutTail(loginAccount.userName.replaceAll("[^a-zA-Z0-9-_]", "-"), 25)
     while (repository.branchList.exists(p => p.contains(s"$branchNamePrefix-patch-$i"))) {
+      logger.error("getNewBranchName(repository={},loginAccount={}): branchNamePrefix → {}", repository, loginAccount, branchNamePrefix)
       i += 1
     }
+    logger.warn("<<< Exiting getNewBranchName(repository={},loginAccount={})", repository, loginAccount)
     s"$branchNamePrefix-patch-$i"
   }
 
@@ -605,13 +613,17 @@ trait RepositoryViewerControllerBase extends ControllerBase {
     baseBranchName: String,
     loginAccount: Account
   ): String = {
+    logger.error(">>> Entering createNewBranchForPullRequest(repository={},baseBranchName={},loginAccount={})", repository, baseBranchName, loginAccount)
     val newBranchName = getNewBranchName(repository, loginAccount)
     Using.resource(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
       JGitUtil.createBranch(git, baseBranchName, newBranchName)
     }
+    logger.error("createNewBranchForPullRequest(repository={},baseBranchName={},loginAccount={}): newBranchName → {}", repository, baseBranchName, loginAccount, newBranchName)
     // Call webhook
+    logger.warn("<<< Exiting createNewBranchForPullRequest(repository={},baseBranchName={},loginAccount={})", repository, baseBranchName, loginAccount)
     val settings = loadSystemSettings()
     callWebHookOf(repository.owner, repository.name, WebHook.Create, settings) {
+      logger.error("createNewBranchForPullRequest(repository={},baseBranchName={},loginAccount={}): settings → {}", repository, baseBranchName, loginAccount, settings)
       for {
         sender <- Some(loginAccount)
         owner <- getAccountByUserName(repository.owner)
@@ -660,6 +672,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
       loginAccount = loginAccount,
       settings = context.settings
     )
+    logger.warn("<<< Exiting createIssueAndPullRequest(repository={},baseBranch={},requestBranch={},commitIdFrom={},commitIdTo={},commitMessage={},loginAccount={})", repository, baseBranch, requestBranch, commitIdFrom, commitIdTo, commitMessage, loginAccount)
     issueId
   }
 
@@ -707,6 +720,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
   })
 
   private def getSyntaxHighlighterTheme()(implicit context: Context): String = {
+    logger.error(">>> Entering getSyntaxHighlighterTheme()")
     context.loginAccount match {
       case Some(account) =>
         getAccountPreference(account.userName) match {
@@ -714,10 +728,13 @@ trait RepositoryViewerControllerBase extends ControllerBase {
           case _       => "github-v2"
         }
       case _ => "github-v2"
+    logger.warn("<<< Exiting getSyntaxHighlighterTheme()")
     }
   }
 
   private def isLfsFile(git: Git, objectId: ObjectId): Boolean = {
+    logger.error(">>> Entering isLfsFile(git={},objectId={})", git, objectId)
+    logger.warn("<<< Exiting isLfsFile(git={},objectId={})", git, objectId)
     JGitUtil.getObjectLoaderFromId(git, objectId)(JGitUtil.isLfsPointer).getOrElse(false)
   }
 
@@ -1135,17 +1152,21 @@ trait RepositoryViewerControllerBase extends ControllerBase {
    * @return HTML of the file list
    */
   private def fileList(repository: RepositoryService.RepositoryInfo, revstr: String = "", path: String = ".") = {
+    logger.error(">>> Entering fileList(repository={},revstr={},path={})", repository, revstr, path)
     Using.resource(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
       if (JGitUtil.isEmpty(git)) {
+        logger.warn("<<< Exiting fileList(repository={},revstr={},path={})", repository, revstr, path)
         html.guide(repository, hasDeveloperRole(repository.owner, repository.name, context.loginAccount))
       } else {
         // get specified commit
         JGitUtil.getDefaultBranch(git, repository, revstr).map { case (objectId, revision) =>
           val revCommit = JGitUtil.getRevCommitFromId(git, objectId)
           val lastModifiedCommit =
+            logger.error("fileList(repository={},revstr={},path={}): revCommit → {}", repository, revstr, path, revCommit)
             if (path == ".") revCommit else JGitUtil.getLastModifiedCommit(git, revCommit, path)
           val commitCount = JGitUtil.getCommitCount(git, lastModifiedCommit.getName)
           // get files
+          logger.error("fileList(repository={},revstr={},path={}): commitCount → {}", repository, revstr, path, commitCount)
           val files = JGitUtil.getFileList(
             git,
             revision,
@@ -1155,6 +1176,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
             context.settings.repositoryViewer.maxFiles
           )
           val parentPath = if (path == ".") Nil else path.split("/").toList
+          logger.error("fileList(repository={},revstr={},path={}): parentPath → {}", repository, revstr, path, parentPath)
           // process README
           val readme = files // files should be sorted alphabetically.
             .find { file =>
@@ -1162,6 +1184,7 @@ trait RepositoryViewerControllerBase extends ControllerBase {
             }
             .map { file =>
               val path = (file.name :: parentPath.reverse).reverse
+              logger.error("fileList(repository={},revstr={},path={}): path → {}", repository, revstr, path, path)
               path -> StringUtil.convertFromByteArray(
                 JGitUtil
                   .getContentFromId(
@@ -1311,29 +1334,40 @@ trait RepositoryViewerControllerBase extends ControllerBase {
         ()
       case _ =>
         NotFound()
+    logger.warn("<<< Exiting archiveRepository(filename={},repository={},path={})", filename, repository, path)
     }
   }
 
   private def isEditable(owner: String, repository: String, author: String, loginAccount: Account): Boolean = {
+    logger.error(">>> Entering isEditable(owner={},repository={},author={},loginAccount={})", owner, repository, author, loginAccount)
+    logger.warn("<<< Exiting isEditable(owner={},repository={},author={},loginAccount={})", owner, repository, author, loginAccount)
     hasDeveloperRole(owner, repository, Some(loginAccount)) || author == loginAccount.userName
   }
 
   private def conflict: Constraint = new Constraint() {
     override def validate(name: String, value: String, messages: Messages): Option[String] = {
+      logger.error(">>> Entering validate(name={},value={},messages={})", name, value, messages)
       val owner = params("owner")
       val repository = params("repository")
       val branch = params("branch")
 
+      logger.error("validate(name={},value={},messages={}): repository → {}", name, value, messages, repository)
       LockUtil.lock(s"$owner/$repository") {
+        logger.error("validate(name={},value={},messages={}): owner → {}", name, value, messages, owner)
         Using.resource(Git.open(getRepositoryDir(owner, repository))) { git =>
           val headName = s"refs/heads/$branch"
+          val __logStart = System.currentTimeMillis()
           val headTip = git.getRepository.resolve(headName)
           if (headTip.getName != value) {
+            logger.error("validate(name={},value={},messages={}): headName → {}", name, value, messages, headName)
+            logger.error("validate(name={},value={},messages={}): headTip → {}", name, value, messages, headTip)
             Some("Someone pushed new commits before you. Please reload this page and re-apply your changes.")
           } else {
             None
+          logger.error("validate(name,value,messages)={},{},{}: find query executed in {} ms", name, value, messages, (System.currentTimeMillis() - __logStart))
           }
         }
+      logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
       }
     }
   }
@@ -1341,6 +1375,8 @@ trait RepositoryViewerControllerBase extends ControllerBase {
   override protected def renderUncaughtException(
     e: Throwable
   )(implicit request: HttpServletRequest, response: HttpServletResponse): Unit = {
+    logger.error(">>> Entering renderUncaughtException(e={})", e)
+    logger.warn("<<< Exiting renderUncaughtException(e={})", e)
     e.printStackTrace()
   }
 

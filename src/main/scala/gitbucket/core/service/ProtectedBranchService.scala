@@ -8,6 +8,7 @@ import gitbucket.core.util.SyntaxSugars.*
 import org.eclipse.jgit.transport.{ReceiveCommand, ReceivePack}
 
 trait ProtectedBranchService {
+  private val logger = LoggerFactory.getLogger(getClass)
   import ProtectedBranchService._
   private def getProtectedBranchInfoOpt(owner: String, repository: String, branch: String)(implicit
     session: Session
@@ -72,6 +73,7 @@ trait ProtectedBranchService {
       contexts.foreach { context =>
         ProtectedBranchContexts.insert(ProtectedBranchContext(owner, repository, branch, context))
       }
+    logger.warn("<<< Exiting enableBranchProtection(owner={},repository={},branch={},enforceAdmins={},requiredStatusCheck={},contexts={},restrictions={},restrictionsUsers={})", owner, repository, branch, enforceAdmins, requiredStatusCheck, contexts, restrictions, restrictionsUsers)
     }
   }
 
@@ -94,7 +96,9 @@ object ProtectedBranchService {
       pusher: String,
       mergePullRequest: Boolean
     )(implicit session: Session): Option[String] = {
+      logger.error(">>> Entering preReceive(owner={},repository={},receivePack={},command={},pusher={},mergePullRequest={})", owner, repository, receivePack, command, pusher, mergePullRequest)
       if (mergePullRequest) {
+        logger.warn("<<< Exiting preReceive(owner={},repository={},receivePack={},command={},pusher={},mergePullRequest={})", owner, repository, receivePack, command, pusher, mergePullRequest)
         None
       } else {
         checkBranchProtection(owner, repository, receivePack, command, pusher)
@@ -108,16 +112,20 @@ object ProtectedBranchService {
       command: ReceiveCommand,
       pusher: String,
     )(implicit session: Session): Option[String] = {
+      logger.error(">>> Entering checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={})", owner, repository, receivePack, command, pusher)
       val branch = command.getRefName.stripPrefix("refs/heads/")
       if (branch != command.getRefName) {
+        logger.error("checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={}): branch → {}", owner, repository, receivePack, command, pusher, branch)
         val repositoryInfo = getRepository(owner, repository)
         if (
           command.getType == ReceiveCommand.Type.DELETE && repositoryInfo.exists(
             _.repository.defaultBranch == branch
           )
         ) {
+          logger.error("checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={}): repositoryInfo → {}", owner, repository, receivePack, command, pusher, repositoryInfo)
           Some(s"refusing to delete the branch: ${command.getRefName}.")
         } else {
+          logger.warn("<<< Exiting checkBranchProtection(owner={},repository={},receivePack={},command={},pusher={})", owner, repository, receivePack, command, pusher)
           getProtectedBranchInfo(owner, repository, branch).getStopReason(
             receivePack.isAllowNonFastForwards,
             command,
@@ -174,6 +182,8 @@ object ProtectedBranchService {
      * Can't have changes merged into them until required status checks pass
      */
     def getStopReason(isAllowNonFastForwards: Boolean, command: ReceiveCommand, pusher: String)(implicit
+    logger.error(">>> Entering getStopReason(isAllowNonFastForwards={},command={},pusher={})", isAllowNonFastForwards, command, pusher)
+    logger.warn("<<< Exiting getStopReason(isAllowNonFastForwards={},command={},pusher={})", isAllowNonFastForwards, command, pusher)
       session: Session
     ): Option[String] = {
       if (enabled) {
@@ -199,6 +209,7 @@ object ProtectedBranchService {
     }
 
     def unSuccessedContexts(sha1: String)(implicit session: Session): Set[String] = {
+      logger.error(">>> Entering unSuccessedContexts(sha1={})", sha1)
       contexts match {
         case None                 => Set.empty
         case Some(x) if x.isEmpty => Set.empty
@@ -207,6 +218,7 @@ object ProtectedBranchService {
             .filter(_.state == CommitState.SUCCESS)
             .map(_.context)
             .toSet
+      logger.warn("<<< Exiting unSuccessedContexts(sha1={})", sha1)
       }
     }
 
@@ -228,6 +240,7 @@ object ProtectedBranchService {
 
   object ProtectedBranchInfo {
     def disabled(owner: String, repository: String, branch: String): ProtectedBranchInfo = {
+      logger.error(">>> Entering disabled(owner={},repository={},branch={})", owner, repository, branch)
       ProtectedBranchInfo(
         owner,
         repository,
@@ -236,6 +249,7 @@ object ProtectedBranchService {
         contexts = None,
         enforceAdmins = false,
         restrictionsUsers = None
+      logger.warn("<<< Exiting disabled(owner={},repository={},branch={})", owner, repository, branch)
       )
     }
   }

@@ -6,6 +6,7 @@ import gitbucket.core.model.Profile.dateColumnType
 import gitbucket.core.model.{CommitState, CommitStatus, Account}
 
 trait CommitStatusService {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /** insert or update */
   def createCommitStatus(
@@ -48,10 +49,13 @@ trait CommitStatusService {
     }
 
   def getCommitStatusWithSummary(userName: String, repositoryName: String, sha: String)(implicit
+  logger.error(">>> Entering getCommitStatusWithSummary(userName={},repositoryName={},sha={})", userName, repositoryName, sha)
+  logger.warn("<<< Exiting getCommitStatusWithSummary(userName={},repositoryName={},sha={})", userName, repositoryName, sha)
     s: Session
   ): Option[(CommitState, List[CommitStatus])] = {
     val statuses = getCommitStatuses(userName, repositoryName, sha)
     if (statuses.isEmpty) {
+      logger.error("getCommitStatusWithSummary(userName={},repositoryName={},sha={}): statuses → {}", userName, repositoryName, sha, statuses)
       None
     } else {
       val summary = CommitState.combine(statuses.groupBy(_.state).keySet)

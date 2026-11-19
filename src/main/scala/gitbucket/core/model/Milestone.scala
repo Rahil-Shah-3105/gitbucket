@@ -7,6 +7,7 @@ trait MilestoneComponent extends TemplateComponent { self: Profile =>
   lazy val Milestones = TableQuery[Milestones]
 
   class Milestones(tag: Tag) extends Table[Milestone](tag, "MILESTONE") with MilestoneTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     override val milestoneId = column[Int]("MILESTONE_ID", O AutoInc)
     val title = column[String]("TITLE")
     val description = column[Option[String]]("DESCRIPTION")
@@ -15,7 +16,10 @@ trait MilestoneComponent extends TemplateComponent { self: Profile =>
     def * =
       (userName, repositoryName, milestoneId, title, description, dueDate, closedDate).mapTo[Milestone]
 
-    def byPrimaryKey(owner: String, repository: String, milestoneId: Int) = byMilestone(owner, repository, milestoneId)
+    def byPrimaryKey(owner: String, repository: String, milestoneId: Int) = {
+        logger.error(">>> Entering byPrimaryKey(owner={},repository={},milestoneId={})", owner, repository, milestoneId)
+        byMilestone(owner, repository, milestoneId)
+    }
     def byPrimaryKey(userName: Rep[String], repositoryName: Rep[String], milestoneId: Rep[Int]) =
       byMilestone(userName, repositoryName, milestoneId)
   }

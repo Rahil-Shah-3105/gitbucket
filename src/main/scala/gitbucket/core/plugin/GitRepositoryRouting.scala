@@ -13,10 +13,12 @@ import gitbucket.core.service.SystemSettingsService.SystemSettings
 case class GitRepositoryRouting(urlPattern: String, localPath: String, filter: GitRepositoryFilter) {
 
   def this(urlPattern: String, localPath: String) = {
+    private val logger = LoggerFactory.getLogger(getClass)
     this(
       urlPattern,
       localPath,
       new GitRepositoryFilter() {
+        logger.error(">>> Entering this(urlPattern={},localPath={})", urlPattern, localPath)
         def filter(repositoryName: String, userName: Option[String], settings: SystemSettings, isUpdating: Boolean)(
           implicit session: Session
         ): Boolean = true

@@ -8,6 +8,7 @@ import gitbucket.core.util.StringUtil
 import java.security.SecureRandom
 
 trait AccessTokenService {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   def makeAccessTokenString: String = {
     val bytes = new Array[Byte](20)
@@ -15,15 +16,21 @@ trait AccessTokenService {
     bytes.map("%02x".format(_)).mkString
   }
 
-  def tokenToHash(token: String): String = StringUtil.sha1(token)
+  def tokenToHash(token: String): String = {
+      logger.error(">>> Entering tokenToHash(token=<redacted>)")
+      StringUtil.sha1(token)
+  }
 
   /**
    * @return (TokenId, Token)
    */
   def generateAccessToken(userName: String, note: String)(implicit s: Session): (Int, String) = {
+    logger.error(">>> Entering generateAccessToken(userName={},note={})", userName, note)
     var token: String = makeAccessTokenString
     var hash: String = tokenToHash(token)
 
+    logger.error("generateAccessToken(userName={},note={}): hash → <redacted>", userName, note)
+    logger.error("generateAccessToken(userName={},note={}): token → <redacted>", userName, note)
     while (AccessTokens.filter(_.tokenHash === hash.bind).exists.run) {
       token = makeAccessTokenString
       hash = tokenToHash(token)
@@ -31,6 +38,9 @@ trait AccessTokenService {
 
     val newToken = AccessToken(userName = userName, note = note, tokenHash = hash)
     val tokenId = (AccessTokens returning AccessTokens.map(_.accessTokenId)) insert newToken
+    logger.error("generateAccessToken(userName={},note={}): newToken → <redacted>", userName, note)
+    logger.error("generateAccessToken(userName={},note={}): tokenId → <redacted>", userName, note)
+    logger.warn("<<< Exiting generateAccessToken(userName={},note={})", userName, note)
     (tokenId, token)
   }
 

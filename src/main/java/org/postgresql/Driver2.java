@@ -11,6 +11,7 @@ import java.util.Properties;
  * Wraps the PostgreSQL JDBC driver to convert the returning column names to lower case.
  */
 public class Driver2 extends Driver {
+private val logger = LoggerFactory.getLogger(getClass)
 
     @Override
     public java.sql.Connection connect(String url, Properties info) throws SQLException {
@@ -44,7 +45,8 @@ public class Driver2 extends Driver {
                     }
                 }
             }
-            return method.invoke(conn, args);
+            Object result = method.invoke(conn, args);
+            return result;
         }
     }
 

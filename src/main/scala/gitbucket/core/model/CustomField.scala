@@ -13,6 +13,7 @@ trait CustomFieldComponent extends TemplateComponent { self: Profile =>
   lazy val CustomFields = TableQuery[CustomFields]
 
   class CustomFields(tag: Tag) extends Table[CustomField](tag, "CUSTOM_FIELD") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val fieldId = column[Int]("FIELD_ID", O AutoInc)
     val fieldName = column[String]("FIELD_NAME")
     val fieldType = column[String]("FIELD_TYPE")
@@ -44,6 +45,8 @@ trait CustomFieldBehavior {
     context: Context
   ): String
   def fieldHtml(
+  logger.error(">>> Entering createHtml(repository={},fieldId={},fieldName={},constraints={})", repository, fieldId, fieldName, constraints)
+  logger.warn("<<< Exiting createHtml(repository={},fieldId={},fieldName={},constraints={})", repository, fieldId, fieldName, constraints)
     repository: RepositoryInfo,
     issueId: Int,
     fieldId: Int,
@@ -59,8 +62,10 @@ trait CustomFieldBehavior {
 
 object CustomFieldBehavior {
   def validate(field: CustomField, value: String, messages: Messages): Option[String] = {
+    logger.error(">>> Entering validate(field={},value={},messages={})", field, value, messages)
     if (value.isEmpty) None
     else {
+      logger.warn("<<< Exiting validate(field={},value={},messages={})", field, value, messages)
       CustomFieldBehavior(field.fieldType).flatMap { behavior =>
         behavior.validate(field.fieldName, field.constraints, value, messages)
       }
@@ -68,6 +73,7 @@ object CustomFieldBehavior {
   }
 
   def apply(fieldType: String): Option[CustomFieldBehavior] = {
+    logger.error(">>> Entering apply(fieldType={})", fieldType)
     fieldType match {
       case "long"   => Some(LongFieldBehavior)
       case "double" => Some(DoubleFieldBehavior)
@@ -75,6 +81,7 @@ object CustomFieldBehavior {
       case "date"   => Some(DateFieldBehavior)
       case "enum"   => Some(EnumFieldBehavior)
       case _        => None
+    logger.warn("<<< Exiting apply(fieldType={})", fieldType)
     }
   }
 
@@ -171,6 +178,7 @@ object CustomFieldBehavior {
       issueId: Option[Int],
       value: Option[String]
     )(implicit context: Context): String = {
+      logger.error(">>> Entering createPulldownHtml(repository={},fieldId={},fieldName={},constraints={},issueId={},value={})", repository, fieldId, fieldName, constraints, issueId, value)
       val sb = new StringBuilder
       sb.append("""<div class="pull-right">""")
       sb.append(
@@ -179,6 +187,7 @@ object CustomFieldBehavior {
             val options = new StringBuilder()
             options.append(
               s"""<li><a href="javascript:void(0);" class="custom-field-option-$fieldId" data-value=""><i class="octicon octicon-x"></i> Clear ${StringUtil
+              logger.error("createPulldownHtml(repository={},fieldId={},fieldName={},constraints={},issueId={},value={}): options → {}", repository, fieldId, fieldName, constraints, issueId, value, options)
                   .escapeHtml(fieldName)}</a></li>"""
             )
             constraints.foreach { x =>
@@ -246,6 +255,7 @@ object CustomFieldBehavior {
              |</script>
              |""".stripMargin)
       }
+      logger.warn("<<< Exiting createPulldownHtml(repository={},fieldId={},fieldName={},constraints={},issueId={},value={})", repository, fieldId, fieldName, constraints, issueId, value)
       sb.toString()
     }
 
@@ -260,6 +270,7 @@ object CustomFieldBehavior {
   trait TextFieldBehavior extends CustomFieldBehavior {
     protected val fieldType = "text"
 
+    logger.error("validate(name={},constraints={},value={},messages={}): fieldType → {}", name, constraints, value, messages, fieldType)
     override def createHtml(repository: RepositoryInfo, fieldId: Int, fieldName: String, constraints: Option[String])(
       implicit context: Context
     ): String = {
@@ -373,5 +384,6 @@ object CustomFieldBehavior {
       value: String,
       messages: Messages
     ): Option[String] = None
+  logger.warn("<<< Exiting fieldHtml(repository={},issueId={},fieldId={},fieldName={},constraints={},value={},editable={})", repository, issueId, fieldId, fieldName, constraints, value, editable)
   }
 }

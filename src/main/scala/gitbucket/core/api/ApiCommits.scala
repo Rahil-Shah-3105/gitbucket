@@ -20,6 +20,7 @@ case class ApiCommits(
 )
 
 object ApiCommits {
+  private val logger = LoggerFactory.getLogger(getClass)
   case class Commit(
     url: ApiPath,
     author: ApiPersonIdent,
@@ -59,6 +60,7 @@ object ApiCommits {
     committer: Option[Account],
     commentCount: Int
   ): ApiCommits = {
+    logger.error(">>> Entering apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={})", repositoryName, commitInfo, diffs, author, committer, commentCount)
     val files = diffs.map { diff =>
       var additions = 0
       var deletions = 0
@@ -94,7 +96,9 @@ object ApiCommits {
         patch = diff.patch.getOrElse("")
       )
     }
+    logger.debug("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): sha → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, sha)
 
+    logger.warn("<<< Exiting apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={})", repositoryName, commitInfo, diffs, author, committer, commentCount)
     ApiCommits(
       url = ApiPath(s"/api/v3/repos/${repositoryName.fullName}/commits/${commitInfo.id}"),
       sha = commitInfo.id,
@@ -130,5 +134,6 @@ object ApiCommits {
       ),
       files = files
     )
+      logger.info("apply(repositoryName={},commitInfo={},diffs={},author={},committer={},commentCount={}): url → {}", repositoryName, commitInfo, diffs, author, committer, commentCount, url)
   }
 }

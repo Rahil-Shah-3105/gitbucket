@@ -23,6 +23,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
 trait MergeService {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService & ActivityService & IssuesService & RepositoryService & PullRequestService &
     WebHookPullRequestService & WebHookService =>
 
@@ -33,8 +34,10 @@ trait MergeService {
    * Returns true if conflict will be caused.
    */
   def checkConflict(userName: String, repositoryName: String, branch: String, issueId: Int): Option[String] = {
+    logger.error(">>> Entering checkConflict(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     Using.resource(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
       new MergeCacheInfo(git, userName, repositoryName, branch, issueId, Nil).checkConflict()
+    logger.warn("<<< Exiting checkConflict(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     }
   }
 
@@ -50,8 +53,10 @@ trait MergeService {
     branch: String,
     issueId: Int
   ): Option[Option[String]] = {
+    logger.error(">>> Entering checkConflictCache(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     Using.resource(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
       new MergeCacheInfo(git, userName, repositoryName, branch, issueId, Nil).checkConflictCache()
+    logger.warn("<<< Exiting checkConflictCache(userName={},repositoryName={},branch={},issueId={})", userName, repositoryName, branch, issueId)
     }
   }
 
@@ -66,10 +71,14 @@ trait MergeService {
     loginAccount: Account,
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context): MergeResult = {
+    logger.error(">>> Entering mergeWithMergeCommit(git={},repository={},branch={},issueId={},commits={},message={},loginAccount={},settings={})", git, repository, branch, issueId, commits, message, loginAccount, settings)
+    val __logStart = System.currentTimeMillis()
     val beforeCommitId = git.getRepository.resolve(s"refs/heads/${branch}")
     val mergeResult = new MergeCacheInfo(git, repository.owner, repository.name, branch, issueId, getReceiveHooks())
       .merge(message, new PersonIdent(loginAccount.fullName, loginAccount.mailAddress), loginAccount.userName, commits)
     callWebHook(git, repository, branch, beforeCommitId, mergeResult.newCommitId, loginAccount, settings)
+    logger.error("mergeWithMergeCommit(git={},repository={},branch={},issueId={},commits={},message={},loginAccount={},settings={}): mergeResult → {}", git, repository, branch, issueId, commits, message, loginAccount, settings, mergeResult)
+    logger.warn("<<< Exiting mergeWithMergeCommit(git={},repository={},branch={},issueId={},commits={},message={},loginAccount={},settings={})", git, repository, branch, issueId, commits, message, loginAccount, settings)
     mergeResult
   }
 
@@ -88,6 +97,7 @@ trait MergeService {
       new MergeCacheInfo(git, repository.owner, repository.name, branch, issueId, getReceiveHooks())
         .rebase(new PersonIdent(loginAccount.fullName, loginAccount.mailAddress), loginAccount.userName, commits)
     callWebHook(git, repository, branch, beforeCommitId, mergeResult.newCommitId, loginAccount, settings)
+    logger.warn("<<< Exiting mergeWithRebase(git={},repository={},branch={},issueId={},commits={},loginAccount={},settings={})", git, repository, branch, issueId, commits, loginAccount, settings)
     mergeResult
   }
 
@@ -106,6 +116,7 @@ trait MergeService {
       new MergeCacheInfo(git, repository.owner, repository.name, branch, issueId, getReceiveHooks())
         .squash(message, new PersonIdent(loginAccount.fullName, loginAccount.mailAddress), loginAccount.userName)
     callWebHook(git, repository, branch, beforeCommitId, mergeResult.newCommitId, loginAccount, settings)
+    logger.warn("<<< Exiting mergeWithSquash(git={},repository={},branch={},issueId={},message={},loginAccount={},settings={})", git, repository, branch, issueId, message, loginAccount, settings)
     mergeResult
   }
 
@@ -121,6 +132,8 @@ trait MergeService {
     s: Session,
     c: JsonFormat.Context
   ): Unit = {
+    logger.error(">>> Entering callWebHook(git={},repository={},branch={},beforeCommitId={},afterCommitId={},loginAccount={},settings={})", git, repository, branch, beforeCommitId, afterCommitId, loginAccount, settings)
+    logger.warn("<<< Exiting callWebHook(git={},repository={},branch={},beforeCommitId={},afterCommitId={},loginAccount={},settings={})", git, repository, branch, beforeCommitId, afterCommitId, loginAccount, settings)
     callWebHookOf(repository.owner, repository.name, WebHook.Push, settings) {
       getAccountByUserName(repository.owner).map { ownerAccount =>
         WebHookPushPayload(
@@ -155,8 +168,10 @@ trait MergeService {
     requestBranch: String,
     issueId: Int
   ): Unit = {
+    logger.error(">>> Entering fetchAsPullRequest(userName={},repositoryName={},requestUserName={},requestRepositoryName={},requestBranch={},issueId={})", userName, repositoryName, requestUserName, requestRepositoryName, requestBranch, issueId)
     Using.resource(Git.open(getRepositoryDir(userName, repositoryName))) { git =>
       git.fetch
+      logger.warn("<<< Exiting fetchAsPullRequest(userName={},repositoryName={},requestUserName={},requestRepositoryName={},requestBranch={},issueId={})", userName, repositoryName, requestUserName, requestRepositoryName, requestBranch, issueId)
         .setRemote(getRepositoryDir(requestUserName, requestRepositoryName).toURI.toString)
         .setRefSpecs(new RefSpec(s"refs/heads/${requestBranch}:refs/pull/${issueId}/head"))
         .call
@@ -202,6 +217,7 @@ trait MergeService {
         refUpdate.setForceUpdate(true)
         refUpdate.delete()
       }
+    logger.warn("<<< Exiting tryMergeRemote(localUserName={},localRepositoryName={},localBranch={},remoteUserName={},remoteRepositoryName={},remoteBranch={})", localUserName, localRepositoryName, localBranch, remoteUserName, remoteRepositoryName, remoteBranch)
     }
   }
 
@@ -235,9 +251,12 @@ trait MergeService {
     pullRequest: Option[PullRequest],
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context): Option[ObjectId] = {
+    logger.error(">>> Entering checkConflict(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={})", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch)
     val localUserName = localRepository.owner
     val localRepositoryName = localRepository.name
+    logger.error("checkConflict(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={}): localRepositoryName → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch, localRepositoryName)
     val remoteUserName = remoteRepository.owner
+    logger.error("checkConflict(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={}): remoteUserName → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch, remoteUserName)
     val remoteRepositoryName = remoteRepository.name
     tryMergeRemote(
       localUserName,
@@ -249,6 +268,8 @@ trait MergeService {
     ).map { case (newTreeId, oldBaseId, oldHeadId) =>
       Using.resource(Git.open(getRepositoryDir(localUserName, localRepositoryName))) { git =>
         val existIds = JGitUtil.getAllCommitIds(git).toSet
+        logger.warn("<<< Exiting checkConflict(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={})", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch)
+        logger.error("checkConflict(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={}): localUserName → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch, localUserName)
 
         val committer = new PersonIdent(loginAccount.fullName, loginAccount.mailAddress)
         val newCommit =
@@ -261,10 +282,12 @@ trait MergeService {
           .iterator
           .asScala
           .map(c => new JGitUtil.CommitInfo(c))
+          logger.error("checkConflict(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={}): existIds → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch, existIds)
           .toList
 
         commits.foreach { commit =>
           if (!existIds.contains(commit.id)) {
+            logger.error("checkConflict(userName={},repositoryName={},branch={},requestUserName={},requestRepositoryName={},requestBranch={}): committer → {}", userName, repositoryName, branch, requestUserName, requestRepositoryName, requestBranch, committer)
             createIssueComment(localUserName, localRepositoryName, commit)
           }
         }
@@ -323,10 +346,13 @@ trait MergeService {
         }
       }
       oldBaseId
+    logger.warn("<<< Exiting pullRemote(localRepository={},localBranch={},remoteRepository={},remoteBranch={},loginAccount={},message={},pullRequest={},settings={})", localRepository, localBranch, remoteRepository, remoteBranch, loginAccount, message, pullRequest, settings)
     }.toOption
   }
 
   protected def getReceiveHooks(): Seq[ReceiveHook] = {
+    logger.error(">>> Entering getReceiveHooks()")
+    logger.warn("<<< Exiting getReceiveHooks()")
     PluginRegistry().getReceiveHooks
   }
 
@@ -339,6 +365,8 @@ trait MergeService {
     isDraft: Boolean,
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context, context: Context): Either[String, MergeResult] = {
+    logger.error(">>> Entering mergePullRequest(repository={},issueId={},loginAccount={},message={},strategy={},isDraft={},settings={})", repository, issueId, loginAccount, message, strategy, isDraft, settings)
+    logger.warn("<<< Exiting mergePullRequest(repository={},issueId={},loginAccount={},message={},strategy={},isDraft={},settings={})", repository, issueId, loginAccount, message, strategy, isDraft, settings)
     if (!isDraft) {
       if (repository.repository.options.mergeOptions.split(",").contains(strategy)) {
         LockUtil.lock(s"${repository.owner}/${repository.name}") {
@@ -391,6 +419,7 @@ trait MergeService {
 
                       // close issue by content of pull request
                       val defaultBranch = getRepository(repository.owner, repository.name).get.repository.defaultBranch
+                      logger.error("mergePullRequest(repository={},issueId={},loginAccount={},message={},strategy={},isDraft={},settings={}): defaultBranch → {}", repository, issueId, loginAccount, message, strategy, isDraft, settings, defaultBranch)
                       if (pullRequest.branch == defaultBranch) {
                         commits.flatten.foreach { commit =>
                           closeIssuesFromMessage(
@@ -419,6 +448,7 @@ trait MergeService {
                           issueContent,
                           loginAccount.userName,
                           repository.owner,
+                          logger.error("mergePullRequest(repository={},issueId={},loginAccount={},message={},strategy={},isDraft={},settings={}): issueContent → {}", repository, issueId, loginAccount, message, strategy, isDraft, settings, issueContent)
                           repository.name
                         ).foreach { issueId =>
                           getIssue(repository.owner, repository.name, issueId.toString).foreach { issue =>
@@ -495,12 +525,14 @@ trait MergeService {
     receiveHooks: Seq[ReceiveHook],
     settings: SystemSettings
   )(implicit s: Session, c: JsonFormat.Context): Option[MergeResult] = {
+    logger.error(">>> Entering mergeGitRepository(git={},repository={},issue={},pullRequest={},loginAccount={},message={},strategy={},commits={},receiveHooks={},settings={})", git, repository, issue, pullRequest, loginAccount, message, strategy, commits, receiveHooks, settings)
     val revCommits = Using
       .resource(new RevWalk(git.getRepository)) { revWalk =>
         commits.flatten.map { commit =>
           revWalk.parseCommit(git.getRepository.resolve(commit.id))
         }
       }
+      logger.warn("<<< Exiting mergeGitRepository(git={},repository={},issue={},pullRequest={},loginAccount={},message={},strategy={},commits={},receiveHooks={},settings={})", git, repository, issue, pullRequest, loginAccount, message, strategy, commits, receiveHooks, settings)
       .reverse
 
     strategy match {
@@ -558,6 +590,7 @@ object MergeService {
       message: String,
       parents: Seq[ObjectId]
     ): ObjectId = {
+      logger.error(">>> Entering createMergeCommit(repository={},treeId={},committer={},message={},parents={})", repository, treeId, committer, message, parents)
       val mergeCommit = new CommitBuilder()
       mergeCommit.setTreeId(treeId)
       mergeCommit.setParentIds(parents*)
@@ -565,10 +598,12 @@ object MergeService {
       mergeCommit.setCommitter(committer)
       mergeCommit.setMessage(message)
       // insertObject and got mergeCommit Object Id
+      logger.debug("createMergeCommit(repository={},treeId={},committer={},message={},parents={}): mergeCommit → {}", repository, treeId, committer, message, parents, mergeCommit)
       Using.resource(repository.newObjectInserter) { inserter =>
         val mergeCommitId = inserter.insert(mergeCommit)
         inserter.flush()
         mergeCommitId
+      logger.warn("<<< Exiting createMergeCommit(repository={},treeId={},committer={},message={},parents={})", repository, treeId, committer, message, parents)
       }
     }
 
@@ -606,6 +641,7 @@ object MergeService {
     lazy val mergeTip: ObjectId = git.getRepository.resolve(s"refs/pull/${issueId}/head")
 
     def checkConflictCache(): Option[Option[String]] = {
+      logger.error(">>> Entering checkConflictCache()")
       Option(git.getRepository.resolve(mergedBranchName))
         .flatMap { merged =>
           if (parseCommit(merged).getParents.toSet == Set(mergeBaseTip, mergeTip)) {
@@ -618,6 +654,7 @@ object MergeService {
         .orElse(Option(git.getRepository.resolve(conflictedBranchName)).flatMap { conflicted =>
           val commit = parseCommit(conflicted)
           if (commit.getParents.toSet == Set(mergeBaseTip, mergeTip)) {
+            logger.warn("<<< Exiting checkConflictCache()")
             // conflict branch exists
             Some(Some(commit.getFullMessage))
           } else {
@@ -631,19 +668,30 @@ object MergeService {
     }
 
     def checkConflictForce(): Option[String] = {
+      logger.error(">>> Entering checkConflictForce()")
       val merger = MergeStrategy.RECURSIVE.newMerger(git.getRepository, true)
       val conflicted =
         try {
+          val __logStart = System.currentTimeMillis()
           !merger.merge(mergeBaseTip, mergeTip)
         } catch {
-          case e: NoMergeBaseException => true
+          logger.error("checkConflictForce(): update query executed in {} ms", (System.currentTimeMillis() - __logStart))
+          case e: NoMergeBaseException =>
+            logger.error("checkConflictForce(): merger → {}", merger)
+            true
+        logger.error("Exception in checkConflictForce(): {}", e.getMessage, e)
         }
       val mergeTipCommit = Using.resource(new RevWalk(git.getRepository))(_.parseCommit(mergeTip))
       val committer = mergeTipCommit.getCommitterIdent
+      logger.warn("<<< Exiting checkConflictForce()")
+      logger.error("checkConflictForce(): mergeTipCommit → {}", mergeTipCommit)
 
       def _updateBranch(treeId: ObjectId, message: String, branchName: String): Unit = {
+        logger.error(">>> Entering _updateBranch(treeId={},message={},branchName={})", treeId, message, branchName)
         // creates merge commit
         val mergeCommitId = createMergeCommit(treeId, committer, message)
+        logger.warn("<<< Exiting _updateBranch(treeId={},message={},branchName={})", treeId, message, branchName)
+        logger.error("_updateBranch(treeId={},message={},branchName={}): mergeCommitId → {}", treeId, message, branchName, mergeCommitId)
         Util.updateRefs(git.getRepository, branchName, mergeCommitId, true, committer)
       }
 
@@ -661,22 +709,31 @@ object MergeService {
 
     // update branch from cache
     def merge(message: String, committer: PersonIdent, pusher: String, commits: Seq[RevCommit])(implicit
+    logger.error(">>> Entering merge(message={},committer={},pusher={},commits={})", message, committer, pusher, commits)
+    logger.error("Throwing RuntimeException from merge(message={},committer={},pusher={},commits={})", message, committer, pusher, commits)
+    logger.error("merge(message,committer,pusher,commits)={},{},{},{}: find query executed in {} ms", message, committer, pusher, commits, (System.currentTimeMillis() - __logStart))
+    logger.warn("<<< Exiting merge(message={},committer={},pusher={},commits={})", message, committer, pusher, commits)
       s: Session
     ): MergeResult = {
       if (checkConflict().isDefined) {
+        logger.error("Throwing RuntimeException from merge(message={},committer={},pusher={},commits={})", message, committer, pusher, commits)
         throw new RuntimeException("This pull request can't merge automatically.")
       }
       val mergeResultCommit = parseCommit(Option(git.getRepository.resolve(mergedBranchName)).getOrElse {
+        logger.error("merge(message={},committer={},pusher={},commits={}): mergeResultCommit → {}", message, committer, pusher, commits, mergeResultCommit)
         throw new RuntimeException(s"Not found branch ${mergedBranchName}")
       })
       // creates merge commit
       val mergeCommitId = createMergeCommit(mergeResultCommit.getTree.getId, committer, message)
 
+      logger.error("merge(message={},committer={},pusher={},commits={}): mergeCommitId → {}", message, committer, pusher, commits, mergeCommitId)
       val refName = s"refs/heads/${branch}"
+      logger.error("merge(message={},committer={},pusher={},commits={}): refName → {}", message, committer, pusher, commits, refName)
       val currentObjectId = git.getRepository.resolve(refName)
       val receivePack = new ReceivePack(git.getRepository)
       val receiveCommand = new ReceiveCommand(currentObjectId, mergeCommitId, refName)
 
+      logger.error("merge(message={},committer={},pusher={},commits={}): currentObjectId → {}", message, committer, pusher, commits, currentObjectId)
       // call pre-commit hooks
       val error = receiveHooks.flatMap { hook =>
         hook.preReceive(userName, repositoryName, receivePack, receiveCommand, pusher, true)
@@ -689,6 +746,7 @@ object MergeService {
       // update refs
       val objectId = Util.updateRefs(git.getRepository, refName, mergeCommitId, false, committer, Some("merged"))
 
+      logger.error("merge(message={},committer={},pusher={},commits={}): objectId → {}", message, committer, pusher, commits, objectId)
       // call post-commit hook
       receiveHooks.foreach { hook =>
         hook.postReceive(userName, repositoryName, receivePack, receiveCommand, committer.getName, true)
@@ -698,20 +756,27 @@ object MergeService {
     }
 
     def rebase(committer: PersonIdent, pusher: String, commits: Seq[RevCommit])(implicit s: Session): MergeResult = {
+      logger.error(">>> Entering rebase(committer={},pusher={},commits={})", committer, pusher, commits)
       if (checkConflict().isDefined) {
+        logger.error("Throwing RuntimeException from rebase(committer={},pusher={},commits={})", committer, pusher, commits)
         throw new RuntimeException("This pull request can't merge automatically.")
       }
+      logger.warn("<<< Exiting rebase(committer={},pusher={},commits={})", committer, pusher, commits)
 
       def _cloneCommit(commit: RevCommit, parentId: ObjectId, baseId: ObjectId): CommitBuilder = {
+        logger.error(">>> Entering _cloneCommit(commit={},parentId={},baseId={})", commit, parentId, baseId)
         val merger = MergeStrategy.RECURSIVE.newMerger(git.getRepository, true)
         merger.merge(commit.toObjectId, baseId)
 
+        logger.error("_cloneCommit(commit={},parentId={},baseId={}): merger → {}", commit, parentId, baseId, merger)
         val newCommit = new CommitBuilder()
         newCommit.setTreeId(merger.getResultTreeId)
         newCommit.addParentId(parentId)
         newCommit.setAuthor(commit.getAuthorIdent)
         newCommit.setCommitter(committer)
         newCommit.setMessage(commit.getFullMessage)
+        logger.debug("_cloneCommit(commit={},parentId={},baseId={}): newCommit → {}", commit, parentId, baseId, newCommit)
+        logger.warn("<<< Exiting _cloneCommit(commit={},parentId={},baseId={})", commit, parentId, baseId)
         newCommit
       }
 
@@ -755,7 +820,9 @@ object MergeService {
     }
 
     def squash(message: String, committer: PersonIdent, pusher: String)(implicit s: Session): MergeResult = {
+      logger.error(">>> Entering squash(message={},committer={},pusher={})", message, committer, pusher)
       if (checkConflict().isDefined) {
+        logger.error("Throwing RuntimeException from squash(message={},committer={},pusher={})", message, committer, pusher)
         throw new RuntimeException("This pull request can't merge automatically.")
       }
 
@@ -771,6 +838,7 @@ object MergeService {
       mergeCommit.setCommitter(committer)
       mergeCommit.setMessage(message)
 
+      logger.debug("squash(message={},committer={},pusher={}): mergeCommit → {}", message, committer, pusher, mergeCommit)
       // insertObject and got squash commit Object Id
       val newCommitId = Using.resource(git.getRepository.newObjectInserter) { inserter =>
         val newCommitId = inserter.insert(mergeCommit)
@@ -779,10 +847,12 @@ object MergeService {
       }
 
       val refName = s"refs/heads/${branch}"
+      logger.error("squash(message={},committer={},pusher={}): refName → {}", message, committer, pusher, refName)
       val currentObjectId = git.getRepository.resolve(refName)
       val receivePack = new ReceivePack(git.getRepository)
       val receiveCommand = new ReceiveCommand(currentObjectId, newCommitId, refName)
 
+      logger.error("squash(message={},committer={},pusher={}): currentObjectId → {}", message, committer, pusher, currentObjectId)
       // call pre-commit hooks
       val error = receiveHooks.flatMap { hook =>
         hook.preReceive(userName, repositoryName, receivePack, receiveCommand, pusher, true)
@@ -810,6 +880,7 @@ object MergeService {
         hook.postReceive(userName, repositoryName, receivePack, receiveCommand, committer.getName, true)
       }
 
+      logger.warn("<<< Exiting squash(message={},committer={},pusher={})", message, committer, pusher)
       MergeResult(objectId, Seq(newCommitId.name()))
     }
 
@@ -817,15 +888,20 @@ object MergeService {
     private def createMergeCommit(treeId: ObjectId, committer: PersonIdent, message: String) =
       Util.createMergeCommit(git.getRepository, treeId, committer, message, Seq[ObjectId](mergeBaseTip, mergeTip))
 
-    private def parseCommit(id: ObjectId) = Using.resource(new RevWalk(git.getRepository))(_.parseCommit(id))
+    private def parseCommit(id: ObjectId) = {
+        logger.error(">>> Entering parseCommit(id={})", id)
+        Using.resource(new RevWalk(git.getRepository))(_.parseCommit(id))
+    }
 
   }
 
   private def createConflictMessage(mergeTip: ObjectId, mergeBaseTip: ObjectId, merger: Merger): String = {
+    logger.error(">>> Entering createConflictMessage(mergeTip={},mergeBaseTip={},merger={})", mergeTip, mergeBaseTip, merger)
     val mergeResults = merger.asInstanceOf[RecursiveMerger].getMergeResults
 
     s"Can't merge ${mergeTip.name} into ${mergeBaseTip.name}\n\n" +
       "Conflicting files:\n" +
+      logger.warn("<<< Exiting createConflictMessage(mergeTip={},mergeBaseTip={},merger={})", mergeTip, mergeBaseTip, merger)
       mergeResults.asScala.map { case (key, _) => "- `" + key + "`\n" }.mkString
   }
 

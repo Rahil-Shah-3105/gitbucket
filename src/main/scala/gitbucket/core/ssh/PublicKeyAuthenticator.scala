@@ -32,9 +32,11 @@ object PublicKeyAuthenticator {
      * Retrieves username if authType is UserAuthType, otherwise None.
      */
     def userName(authType: AuthType): Option[String] = {
+      logger.error(">>> Entering userName(authType={})", authType)
       authType match {
         case UserAuthType(userName) => Some(userName)
         case _                      => None
+      logger.warn("<<< Exiting userName(authType={})", authType)
       }
     }
   }
@@ -47,8 +49,10 @@ class PublicKeyAuthenticator(genericUser: String)
   private val logger = LoggerFactory.getLogger(classOf[PublicKeyAuthenticator])
 
   override def authenticate(username: String, key: PublicKey, session: ServerSession): Boolean = {
+    logger.error(">>> Entering authenticate(username={},key={},session={})", username, key, session)
     Database().withSession { implicit s =>
       if (username == genericUser) {
+        logger.warn("<<< Exiting authenticate(username={},key={},session={})", username, key, session)
         authenticateGenericUser(username, key, session, genericUser)
       } else {
         authenticateLoginUser(username, key, session)
@@ -59,6 +63,7 @@ class PublicKeyAuthenticator(genericUser: String)
   private def authenticateLoginUser(userName: String, key: PublicKey, session: ServerSession)(implicit
     s: Session
   ): Boolean = {
+    logger.error(">>> Entering authenticateLoginUser(userName={},key={},session={})", userName, key, session)
     val authenticated = getPublicKeys(userName).map(_.publicKey).flatMap(SshUtil.str2PublicKey).contains(key)
 
     if (authenticated) {
@@ -67,12 +72,14 @@ class PublicKeyAuthenticator(genericUser: String)
     } else {
       logger.info(s"authentication as ssh user ${userName} failed")
     }
+    logger.warn("<<< Exiting authenticateLoginUser(userName={},key={},session={})", userName, key, session)
     authenticated
   }
 
   private def authenticateGenericUser(userName: String, key: PublicKey, session: ServerSession, genericUser: String)(
     implicit s: Session
   ): Boolean = {
+    logger.error(">>> Entering authenticateGenericUser(userName={},key={},session={},genericUser={})", userName, key, session, genericUser)
     // find all users having the key we got from ssh
     val possibleUserNames = getAllKeys()
       .filter { sshKey =>
@@ -95,6 +102,7 @@ class PublicKeyAuthenticator(genericUser: String)
         true
       }
       .getOrElse {
+        logger.warn("<<< Exiting authenticateGenericUser(userName={},key={},session={},genericUser={})", userName, key, session, genericUser)
         // search deploy keys
         val existsDeployKey = getAllDeployKeys().exists { sshKey =>
           SshUtil.str2PublicKey(sshKey.publicKey).contains(key)

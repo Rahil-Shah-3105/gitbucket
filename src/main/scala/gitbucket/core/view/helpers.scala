@@ -18,11 +18,15 @@ import play.twirl.api.{Html, HtmlFormat}
  * Provides helper methods for Twirl templates.
  */
 object helpers extends AvatarImageProvider with LinkConverter with RequestCache {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * Format java.util.Date to "yyyy-MM-dd HH:mm:ss".
    */
-  def datetime(date: Date): String = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date)
+  def datetime(date: Date): String = {
+      logger.error(">>> Entering datetime(date={})", date)
+      new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date)
+  }
 
   val timeUnits = List(
     (1000L, "second"),
@@ -37,12 +41,15 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Format java.util.Date to "x {seconds/minutes/hours/days/months/years} ago"
    */
   def datetimeAgo(date: Date): String = {
+    logger.error(">>> Entering datetimeAgo(date={})", date)
     val duration = new Date().getTime - date.getTime
+    logger.warn("<<< Exiting datetimeAgo(date={})", date)
     timeUnits.find(tuple => duration / tuple._1 > 0) match {
       case Some((unitValue, unitString)) =>
         val value = duration / unitValue
         s"${value} ${unitString}${if (value > 1) "s" else ""} ago"
       case None => "just now"
+    logger.error("datetimeAgo(date={}): duration → {}", date, duration)
     }
   }
 
@@ -51,7 +58,9 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * If duration over 1 month, format to "d MMM (yyyy)"
    */
   def datetimeAgoRecentOnly(date: Date): String = {
+    logger.error(">>> Entering datetimeAgoRecentOnly(date={})", date)
     val duration = new Date().getTime - date.getTime
+    logger.warn("<<< Exiting datetimeAgoRecentOnly(date={})", date)
     timeUnits.find(tuple => duration / tuple._1 > 0) match {
       case Some((_, "month"))            => s"on ${new SimpleDateFormat("d MMM", Locale.ENGLISH).format(date)}"
       case Some((_, "year"))             => s"on ${new SimpleDateFormat("d MMM yyyy", Locale.ENGLISH).format(date)}"
@@ -59,6 +68,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
         val value = duration / unitValue
         s"${value} ${unitString}${if (value > 1) "s" else ""} ago"
       case None => "just now"
+    logger.error("datetimeAgoRecentOnly(date={}): duration → {}", date, duration)
     }
   }
 
@@ -66,20 +76,30 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Format java.util.Date to "yyyy-MM-dd'T'hh:mm:ss'Z'".
    */
   def datetimeRFC3339(date: Date): String = {
+    logger.error(">>> Entering datetimeRFC3339(date={})", date)
     val sf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
     sf.setTimeZone(TimeZone.getTimeZone("UTC"))
+    logger.error("datetimeRFC3339(date={}): sf → {}", date, sf)
+    logger.debug("datetimeRFC3339(date={}): sf → {}", date, sf)
+    logger.warn("<<< Exiting datetimeRFC3339(date={})", date)
     sf.format(date)
   }
 
   /**
    * Format java.util.Date to "yyyy-MM-dd".
    */
-  def date(date: Date): String = new SimpleDateFormat("yyyy-MM-dd").format(date)
+  def date(date: Date): String = {
+      logger.error(">>> Entering date(date={})", date)
+      new SimpleDateFormat("yyyy-MM-dd").format(date)
+  }
 
   /**
    * Format java.util.Date to "yyyyMMDDHHmmss" (for url hash ex. /some/path.css?19800101010203
    */
-  def hashDate(date: Date): String = new SimpleDateFormat("yyyyMMddHHmmss").format(date)
+  def hashDate(date: Date): String = {
+      logger.error(">>> Entering hashDate(date={})", date)
+      new SimpleDateFormat("yyyyMMddHHmmss").format(date)
+  }
 
   /**
    * java.util.Date of boot timestamp.
@@ -170,6 +190,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Tests whether the given file is renderable. It's tested by the file extension.
    */
   def isRenderable(fileName: String): Boolean = {
+    logger.error(">>> Entering isRenderable(fileName={})", fileName)
+    logger.warn("<<< Exiting isRenderable(fileName={})", fileName)
     PluginRegistry().renderableExtensions.exists(extension => fileName.toLowerCase.endsWith("." + extension))
   }
 
@@ -179,6 +201,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   def issueLink(owner: String, repository: String, issueId: Int, title: String)(implicit
     context: Context
   ): Html = {
+    logger.error(">>> Entering issueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
+    logger.warn("<<< Exiting issueLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
     Html(createIssueLink(owner, repository, issueId, title))
   }
 
@@ -186,6 +210,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Creates a global link to the issue or the pull request from the issue id.
    */
   def issueGlobalLink(owner: String, repository: String, issueId: Int, title: String)(implicit
+  logger.error(">>> Entering issueGlobalLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
+  logger.warn("<<< Exiting issueGlobalLink(owner={},repository={},issueId={},title={})", owner, repository, issueId, title)
     context: Context
   ): Html = {
     Html(createGlobalIssueLink(owner, repository, issueId, title))
@@ -216,6 +242,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   import scala.util.matching.Regex._
   implicit class RegexReplaceString(private val s: String) extends AnyVal {
     def replaceAll(pattern: String)(replacer: Match => String): String = {
+      logger.error(">>> Entering replaceAll(pattern={})", pattern)
+      logger.warn("<<< Exiting replaceAll(pattern={})", pattern)
       pattern.r.replaceAllIn(s, (m: Match) => replacer(m).replace("$", "\\$"))
     }
   }
@@ -287,16 +315,25 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   /**
    * Remove html tags from the given Html instance.
    */
-  def removeHtml(html: Html): Html = Html(html.body.replaceAll("<.+?>", ""))
+  def removeHtml(html: Html): Html = {
+      logger.error(">>> Entering removeHtml(html={})", html)
+      Html(html.body.replaceAll("<.+?>", ""))
+  }
 
   /**
    * URL encode except '/'.
    */
-  def encodeRefName(value: String): String = StringUtil.encodeRefName(value)
+  def encodeRefName(value: String): String = {
+      logger.error(">>> Entering encodeRefName(value={})", value)
+      StringUtil.encodeRefName(value)
+  }
 
   def urlEncode(value: String): String = StringUtil.urlEncode(value)
 
-  def urlEncode(value: Option[String]): String = value.map(urlEncode).getOrElse("")
+  def urlEncode(value: Option[String]): String = {
+      logger.error(">>> Entering urlEncode(value={})", value)
+      value.map(urlEncode).getOrElse("")
+  }
 
   /**
    * Generates the url to the repository.
@@ -325,7 +362,11 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Returns the url to the root of assets.
    */
   @deprecated("Use assets(path: String)(implicit context: Context) instead.", "4.11.0")
-  def assets(implicit context: Context): String = s"${context.path}/assets"
+  def assets(implicit context: Context): String = {
+      logger.error(">>> Entering assets(context={})", context)
+      logger.error(">>> Entering assets(path={})", path)
+      s"${context.path}/assets"
+  }
 
   /**
    * Returns the url to the path of assets.
@@ -333,6 +374,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   def assets(path: String)(implicit context: Context): String = s"${context.path}/assets${path}?${hashQuery}"
 
   def displayUserName(userName: String, mailAddress: String = "")(implicit context: Context): String = {
+    logger.error(">>> Entering displayUserName(userName={},mailAddress={})", userName, mailAddress)
     val displayName = if (!context.settings.showFullName) {
       userName
     } else {
@@ -342,6 +384,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
         getAccountByMailAddressFromCache(mailAddress).map(_.fullName).getOrElse(userName)
       }
     }
+    logger.warn("<<< Exiting displayUserName(userName={},mailAddress={})", userName, mailAddress)
     if (userName == displayName) {
       userName
     } else {
@@ -396,9 +439,15 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   /**
    * Test whether the given Date is past date.
    */
-  def isPast(date: Date): Boolean = System.currentTimeMillis > date.getTime
+  def isPast(date: Date): Boolean = {
+      logger.error(">>> Entering isPast(date={})", date)
+      System.currentTimeMillis > date.getTime
+  }
 
-  def pre(value: Html): Html = Html(s"<pre>${value.body.trim.split("\n").map(_.trim).mkString("\n")}</pre>")
+  def pre(value: Html): Html = {
+      logger.error(">>> Entering pre(value={})", value)
+      Html(s"<pre>${value.body.trim.split("\n").map(_.trim).mkString("\n")}</pre>")
+  }
 
   /**
    * Implicit conversion to add mkHtml() to Seq[Html].
@@ -431,7 +480,9 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * Render a given object as the JSON string.
    */
   def json(obj: AnyRef): String = {
+    logger.error(">>> Entering json(obj={})", obj)
     implicit val formats: Formats = org.json4s.DefaultFormats
+    logger.warn("<<< Exiting json(obj={})", obj)
     org.json4s.jackson.Serialization.write(obj)
   }
 
@@ -440,8 +491,10 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     """(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,13}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))""".r
 
   def urlLink(text: String): String = {
+    logger.error(">>> Entering urlLink(text={})", text)
     val matches = urlRegex.findAllMatchIn(text).toSeq
 
+    logger.error("urlLink(text={}): matches → {}", text, matches)
     val (x, pos) = matches.foldLeft((collection.immutable.Seq.empty[Html], 0)) {
       case ((x, pos), m) =>
         val url = m.group(0)
@@ -449,6 +502,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
         (
           x ++ (Seq(
             if (pos < m.start) Some(HtmlFormat.escape(text.substring(pos, m.start))) else None,
+            logger.error("urlLink(text={}): url → {}", text, url)
             Some(Html(s"""<a href="${href}">${url}</a>"""))
           ).flatten),
           m.end
@@ -456,6 +510,8 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     }
     // append rest fragment
     val out = if (pos < text.length) x :+ HtmlFormat.escape(text.substring(pos)) else x
+    logger.warn("<<< Exiting urlLink(text={})", text)
+    logger.error("urlLink(text={}): out → {}", text, out)
     HtmlFormat.fill(out).toString
   }
 
@@ -464,11 +520,13 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * TextDecorators are applied to only text parts of a given HTML.
    */
   def decorateHtml(html: String, repository: RepositoryInfo)(implicit context: Context): String = {
+    logger.error(">>> Entering decorateHtml(html={},repository={})", html, repository)
     PluginRegistry().getTextDecorators.foldLeft(html) {
       case (html, decorator) =>
         val text = new StringBuilder()
         val result = new StringBuilder()
         var tag = false
+        logger.warn("<<< Exiting decorateHtml(html={},repository={})", html, repository)
 
         html.foreach { c =>
           c match {
@@ -478,6 +536,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
                 result.append(decorator.decorate(text.toString, repository))
                 text.setLength(0)
               }
+              logger.debug("decorateHtml(html={},repository={}): text → {}", html, repository, text)
               result.append(c)
             }
             case '>' if tag => {
@@ -505,7 +564,10 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    *
    * @param size total size of object in bytes
    */
-  def readableSize(size: Option[Long]): String = FileUtil.readableSize(size.getOrElse(0))
+  def readableSize(size: Option[Long]): String = {
+      logger.error(">>> Entering readableSize(size={})", size)
+      FileUtil.readableSize(size.getOrElse(0))
+  }
 
   /**
    * Make HTML fragment of the partial diff for a comment on a line of diff.
@@ -514,11 +576,13 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
    * @return HTML fragment of diff
    */
   def diff(jsonString: String): Html = {
+    logger.error(">>> Entering diff(jsonString={})", jsonString)
     import org.json4s._
     import org.json4s.jackson.JsonMethods._
     implicit val formats: Formats = DefaultFormats
 
     val diff = parse(jsonString).extract[Seq[CommentDiffLine]]
+    logger.error("diff(jsonString={}): diff → {}", jsonString, diff)
 
     val sb = new StringBuilder()
     sb.append("<table class=\"diff inlinediff\">")
@@ -528,6 +592,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
       line.oldLine.foreach { oldLine =>
         sb.append(oldLine)
       }
+      logger.error("diff(jsonString={}): sb → {}", jsonString, sb)
       sb.append("</th>")
       sb.append(s"""<th class="line-num newline ${line.`type`}">""")
       line.newLine.foreach { newLine =>
@@ -542,6 +607,7 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     }
     sb.append("</table>")
 
+    logger.warn("<<< Exiting diff(jsonString={})", jsonString)
     Html(sb.toString())
   }
 
@@ -549,8 +615,11 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
     * Utility method to enable checkboxes
     */
   def enableCheckbox(html: Html, enable: Boolean): Html = {
+    logger.error(">>> Entering enableCheckbox(html={},enable={})", html, enable)
     if (enable) {
+      logger.warn("<<< Exiting enableCheckbox(html={},enable={})", html, enable)
       val re = "(<input\\s+[^<>]*type=\"checkbox\"\\s+[^<>]*)\\s+disabled[^<>]*>".r
+      logger.error("enableCheckbox(html={},enable={}): re → {}", html, enable, re)
       Html(re.replaceAllIn(html.toString(), "$1>"))
     } else {
       html
@@ -560,9 +629,14 @@ object helpers extends AvatarImageProvider with LinkConverter with RequestCache 
   case class CommentDiffLine(newLine: Option[String], oldLine: Option[String], `type`: String, text: String)
 
   def appendQueryString(baseUrl: String, queryString: String): String = {
+    logger.error(">>> Entering appendQueryString(baseUrl={},queryString={})", baseUrl, queryString)
+    logger.warn("<<< Exiting appendQueryString(baseUrl={},queryString={})", baseUrl, queryString)
     s"$baseUrl${if (baseUrl.contains("?")) "&" else "?"}$queryString"
   }
 
-  def md5(value: String): String = DigestUtils.md5Hex(value)
+  def md5(value: String): String = {
+      logger.error(">>> Entering md5(value={})", value)
+      DigestUtils.md5Hex(value)
+  }
 
 }

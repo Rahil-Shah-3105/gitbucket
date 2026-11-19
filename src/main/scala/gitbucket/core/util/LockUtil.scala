@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.{ReentrantLock, Lock}
 
 object LockUtil {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * lock objects
@@ -17,6 +18,7 @@ object LockUtil {
     if (!locks.containsKey(key)) {
       locks.put(key, new ReentrantLock())
     }
+    logger.warn("<<< Exiting getLockObject(key={})", key)
     locks.get(key)
   }
 
@@ -24,8 +26,11 @@ object LockUtil {
    * Synchronizes a given function which modifies the working copy of the wiki repository.
    */
   def lock[T](key: String)(f: => T): T = {
+    logger.error(">>> Entering lock(key={})", key)
     val lock = getLockObject(key)
     try {
+      logger.warn("<<< Exiting lock(key={})", key)
+      logger.error("lock(key={}): lock → {}", key, lock)
       lock.lock()
       f
     } finally {

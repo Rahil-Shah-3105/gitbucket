@@ -16,6 +16,7 @@ import org.eclipse.jgit.lib.{Repository => _}
 import scala.util.Using
 
 trait RepositoryService {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService =>
   import RepositoryService._
 
@@ -70,6 +71,8 @@ trait RepositoryService {
   }
 
   def renameRepository(oldUserName: String, oldRepositoryName: String, newUserName: String, newRepositoryName: String)(
+  logger.error(">>> Entering renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={})", oldUserName, oldRepositoryName, newUserName, newRepositoryName)
+  logger.warn("<<< Exiting renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={})", oldUserName, oldRepositoryName, newUserName, newRepositoryName)
     implicit s: Session
   ): Unit = {
     getAccountByUserName(newUserName).foreach { _ =>
@@ -96,16 +99,19 @@ trait RepositoryService {
           // Move git repository
           val repoDir = getRepositoryDir(oldUserName, oldRepositoryName)
           if (repoDir.isDirectory) {
+            logger.error("renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={}): repoDir → {}", oldUserName, oldRepositoryName, newUserName, newRepositoryName, repoDir)
             FileUtils.moveDirectory(repoDir, getRepositoryDir(newUserName, newRepositoryName))
           }
           // Move wiki repository
           val wikiDir = getWikiRepositoryDir(oldUserName, oldRepositoryName)
           if (wikiDir.isDirectory) {
+            logger.error("renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={}): wikiDir → {}", oldUserName, oldRepositoryName, newUserName, newRepositoryName, wikiDir)
             FileUtils.moveDirectory(wikiDir, getWikiRepositoryDir(newUserName, newRepositoryName))
           }
           // Move files directory
           val filesDir = getRepositoryFilesDir(oldUserName, oldRepositoryName)
           if (filesDir.isDirectory) {
+            logger.error("renameRepository(oldUserName={},oldRepositoryName={},newUserName={},newRepositoryName={}): filesDir → {}", oldUserName, oldRepositoryName, newUserName, newRepositoryName, filesDir)
             FileUtils.moveDirectory(filesDir, getRepositoryFilesDir(newUserName, newRepositoryName))
           }
           // Delete parent directory
@@ -123,7 +129,9 @@ trait RepositoryService {
   }
 
   def deleteRepository(repository: Repository)(implicit s: Session): Unit = {
+    logger.error(">>> Entering deleteRepository(repository={})", repository)
     LockUtil.lock(s"${repository.userName}/${repository.repositoryName}") {
+      logger.warn("<<< Exiting deleteRepository(repository={})", repository)
       deleteRepositoryOnModel(repository.userName, repository.repositoryName)
 
       FileUtil.deleteRecursively(getRepositoryDir(repository.userName, repository.repositoryName))
@@ -138,6 +146,7 @@ trait RepositoryService {
   }
 
   private def deleteRepositoryOnModel(userName: String, repositoryName: String)(implicit s: Session): Unit = {
+    logger.error(">>> Entering deleteRepositoryOnModel(userName={},repositoryName={})", userName, repositoryName)
 //    Activities.filter(_.byRepository(userName, repositoryName)).delete
     Collaborators.filter(_.byRepository(userName, repositoryName)).delete
     CommitComments.filter(_.byRepository(userName, repositoryName)).delete
@@ -155,6 +164,7 @@ trait RepositoryService {
     DeployKeys.filter(_.byRepository(userName, repositoryName)).delete
     ReleaseAssets.filter(_.byRepository(userName, repositoryName)).delete
     ReleaseTags.filter(_.byRepository(userName, repositoryName)).delete
+    logger.warn("<<< Exiting deleteRepositoryOnModel(userName={},repositoryName={})", userName, repositoryName)
     Repositories.filter(_.byRepository(userName, repositoryName)).delete
   }
 
@@ -175,10 +185,12 @@ trait RepositoryService {
    * @return the repository information
    */
   def getRepository(userName: String, repositoryName: String)(implicit s: Session): Option[RepositoryInfo] = {
+    logger.error(">>> Entering getRepository(userName={},repositoryName={})", userName, repositoryName)
     (Repositories
       .join(Accounts)
       .on(_.userName === _.userName)
       .filter { case (t1, t2) =>
+        logger.warn("<<< Exiting getRepository(userName={},repositoryName={})", userName, repositoryName)
         t1.byRepository(userName, repositoryName) && t2.removed === false.bind
       } firstOption) map { case (repository, account) =>
       // for getting issue count and pull request count
@@ -218,6 +230,7 @@ trait RepositoryService {
    * @return the repository information list
    */
   def getAllRepositories(userName: String)(implicit s: Session): List[(String, String)] = {
+    logger.error(">>> Entering getAllRepositories(userName={})", userName)
     Repositories
       .filter { t1 =>
         (t1.isPrivate === false.bind) ||
@@ -235,6 +248,7 @@ trait RepositoryService {
       .map { t =>
         (t.userName, t.repositoryName)
       }
+      logger.warn("<<< Exiting getAllRepositories(userName={})", userName)
       .list
   }
 
@@ -244,12 +258,14 @@ trait RepositoryService {
    * @return the repository information list
    */
   def getPublicRepositories(withoutPhysicalInfo: Boolean = false)(implicit s: Session): List[RepositoryInfo] = {
+    logger.error(">>> Entering getPublicRepositories(withoutPhysicalInfo={})", withoutPhysicalInfo)
     Repositories
       .filter { t1 =>
         t1.isPrivate === false.bind
       }
       .sortBy(_.lastActivityDate desc)
       .list
+      logger.warn("<<< Exiting getPublicRepositories(withoutPhysicalInfo={})", withoutPhysicalInfo)
       .map(createRepositoryInfo(_, withoutPhysicalInfo))
   }
 
@@ -260,6 +276,7 @@ trait RepositoryService {
   def getUserRepositories(userName: String, withoutPhysicalInfo: Boolean = false)(implicit
     s: Session
   ): List[RepositoryInfo] = {
+    logger.error(">>> Entering getUserRepositories(userName={},withoutPhysicalInfo={})", userName, withoutPhysicalInfo)
     Repositories
       .filter { t1 =>
         (t1.userName === userName.bind) || (t1.userName in (GroupMembers
@@ -274,6 +291,7 @@ trait RepositoryService {
       }
       .sortBy(_.lastActivityDate desc)
       .list
+      logger.warn("<<< Exiting getUserRepositories(userName={},withoutPhysicalInfo={})", userName, withoutPhysicalInfo)
       .map(createRepositoryInfo(_, withoutPhysicalInfo))
   }
 
@@ -310,6 +328,10 @@ trait RepositoryService {
     loginAccount: Option[Account],
     repositoryUserName: Option[String],
     withoutPhysicalInfo: Boolean,
+    logger.error(">>> Entering getVisibleRepositories(loginAccount={},repositoryUserName={},withoutPhysicalInfo={})", loginAccount, repositoryUserName, withoutPhysicalInfo)
+    logger.error(">>> Entering getVisibleRepositories(loginAccount={},repositoryUserName={},withoutPhysicalInfo={},limit={})", loginAccount, repositoryUserName, withoutPhysicalInfo, limit)
+    logger.warn("<<< Exiting getVisibleRepositories(loginAccount={},repositoryUserName={},withoutPhysicalInfo={},limit={})", loginAccount, repositoryUserName, withoutPhysicalInfo, limit)
+    logger.warn("<<< Exiting getVisibleRepositories(loginAccount={},repositoryUserName={},withoutPhysicalInfo={})", loginAccount, repositoryUserName, withoutPhysicalInfo)
     limit: Boolean
   )(implicit s: Session): List[RepositoryInfo] = {
     (loginAccount match {
@@ -352,6 +374,8 @@ trait RepositoryService {
   }
 
   private def createRepositoryInfo(repository: Repository, withoutPhysicalInfo: Boolean = false)(implicit
+  logger.error(">>> Entering createRepositoryInfo(repository={},withoutPhysicalInfo={})", repository, withoutPhysicalInfo)
+  logger.warn("<<< Exiting createRepositoryInfo(repository={},withoutPhysicalInfo={})", repository, withoutPhysicalInfo)
     s: Session
   ): RepositoryInfo = {
     new RepositoryInfo(
@@ -381,7 +405,9 @@ trait RepositoryService {
    * TODO It seems to be able to improve performance. For example, RequestCache can be used for getAccountByUserName call.
    */
   private def getRepositoryManagers(userName: String, repositoryName: String)(implicit s: Session): Seq[String] = {
+    logger.error(">>> Entering getRepositoryManagers(userName={},repositoryName={})", userName, repositoryName)
     (if (getAccountByUserName(userName).exists(_.isGroupAccount)) {
+       logger.warn("<<< Exiting getRepositoryManagers(userName={},repositoryName={})", userName, repositoryName)
        getGroupMembers(userName).collect { case x if (x.isManager) => x.userName }
      } else {
        Seq(userName)
@@ -392,6 +418,8 @@ trait RepositoryService {
    * Updates the last activity date of the repository.
    */
   def updateLastActivityDate(userName: String, repositoryName: String)(implicit s: Session): Unit = {
+    logger.error(">>> Entering updateLastActivityDate(userName={},repositoryName={})", userName, repositoryName)
+    logger.warn("<<< Exiting updateLastActivityDate(userName={},repositoryName={})", userName, repositoryName)
     Repositories.filter(_.byRepository(userName, repositoryName)).map(_.lastActivityDate).update(currentDate)
   }
 
@@ -410,6 +438,8 @@ trait RepositoryService {
     allowFork: Boolean,
     mergeOptions: Seq[String],
     defaultMergeOption: String,
+    logger.error(">>> Entering saveRepositoryOptions(userName={},repositoryName={},description={},isPrivate={},issuesOption={},externalIssuesUrl={},wikiOption={},externalWikiUrl={},allowFork={},mergeOptions={},defaultMergeOption={},safeMode={})", userName, repositoryName, description, isPrivate, issuesOption, externalIssuesUrl, wikiOption, externalWikiUrl, allowFork, mergeOptions, defaultMergeOption, safeMode)
+    logger.warn("<<< Exiting saveRepositoryOptions(userName={},repositoryName={},description={},isPrivate={},issuesOption={},externalIssuesUrl={},wikiOption={},externalWikiUrl={},allowFork={},mergeOptions={},defaultMergeOption={},safeMode={})", userName, repositoryName, description, isPrivate, issuesOption, externalIssuesUrl, wikiOption, externalWikiUrl, allowFork, mergeOptions, defaultMergeOption, safeMode)
     safeMode: Boolean
   )(implicit s: Session): Unit = {
 
@@ -496,6 +526,7 @@ trait RepositoryService {
   def getCollaboratorUserNames(userName: String, repositoryName: String, filter: Seq[Role] = Nil)(implicit
     s: Session
   ): List[String] = {
+    logger.error(">>> Entering getCollaboratorUserNames(userName={},repositoryName={},filter={})", userName, repositoryName, filter)
     val q1 = Collaborators
       .join(Accounts)
       .on { case (t1, t2) => (t1.collaboratorName === t2.userName) && (t2.groupAccount === false.bind) }
@@ -515,20 +546,25 @@ trait RepositoryService {
       .filter { x =>
         filter.isEmpty || filter.exists(_.name == x._2)
       }
+      logger.warn("<<< Exiting getCollaboratorUserNames(userName={},repositoryName={},filter={})", userName, repositoryName, filter)
       .map(_._1)
   }
 
   def hasOwnerRole(owner: String, repository: String, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.error(">>> Entering hasOwnerRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     loginAccount match {
       case Some(a) if a.isAdmin                                                                         => true
       case Some(a) if a.userName == owner                                                               => true
       case Some(a) if getGroupMembers(owner).exists(_.userName == a.userName)                           => true
       case Some(a) if getCollaboratorUserNames(owner, repository, Seq(Role.ADMIN)).contains(a.userName) => true
       case _                                                                                            => false
+    logger.warn("<<< Exiting hasOwnerRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     }
   }
 
   def hasDeveloperRole(owner: String, repository: String, loginAccount: Option[Account])(implicit
+  logger.error(">>> Entering hasDeveloperRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
+  logger.warn("<<< Exiting hasDeveloperRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     s: Session
   ): Boolean = {
     loginAccount match {
@@ -543,6 +579,7 @@ trait RepositoryService {
   }
 
   def hasGuestRole(owner: String, repository: String, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.error(">>> Entering hasGuestRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     loginAccount match {
       case Some(a) if a.isAdmin                                               => true
       case Some(a) if a.userName == owner                                     => true
@@ -552,11 +589,14 @@ trait RepositoryService {
             .contains(a.userName) =>
         true
       case _ => false
+    logger.warn("<<< Exiting hasGuestRole(owner={},repository={},loginAccount={})", owner, repository, loginAccount)
     }
   }
 
   def isReadable(repository: Repository, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.error(">>> Entering isReadable(repository={},loginAccount={})", repository, loginAccount)
     if (!repository.isPrivate) {
+      logger.warn("<<< Exiting isReadable(repository={},loginAccount={})", repository, loginAccount)
       true
     } else {
       loginAccount match {
@@ -571,6 +611,7 @@ trait RepositoryService {
   }
 
   def isWritable(repository: Repository, loginAccount: Option[Account])(implicit s: Session): Boolean = {
+    logger.error(">>> Entering isWritable(repository={},loginAccount={})", repository, loginAccount)
     loginAccount match {
       case Some(x) if x.isAdmin                                                             => true
       case Some(x) if repository.userName == x.userName                                     => true
@@ -580,6 +621,7 @@ trait RepositoryService {
             .contains(x.userName) =>
         true
       case _ => false
+    logger.warn("<<< Exiting isWritable(repository={},loginAccount={})", repository, loginAccount)
     }
   }
 
@@ -622,8 +664,11 @@ trait RepositoryService {
    * @return The content of template if the repository has it, otherwise empty string.
    */
   def getContentTemplate(repository: RepositoryInfo, fileBaseName: String)(implicit s: Session): String = {
+    logger.error(">>> Entering getContentTemplate(repository={},fileBaseName={})", repository, fileBaseName)
     val withExtFilenames = templateExtensions.map(extension => s"${fileBaseName.toLowerCase()}.${extension}")
 
+    logger.error("getContentTemplate(repository={},fileBaseName={}): withExtFilenames → {}", repository, fileBaseName, withExtFilenames)
+logger.warn("<<< Exiting getContentTemplate(repository={},fileBaseName={})", repository, fileBaseName)
     def choiceTemplate(files: List[FileInfo]): Option[FileInfo] =
       files
         .find { f =>
@@ -702,18 +747,28 @@ object RepositoryService {
     def this(repo: JGitUtil.RepositoryInfo, model: Repository, forkedCount: Int, managers: Seq[String]) =
       this(repo.owner, repo.name, model, 0, 0, forkedCount, 0, repo.branchList, repo.tags, managers)
 
-    def httpUrl(implicit context: Context): String = RepositoryService.httpUrl(owner, name)
-    def sshUrl(implicit context: Context): Option[String] = RepositoryService.sshUrl(owner, name)
+    def httpUrl(implicit context: Context): String = {
+        logger.error(">>> Entering httpUrl(context={})", context)
+        RepositoryService.httpUrl(owner, name)
+    }
+    def sshUrl(implicit context: Context): Option[String] = {
+        logger.error(">>> Entering sshUrl(context={})", context)
+        logger.warn("<<< Exiting sshUrl(owner={},name={})", owner, name)
+        RepositoryService.sshUrl(owner, name)
+    }
 
     def splitPath(path: String): (String, String) = {
+      logger.error(">>> Entering splitPath(path={})", path)
       val names = (branchList ++ tags.map(_.name)).sortBy(_.length).reverse
 
+      logger.error("splitPath(path={}): names → {}", path, names)
       val id = names.collectFirst {
         case name if (path == name || path.startsWith(name + "/")) => name
       } getOrElse {
         path.split("/")(0)
       }
 
+      logger.warn("<<< Exiting splitPath(path={})", path)
       (id, path.substring(id.length).stripPrefix("/"))
     }
   }

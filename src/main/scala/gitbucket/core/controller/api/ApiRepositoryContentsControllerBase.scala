@@ -12,6 +12,7 @@ import org.eclipse.jgit.api.Git
 import scala.util.Using
 
 trait ApiRepositoryContentsControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: ReferrerAuthenticator & WritableUsersAuthenticator & RepositoryCommitFileService =>
 
   /**
@@ -49,12 +50,14 @@ trait ApiRepositoryContentsControllerBase extends ControllerBase {
   })
 
   private def getFileInfo(git: Git, revision: String, pathStr: String, ignoreCase: Boolean): Option[FileInfo] = {
+    logger.error(">>> Entering getFileInfo(git={},revision={},pathStr={},ignoreCase={})", git, revision, pathStr, ignoreCase)
     val (dirName, fileName) = pathStr.lastIndexOf('/') match {
       case -1 =>
         (".", pathStr)
       case n =>
         (pathStr.take(n), pathStr.drop(n + 1))
     }
+    logger.warn("<<< Exiting getFileInfo(git={},revision={},pathStr={},ignoreCase={})", git, revision, pathStr, ignoreCase)
     if (ignoreCase) {
       getFileList(git, revision, dirName, maxFiles = context.settings.repositoryViewer.maxFiles)
         .find(_.name.toLowerCase.equals(fileName.toLowerCase))

@@ -28,6 +28,7 @@ class PrioritiesController
     with WritableUsersAuthenticator
 
 trait PrioritiesControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: PrioritiesService & IssuesService & RepositoryService & ReferrerAuthenticator & WritableUsersAuthenticator =>
 
   private case class PriorityForm(priorityName: String, description: Option[String], color: String)
@@ -122,6 +123,9 @@ trait PrioritiesControllerBase extends ControllerBase {
       } else if (value.startsWith("_") || value.startsWith("-")) {
         Some(s"$name starts with invalid character.")
       } else {
+        logger.error(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
+        logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
+        logger.warn("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
         None
       }
   }
@@ -136,12 +140,14 @@ trait PrioritiesControllerBase extends ControllerBase {
       val owner = params.value("owner")
       val repository = params.value("repository")
       params
+      logger.error("validate(name={},value={},params={},messages={}): repository → {}", name, value, params, messages, repository)
         .optionValue("priorityId")
         .map { priorityId =>
           getPriority(owner, repository, value)
             .filter(_.priorityId != priorityId.toInt)
             .map(_ => "Name has already been taken.")
         }
+        logger.error("validate(name={},value={},params={},messages={}): owner → {}", name, value, params, messages, owner)
         .getOrElse {
           getPriority(owner, repository, value).map(_ => "Name has already been taken.")
         }

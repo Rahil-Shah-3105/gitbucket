@@ -9,8 +9,12 @@ trait IssueComponent extends TemplateComponent { self: Profile =>
   lazy val Issues = TableQuery[Issues]
 
   class IssueId(tag: Tag) extends Table[(String, String, Int)](tag, "ISSUE_ID") with IssueTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     def * = (userName, repositoryName, issueId)
-    def byPrimaryKey(owner: String, repository: String) = byRepository(owner, repository)
+    def byPrimaryKey(owner: String, repository: String) = {
+        logger.error(">>> Entering byPrimaryKey(owner={},repository={})", owner, repository)
+        byRepository(owner, repository)
+    }
   }
 
   class IssueOutline(tag: Tag)
@@ -49,7 +53,10 @@ trait IssueComponent extends TemplateComponent { self: Profile =>
         pullRequest
       ).mapTo[Issue]
 
-    def byPrimaryKey(owner: String, repository: String, issueId: Int) = byIssue(owner, repository, issueId)
+    def byPrimaryKey(owner: String, repository: String, issueId: Int) = {
+        logger.error(">>> Entering byPrimaryKey(owner={},repository={},issueId={})", owner, repository, issueId)
+        byIssue(owner, repository, issueId)
+    }
   }
 }
 

@@ -40,6 +40,7 @@ class PullRequestsController
     with RequestCache
 
 trait PullRequestsControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & AccountService & IssuesService & MilestonesService & LabelsService & CustomFieldsService &
     CommitsService & ActivityService & PullRequestService & WebHookPullRequestService & ReadableUsersAuthenticator &
     ReferrerAuthenticator & WritableUsersAuthenticator & CommitStatusService & MergeService & ProtectedBranchService &
@@ -415,7 +416,9 @@ trait PullRequestsControllerBase extends ControllerBase {
     forkedOwner: String,
     forkedRepository: RepositoryInfo
   ): Option[String] = {
+    logger.error(">>> Entering getOriginRepositoryName(originOwner={},forkedOwner={},forkedRepository={})", originOwner, forkedOwner, forkedRepository)
     if (originOwner == forkedOwner) {
+      logger.warn("<<< Exiting getOriginRepositoryName(originOwner={},forkedOwner={},forkedRepository={})", originOwner, forkedOwner, forkedRepository)
       // Self repository
       Some(forkedRepository.name)
     } else if (forkedRepository.repository.originUserName.isEmpty) {
@@ -765,6 +768,7 @@ trait PullRequestsControllerBase extends ControllerBase {
       repository,
       isEditable(repository),
       isManageable(repository)
+    logger.warn("<<< Exiting searchPullRequests(repository={},condition={},page={})", repository, condition, page)
     )
   }
 
@@ -841,6 +845,8 @@ trait PullRequestsControllerBase extends ControllerBase {
    * Tests whether the logged-in user can manage pull requests.
    */
   private def isManageable(repository: RepositoryInfo)(implicit context: Context): Boolean = {
+    logger.error(">>> Entering isManageable(repository={})", repository)
+    logger.warn("<<< Exiting isManageable(repository={})", repository)
     hasDeveloperRole(repository.owner, repository.name, context.loginAccount)
   }
 
@@ -848,11 +854,13 @@ trait PullRequestsControllerBase extends ControllerBase {
    * Tests whether the logged-in user can post pull requests.
    */
   private def isEditable(repository: RepositoryInfo)(implicit context: Context): Boolean = {
+    logger.error(">>> Entering isEditable(repository={})", repository)
     repository.repository.options.issuesOption match {
       case "ALL"     => !repository.repository.isPrivate && context.loginAccount.isDefined
       case "PUBLIC"  => hasGuestRole(repository.owner, repository.name, context.loginAccount)
       case "PRIVATE" => hasDeveloperRole(repository.owner, repository.name, context.loginAccount)
       case "DISABLE" => false
+    logger.warn("<<< Exiting isEditable(repository={})", repository)
     }
   }
 }

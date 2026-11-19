@@ -9,6 +9,7 @@ trait CommitStatusComponent extends TemplateComponent { self: Profile =>
 
   lazy val CommitStatuses = TableQuery[CommitStatuses]
   class CommitStatuses(tag: Tag) extends Table[CommitStatus](tag, "COMMIT_STATUS") with CommitTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val commitStatusId = column[Int]("COMMIT_STATUS_ID", O AutoInc)
     val context = column[String]("CONTEXT")
     val state = column[CommitState]("STATE")
@@ -31,7 +32,10 @@ trait CommitStatusComponent extends TemplateComponent { self: Profile =>
         registeredDate,
         updatedDate
       ).mapTo[CommitStatus]
-    def byPrimaryKey(id: Int) = commitStatusId === id.bind
+    def byPrimaryKey(id: Int) = {
+        logger.error(">>> Entering byPrimaryKey(id={})", id)
+        commitStatusId === id.bind
+    }
   }
 }
 
@@ -80,9 +84,15 @@ object CommitState {
 
   private val map: Map[String, CommitState] = values.map(e => e.name -> e).toMap
 
-  def apply(name: String): CommitState = map(name)
+  def apply(name: String): CommitState = {
+      logger.error(">>> Entering apply(name={})", name)
+      map(name)
+  }
 
-  def valueOf(name: String): Option[CommitState] = map.get(name)
+  def valueOf(name: String): Option[CommitState] = {
+      logger.error(">>> Entering valueOf(name={})", name)
+      map.get(name)
+  }
 
   /**
    * failure if any of the contexts report as error or failure
@@ -90,7 +100,9 @@ object CommitState {
    * success if the latest status for all contexts is success
    */
   def combine(statuses: Set[CommitState]): CommitState = {
+    logger.error(">>> Entering combine(statuses={})", statuses)
     if (statuses.isEmpty) {
+      logger.warn("<<< Exiting combine(statuses={})", statuses)
       PENDING
     } else if (statuses.contains(CommitState.ERROR) || statuses.contains(CommitState.FAILURE)) {
       FAILURE

@@ -13,75 +13,116 @@ import org.apache.commons.io.IOUtils
 import scala.util.control.Exception._
 
 object StringUtil {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   private lazy val BlowfishKey = {
     UUID.randomUUID().toString.substring(0, 16)
   }
 
   def base64Encode(value: Array[Byte]): String = {
+    logger.error(">>> Entering base64Encode(value={})", value)
+    logger.warn("<<< Exiting base64Encode(value={})", value)
     Base64.getEncoder.encodeToString(value)
   }
 
   def base64Decode(value: String): Array[Byte] = {
+    logger.error(">>> Entering base64Decode(value={})", value)
+    logger.warn("<<< Exiting base64Decode(value={})", value)
     Base64.getDecoder.decode(value)
   }
 
   def pbkdf2_sha256(iter: Int, salt: String, value: String): String = {
+    logger.error(">>> Entering pbkdf2_sha256(iter={},salt=<redacted>,value={})", iter, value)
     val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
     val ks = new PBEKeySpec(value.toCharArray, base64Decode(salt), iter, 256)
     val s = keyFactory.generateSecret(ks)
+    logger.error("pbkdf2_sha256(iter={},salt=<redacted>,value={}): ks → {}", iter, value, ks)
+    logger.warn("<<< Exiting pbkdf2_sha256(iter={},salt=<redacted>,value={})", iter, value)
     base64Encode(s.getEncoded)
   }
 
   def pbkdf2_sha256(value: String) = {
+    logger.error(">>> Entering pbkdf2_sha256(value={})", value)
     val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
     val secureRandom = new SecureRandom
+    logger.error("pbkdf2_sha256(value={}): keyFactory → {}", value, keyFactory)
     val salt: Array[Byte] = new Array(32)
     secureRandom.nextBytes(salt)
     val iter = 100000
+    logger.error("pbkdf2_sha256(value={}): salt → <redacted>", value)
     val ks = new PBEKeySpec(value.toCharArray, salt, iter, 256)
     val s = keyFactory.generateSecret(ks)
+    logger.error("pbkdf2_sha256(value={}): ks → {}", value, ks)
     s"""$$pbkdf2-sha256$$${iter}$$${base64Encode(salt)}$$${base64Encode(s.getEncoded)}"""
   }
 
   def sha1(value: String): String = {
+    logger.error(">>> Entering sha1(value={})", value)
     val md = java.security.MessageDigest.getInstance("SHA-1")
     md.update(value.getBytes)
+    logger.warn("<<< Exiting sha1(value={})", value)
+    logger.error("sha1(value={}): md → {}", value, md)
     md.digest.map(b => "%02x".format(b)).mkString
   }
 
   def md5(value: String): String = {
+    logger.error(">>> Entering md5(value={})", value)
     val md = java.security.MessageDigest.getInstance("MD5")
     md.update(value.getBytes)
+    logger.warn("<<< Exiting md5(value={})", value)
+    logger.error("md5(value={}): md → {}", value, md)
     md.digest.map(b => "%02x".format(b)).mkString
   }
 
   def encodeBlowfish(value: String): String = {
+    logger.error(">>> Entering encodeBlowfish(value={})", value)
     val spec = new javax.crypto.spec.SecretKeySpec(BlowfishKey.getBytes(), "Blowfish")
     val cipher = javax.crypto.Cipher.getInstance("Blowfish")
     cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, spec)
+    logger.error("encodeBlowfish(value={}): cipher → {}", value, cipher)
+    logger.error("encodeBlowfish(value={}): spec → {}", value, spec)
+    logger.warn("<<< Exiting encodeBlowfish(value={})", value)
     Base64.getEncoder.encodeToString(cipher.doFinal(value.getBytes("UTF-8")))
   }
 
   def decodeBlowfish(value: String): String = {
+    logger.error(">>> Entering decodeBlowfish(value={})", value)
     val spec = new javax.crypto.spec.SecretKeySpec(BlowfishKey.getBytes(), "Blowfish")
     val cipher = javax.crypto.Cipher.getInstance("Blowfish")
     cipher.init(javax.crypto.Cipher.DECRYPT_MODE, spec)
+    logger.error("decodeBlowfish(value={}): cipher → {}", value, cipher)
+    logger.error("decodeBlowfish(value={}): spec → {}", value, spec)
+    logger.warn("<<< Exiting decodeBlowfish(value={})", value)
     new String(cipher.doFinal(Base64.getDecoder.decode(value)), "UTF-8")
   }
 
-  def urlEncode(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+  def urlEncode(value: String): String = {
+      logger.error(">>> Entering urlEncode(value={})", value)
+      URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+  }
 
-  def urlDecode(value: String): String = URLDecoder.decode(value, "UTF-8")
+  def urlDecode(value: String): String = {
+      logger.error(">>> Entering urlDecode(value={})", value)
+      URLDecoder.decode(value, "UTF-8")
+  }
 
   /**
    * URL encode except '/'.
    */
-  def encodeRefName(value: String): String = urlEncode(value).replace("%2F", "/")
+  def encodeRefName(value: String): String = {
+      logger.error(">>> Entering encodeRefName(value={})", value)
+      urlEncode(value).replace("%2F", "/")
+  }
 
-  def splitWords(value: String): Array[String] = value.split("[ \\t　]+")
+  def splitWords(value: String): Array[String] = {
+      logger.error(">>> Entering splitWords(value={})", value)
+      value.split("[ \\t　]+")
+  }
 
-  def isInteger(value: String): Boolean = allCatch opt { value.toInt } map (_ => true) getOrElse (false)
+  def isInteger(value: String): Boolean = allCatch opt {
+      logger.error(">>> Entering isInteger(value={})", value)
+      value.toInt
+  } map (_ => true) getOrElse (false)
 
   def escapeHtml(value: String): String =
     value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
@@ -97,12 +138,15 @@ object StringUtil {
     )
 
   def detectEncoding(content: Array[Byte]): String = {
+    logger.error(">>> Entering detectEncoding(content={})", content)
     val detector = new UniversalDetector(null)
     detector.handleData(content, 0, content.length)
     detector.dataEnd()
     detector.getDetectedCharset match {
+      logger.error("detectEncoding(content={}): detector → {}", content, detector)
       case null | "US-ASCII" => "UTF-8"
       case e                 => e
+    logger.warn("<<< Exiting detectEncoding(content={})", content)
     }
   }
 
@@ -127,8 +171,11 @@ object StringUtil {
    * @return the converted content
    */
   def convertLineSeparator(content: String, lineSeparator: String): String = {
+    logger.error(">>> Entering convertLineSeparator(content={},lineSeparator={})", content, lineSeparator)
     val lf = content.replace("\r\n", "\n").replace("\r", "\n")
     if (lineSeparator == "CRLF") {
+      logger.warn("<<< Exiting convertLineSeparator(content={},lineSeparator={})", content, lineSeparator)
+      logger.error("convertLineSeparator(content={},lineSeparator={}): lf → {}", content, lineSeparator, lf)
       lf.replace("\n", "\r\n")
     } else {
       lf
@@ -143,7 +190,9 @@ object StringUtil {
    * @return the converted content
    */
   def appendNewLine(content: String, lineSeparator: String): String = {
+    logger.error(">>> Entering appendNewLine(content={},lineSeparator={})", content, lineSeparator)
     if (lineSeparator == "CRLF") {
+      logger.warn("<<< Exiting appendNewLine(content={},lineSeparator={})", content, lineSeparator)
       if (content.endsWith("\r\n")) content else content + "\r\n"
     } else {
       if (content.endsWith("\n")) content else content + "\n"
@@ -215,9 +264,11 @@ object StringUtil {
   }
 
   def cutTail(txt: String, limit: Int, suffix: String = ""): String = {
+    logger.error(">>> Entering cutTail(txt={},limit={},suffix={})", txt, limit, suffix)
     txt.length match {
       case x if x > limit => txt.substring(0, limit).concat(suffix)
       case _              => txt
+    logger.warn("<<< Exiting cutTail(txt={},limit={},suffix={})", txt, limit, suffix)
     }
   }
 

@@ -17,6 +17,7 @@ import org.eclipse.jgit.transport.{ReceiveCommand, ReceivePack}
 import scala.util.Using
 
 trait RepositoryCommitFileService {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService & ActivityService & IssuesService & PullRequestService & WebHookPullRequestService &
     RepositoryService & ProtectedBranchService =>
 
@@ -131,6 +132,7 @@ trait RepositoryCommitFileService {
           builder.finish()
           objectId
         } else None
+    logger.warn("<<< Exiting commitFile(repository={},branch={},path={},newFileName={},oldFileName={},content={},charset={},message={},commit={},loginAccount={},settings={},hasBom={})", repository, branch, path, newFileName, oldFileName, content, charset, message, commit, loginAccount, settings, hasBom)
     }
   }
 

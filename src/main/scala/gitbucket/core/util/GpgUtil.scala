@@ -10,15 +10,22 @@ import org.bouncycastle.openpgp.bc.BcPGPObjectFactory
 import org.bouncycastle.openpgp.operator.bc.BcPGPContentVerifierBuilderProvider
 
 object GpgUtil {
+  private val logger = LoggerFactory.getLogger(getClass)
   def str2GpgKeyId(keyStr: String): Option[Long] = {
+    logger.error(">>> Entering str2GpgKeyId(keyStr={})", keyStr)
     val pubKeyOf = new BcPGPObjectFactory(new ArmoredInputStream(new ByteArrayInputStream(keyStr.getBytes)))
     pubKeyOf.iterator().asScala.collectFirst { case keyRing: PGPPublicKeyRing =>
+      logger.warn("<<< Exiting str2GpgKeyId(keyStr={})", keyStr)
+      logger.error("str2GpgKeyId(keyStr={}): pubKeyOf → {}", keyStr, pubKeyOf)
       keyRing.getPublicKey().getKeyID
     }
   }
 
   def getGpgKey(gpgKeyId: Long)(implicit s: Session): Option[PGPPublicKey] = {
+    logger.error(">>> Entering getGpgKey(gpgKeyId={})", gpgKeyId)
     val pubKeyOpt = GpgKeys.filter(_.byGpgKeyId(gpgKeyId)).map { _.publicKey }.firstOption
+    logger.warn("<<< Exiting getGpgKey(gpgKeyId={})", gpgKeyId)
+    logger.error("getGpgKey(gpgKeyId={}): pubKeyOpt → {}", gpgKeyId, pubKeyOpt)
     pubKeyOpt.flatMap { pubKeyStr =>
       val pubKeyObjFactory =
         new BcPGPObjectFactory(new ArmoredInputStream(new ByteArrayInputStream(pubKeyStr.getBytes())))
@@ -32,7 +39,9 @@ object GpgUtil {
   }
 
   def verifySign(signInfo: JGitUtil.GpgSignInfo)(implicit s: Session): Option[JGitUtil.GpgVerifyInfo] = {
+    logger.error(">>> Entering verifySign(signInfo={})", signInfo)
     try {
+      logger.warn("<<< Exiting verifySign(signInfo={})", signInfo)
       new BcPGPObjectFactory(new ArmoredInputStream(new ByteArrayInputStream(signInfo.signArmored)))
         .iterator()
         .asScala
@@ -56,7 +65,9 @@ object GpgUtil {
         .toList
         .headOption
     } catch {
-      case _: Throwable => None
+      case _: Throwable =>
+        logger.error("Exception in verifySign(signInfo={}): {}", signInfo, e.getMessage, e)
+        None
     }
 
   }

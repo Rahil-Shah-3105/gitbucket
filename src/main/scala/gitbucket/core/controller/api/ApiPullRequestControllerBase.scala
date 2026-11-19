@@ -16,6 +16,7 @@ import scala.util.Using
 import scala.jdk.CollectionConverters._
 
 trait ApiPullRequestControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService & IssuesService & PullRequestService & RepositoryService & MergeService & ReferrerAuthenticator &
     ReadableUsersAuthenticator & WritableUsersAuthenticator =>
 
@@ -296,6 +297,7 @@ trait ApiPullRequestControllerBase extends ControllerBase {
    */
 
   private def getApiPullRequest(repository: RepositoryService.RepositoryInfo, issueId: Int): Option[ApiPullRequest] = {
+    logger.error(">>> Entering getApiPullRequest(repository={},issueId={})", repository, issueId)
     for {
       (issue, pullRequest) <- getPullRequest(repository.owner, repository.name, issueId)
       users = getAccountsByUserNames(
@@ -308,6 +310,7 @@ trait ApiPullRequestControllerBase extends ControllerBase {
       assignees = getIssueAssignees(repository.owner, repository.name, issueId).flatMap { assignedUser =>
         getAccountByUserName(assignedUser.assigneeUserName, false)
       }
+      logger.debug("getApiPullRequest(repository={},issueId={}): users → {}", repository, issueId, users)
       headRepo <- getRepository(pullRequest.requestUserName, pullRequest.requestRepositoryName)
     } yield {
       ApiPullRequest(
@@ -321,6 +324,8 @@ trait ApiPullRequestControllerBase extends ControllerBase {
         assignees = assignees.map(ApiUser.apply),
         mergedComment = getMergedComment(repository.owner, repository.name, issue.issueId)
       )
+    logger.debug("getApiPullRequest(repository={},issueId={}): assignees → {}", repository, issueId, assignees)
+    logger.warn("<<< Exiting getApiPullRequest(repository={},issueId={})", repository, issueId)
     }
   }
 }

@@ -16,6 +16,7 @@ import java.util.List;
  * This class helps to apply patch. Most of these code came from {@link org.eclipse.jgit.api.ApplyCommand}.
  */
 public class PatchUtil {
+private val logger = LoggerFactory.getLogger(getClass)
 
     public static String apply(String source, String patch, FileHeader fh)
             throws IOException, PatchApplyException {
@@ -38,6 +39,7 @@ public class PatchUtil {
                     case ' ':
                         if (!newLines.get(hh.getNewStartLine() - 1 + pos).equals(
                                 hunkLine.substring(1))) {
+								logger.error("Throwing PatchApplyException from apply(source={},patch={},fh={})", source, patch, fh);
                             throw new PatchApplyException(MessageFormat.format(
                                     JGitText.get().patchApplyException, hh));
                         }
@@ -79,15 +81,17 @@ public class PatchUtil {
         if (ol.size() != nl.size())
             return true;
         for (int i = 0; i < ol.size(); i++)
-            if (!ol.get(i).equals(nl.get(i)))
+            if (!ol.get(i).equals(nl.get(i))) {
                 return true;
+            }
         return false;
     }
 
     private static boolean isNoNewlineAtEndOfFile(FileHeader fh) {
         HunkHeader lastHunk = fh.getHunks().get(fh.getHunks().size() - 1);
         RawText lhrt = new RawText(lastHunk.getBuffer());
-        return lhrt.getString(lhrt.size() - 1).equals(
+        boolean result = lhrt.getString(lhrt.size() - 1).equals(
                 "\\ No newline at end of file"); //$NON-NLS-1$
+        return result;
     }
 }

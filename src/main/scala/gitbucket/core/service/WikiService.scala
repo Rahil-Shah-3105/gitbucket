@@ -18,6 +18,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.Using
 
 object WikiService {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * The model for wiki page.
@@ -73,9 +74,12 @@ trait WikiService {
    * Returns the wiki page.
    */
   def getWikiPage(owner: String, repository: String, pageName: String, branch: String): Option[WikiPageInfo] = {
+    logger.error(">>> Entering getWikiPage(owner={},repository={},pageName={},branch={})", owner, repository, pageName, branch)
     Using.resource(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
       if (!JGitUtil.isEmpty(git)) {
+        logger.warn("<<< Exiting getWikiPage(owner={},repository={},pageName={},branch={})", owner, repository, pageName, branch)
         val fileName = pageName + ".md"
+        logger.error("getWikiPage(owner={},repository={},pageName={},branch={}): fileName → {}", owner, repository, pageName, branch, fileName)
         JGitUtil.getLatestCommitFromPath(git, fileName, branch).map { latestCommit =>
           val content = JGitUtil.getContentFromPath(git, latestCommit.getTree, fileName, true)
           WikiPageInfo(
@@ -83,6 +87,7 @@ trait WikiService {
             StringUtil.convertFromByteArray(content.getOrElse(Array.empty)),
             latestCommit.getAuthorIdent.getName,
             latestCommit.getAuthorIdent.getWhen,
+            logger.error("getWikiPage(owner={},repository={},pageName={},branch={}): content → {}", owner, repository, pageName, branch, content)
             latestCommit.getName
           )
         }
@@ -94,8 +99,10 @@ trait WikiService {
    * Returns the list of wiki page names.
    */
   def getWikiPageList(owner: String, repository: String, branch: String): List[String] = {
+    logger.error(">>> Entering getWikiPageList(owner={},repository={},branch={})", owner, repository, branch)
     Using.resource(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
       JGitUtil
+      logger.warn("<<< Exiting getWikiPageList(owner={},repository={},branch={})", owner, repository, branch)
         .getFileList(git, branch, ".")
         .filter(_.name.endsWith(".md"))
         .filterNot(_.name.startsWith("_"))
@@ -114,6 +121,11 @@ trait WikiService {
     to: String,
     committer: Account,
     pageName: Option[String],
+    logger.error(">>> Entering revertWikiPage(owner={},repository={},from={},to={},committer={},pageName={},branch={})", owner, repository, from, to, committer, pageName, branch)
+    logger.warn("<<< Exiting revertWikiPage(owner={},repository={},from={},to={},committer={},pageName={},branch={})", owner, repository, from, to, committer, pageName, branch)
+    val __logStart = System.currentTimeMillis()
+    logger.error("revertWikiPage(owner,repository,from,to,committer,pageName,branch)={},{},{},{},{},{},{}: find query executed in {} ms", owner, repository, from, to, committer, pageName, branch, (System.currentTimeMillis() - __logStart))
+    logger.error("Throwing PatchFormatException from revertWikiPage(owner={},repository={},from={},to={},committer={},pageName={},branch={})", owner, repository, from, to, committer, pageName, branch)
     branch: String
   ): Boolean = {
 
@@ -126,6 +138,7 @@ trait WikiService {
           val oldTreeIter = new CanonicalTreeParser
           oldTreeIter.reset(reader, git.getRepository.resolve(from + "^{tree}"))
 
+          logger.error("revertWikiPage(owner={},repository={},from={},to={},committer={},pageName={},branch={}): reader → {}", owner, repository, from, to, committer, pageName, branch, reader)
           val newTreeIter = new CanonicalTreeParser
           newTreeIter.reset(reader, git.getRepository.resolve(to + "^{tree}"))
 
@@ -146,6 +159,7 @@ trait WikiService {
           val p = new Patch()
           p.parse(new ByteArrayInputStream(patch.getBytes("UTF-8")))
           if (!p.getErrors.isEmpty) {
+            logger.error("revertWikiPage(owner={},repository={},from={},to={},committer={},pageName={},branch={}): p → {}", owner, repository, from, to, committer, pageName, branch, p)
             throw new PatchFormatException(p.getErrors())
           }
           val revertInfo = p.getFiles.asScala.flatMap { fh =>
@@ -155,6 +169,7 @@ trait WikiService {
                   getWikiPage(owner, repository, fh.getNewPath.stripSuffix(".md"), branch).map(_.content).getOrElse("")
                 val applied = PatchUtil.apply(source, patch, fh)
                 if (applied != null) {
+                  logger.error("revertWikiPage(owner={},repository={},from={},to={},committer={},pageName={},branch={}): applied → {}", owner, repository, from, to, committer, pageName, branch, applied)
                   Seq(RevertInfo("ADD", fh.getNewPath, applied))
                 } else Nil
               }
@@ -184,6 +199,7 @@ trait WikiService {
             val inserter = git.getRepository.newObjectInserter()
             val headId = git.getRepository.resolve(Constants.HEAD + "^{commit}")
 
+            logger.error("revertWikiPage(owner={},repository={},from={},to={},committer={},pageName={},branch={}): builder → {}", owner, repository, from, to, committer, pageName, branch, builder)
             JGitUtil.processTree(git, headId) { (path, tree) =>
               if (!revertInfo.exists(x => x.filePath == path)) {
                 builder.add(JGitUtil.createDirCacheEntry(path, tree.getEntryFileMode, tree.getEntryObjectId))
@@ -296,6 +312,7 @@ trait WikiService {
           Some(newHeadId.getName)
         } else None
       }
+    logger.warn("<<< Exiting saveWikiPage(owner={},repository={},currentPageName={},newPageName={},content={},committer={},message={},currentId={})", owner, repository, currentPageName, newPageName, content, committer, message, currentId)
     }
   }
 
@@ -310,13 +327,18 @@ trait WikiService {
     mailAddress: String,
     message: String
   ): Unit = {
+    logger.error(">>> Entering deleteWikiPage(owner={},repository={},pageName={},committer={},mailAddress={},message={})", owner, repository, pageName, committer, mailAddress, message)
     LockUtil.lock(s"${owner}/${repository}/wiki") {
+      logger.warn("<<< Exiting deleteWikiPage(owner={},repository={},pageName={},committer={},mailAddress={},message={})", owner, repository, pageName, committer, mailAddress, message)
       Using.resource(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
         val builder = DirCache.newInCore.builder()
         val inserter = git.getRepository.newObjectInserter()
         val headId = git.getRepository.resolve(Constants.HEAD + "^{commit}")
         var removed = false
+        val __logStart = System.currentTimeMillis()
 
+        logger.error("deleteWikiPage(owner,repository,pageName,committer,mailAddress,message)={},{},{},{},{},{}: find query executed in {} ms", owner, repository, pageName, committer, mailAddress, message, (System.currentTimeMillis() - __logStart))
+        logger.error("deleteWikiPage(owner={},repository={},pageName={},committer={},mailAddress={},message={}): headId → {}", owner, repository, pageName, committer, mailAddress, message, headId)
         JGitUtil.processTree(git, headId) { (path, tree) =>
           if (path != pageName + ".md") {
             builder.add(JGitUtil.createDirCacheEntry(path, tree.getEntryFileMode, tree.getEntryObjectId))
@@ -351,7 +373,9 @@ trait WikiService {
     * @return Branch name
     */
   def getWikiBranch(owner: String, repository: String): String = {
+    logger.error(">>> Entering getWikiBranch(owner={},repository={})", owner, repository)
     Using.resource(Git.open(Directory.getWikiRepositoryDir(owner, repository))) { git =>
+      logger.warn("<<< Exiting getWikiBranch(owner={},repository={})", owner, repository)
       git.getRepository.getBranch
     }
   }

@@ -1,3 +1,4 @@
+var logger = (typeof logger !== 'undefined' && logger) || console;
 $(function(){
   $(document).on('submit', 'form[validate=true]', validate);
   $(document).on('click', 'input[formaction]', function(e){
@@ -32,7 +33,9 @@ function validate(e){
 }
 
 function displayErrors(data){
+logger.error(`>>> Entering displayErrors(data=${data})`, { "event.action": "displayErrors" });
   $.each(data, function(key, value){
     $('#error-' + key.split(".").join("_")).text(value);
   });
+logger.warn(`<<< Exiting displayErrors(data=${data})`, { "event.action": "displayErrors" });
 }

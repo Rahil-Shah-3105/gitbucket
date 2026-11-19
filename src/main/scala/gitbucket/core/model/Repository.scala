@@ -7,6 +7,7 @@ trait RepositoryComponent extends TemplateComponent { self: Profile =>
   lazy val Repositories = TableQuery[Repositories]
 
   class Repositories(tag: Tag) extends Table[Repository](tag, "REPOSITORY") with BasicTemplate {
+    private val logger = LoggerFactory.getLogger(getClass)
     val isPrivate = column[Boolean]("PRIVATE")
     val description = column[String]("DESCRIPTION")
     val defaultBranch = column[String]("DEFAULT_BRANCH")
@@ -97,7 +98,10 @@ trait RepositoryComponent extends TemplateComponent { self: Profile =>
         }
       )
 
-    def byPrimaryKey(owner: String, repository: String) = byRepository(owner, repository)
+    def byPrimaryKey(owner: String, repository: String) = {
+        logger.error(">>> Entering byPrimaryKey(owner={},repository={})", owner, repository)
+        byRepository(owner, repository)
+    }
   }
 }
 

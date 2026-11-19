@@ -9,12 +9,16 @@ trait AccountWebHookEventComponent extends TemplateComponent { self: Profile =>
   class AccountWebHookEvents(tag: Tag)
       extends Table[AccountWebHookEvent](tag, "ACCOUNT_WEB_HOOK_EVENT")
       with BasicTemplate {
+        private val logger = LoggerFactory.getLogger(getClass)
     val url = column[String]("URL")
     val event = column[WebHook.Event]("EVENT")
 
     def * = (userName, url, event).mapTo[AccountWebHookEvent]
 
-    def byAccountWebHook(userName: String, url: String) = (this.userName === userName.bind) && (this.url === url.bind)
+    def byAccountWebHook(userName: String, url: String) = {
+        logger.error(">>> Entering byAccountWebHook(userName={},url={})", userName, url)
+        (this.userName === userName.bind) && (this.url === url.bind)
+    }
 
     def byAccountWebHook(owner: Rep[String], url: Rep[String]) =
       (this.userName === userName) && (this.url === url)

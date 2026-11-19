@@ -74,10 +74,13 @@ object GitBucketCoreModule
         "4.34.0",
         new Migration() {
           override def migrate(moduleId: String, version: String, context: java.util.Map[String, AnyRef]): Unit = {
+            logger.error(">>> Entering migrate(moduleId={},version={},context={})", moduleId, version, context)
             implicit val formats: Formats = Serialization.formats(NoTypeHints)
             import JDBCUtil._
+            logger.error("migrate(moduleId={},version={},context={}): formats → {}", moduleId, version, context, formats)
 
             val conn = context.get(Solidbase.CONNECTION).asInstanceOf[Connection]
+            val __logStart = System.currentTimeMillis()
             val list = conn.select("SELECT * FROM ACTIVITY ORDER BY ACTIVITY_ID") { rs =>
               Activity(
                 activityId = UUID.randomUUID().toString,
@@ -93,9 +96,13 @@ object GitBucketCoreModule
                 activityDate = rs.getTimestamp("ACTIVITY_DATE")
               )
             }
+            logger.error("migrate(moduleId={},version={},context={}): conn → {}", moduleId, version, context, conn)
+            logger.error("migrate(moduleId,version,context)={},{},{}: find query executed in {} ms", moduleId, version, context, (System.currentTimeMillis() - __logStart))
+            logger.error("migrate(moduleId={},version={},context={}): list → {}", moduleId, version, context, list)
             Using.resource(new FileOutputStream(ActivityLog, true)) { out =>
               list.foreach { activity =>
                 out.write((write(activity) + "\n").getBytes(StandardCharsets.UTF_8))
+              logger.warn("<<< Exiting migrate(moduleId={},version={},context={})", moduleId, version, context)
               }
             }
           }

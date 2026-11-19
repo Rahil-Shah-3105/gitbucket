@@ -8,6 +8,7 @@ import gitbucket.core.model.Profile.dateColumnType
 import gitbucket.core.service.RepositoryService.RepositoryInfo
 
 trait MilestonesService {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   def createMilestone(
     owner: String,
@@ -16,6 +17,7 @@ trait MilestonesService {
     description: Option[String],
     dueDate: Option[java.util.Date]
   )(implicit s: Session): Int = {
+    logger.error(">>> Entering createMilestone(owner={},repository={},title={},description={},dueDate={})", owner, repository, title, description, dueDate)
     Milestones returning Milestones.map(_.milestoneId) insert Milestone(
       userName = owner,
       repositoryName = repository,
@@ -23,6 +25,7 @@ trait MilestonesService {
       description = description,
       dueDate = dueDate,
       closedDate = None
+    logger.warn("<<< Exiting createMilestone(owner={},repository={},title={},description={},dueDate={})", owner, repository, title, description, dueDate)
     )
   }
 
@@ -39,7 +42,9 @@ trait MilestonesService {
     updateMilestone(milestone.copy(closedDate = Some(currentDate)))
 
   def deleteMilestone(owner: String, repository: String, milestoneId: Int)(implicit s: Session): Unit = {
+    logger.error(">>> Entering deleteMilestone(owner={},repository={},milestoneId={})", owner, repository, milestoneId)
     Issues.filter(_.byMilestone(owner, repository, milestoneId)).map(_.milestoneId.?).update(None)
+    logger.warn("<<< Exiting deleteMilestone(owner={},repository={},milestoneId={})", owner, repository, milestoneId)
     Milestones.filter(_.byPrimaryKey(owner, repository, milestoneId)).delete
   }
 
@@ -47,6 +52,8 @@ trait MilestonesService {
     Milestones.filter(_.byPrimaryKey(owner, repository, milestoneId)).firstOption
 
   def getMilestonesWithIssueCount(owner: String, repository: String)(implicit
+  logger.error(">>> Entering getMilestonesWithIssueCount(owner={},repository={})", owner, repository)
+  logger.warn("<<< Exiting getMilestonesWithIssueCount(owner={},repository={})", owner, repository)
     s: Session
   ): List[(Milestone, Int, Int)] = {
     val counts = Issues
@@ -76,6 +83,7 @@ trait MilestonesService {
       .list
 
   def getApiMilestone(repository: RepositoryInfo, milestoneId: Int)(implicit s: Session): Option[ApiMilestone] = {
+    logger.error(">>> Entering getApiMilestone(repository={},milestoneId={})", repository, milestoneId)
     getMilestonesWithIssueCount(repository.owner, repository.name)
       .find(p => p._1.milestoneId == milestoneId)
       .map(milestoneWithIssue =>
@@ -85,6 +93,7 @@ trait MilestonesService {
           milestoneWithIssue._2,
           milestoneWithIssue._3
         )
+      logger.warn("<<< Exiting getApiMilestone(repository={},milestoneId={})", repository, milestoneId)
       )
   }
 }

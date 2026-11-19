@@ -13,6 +13,7 @@ import org.apache.commons.io.FileUtils
 import scala.reflect.ClassTag
 
 object DatabaseConfig {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   private lazy val config = {
     val file = new File(GitBucketHome, "database.conf")
@@ -39,15 +40,18 @@ object DatabaseConfig {
   private lazy val dbUrl = getValue("db.url", config.getString) // config.getString("db.url")
 
   def url(directory: Option[String]): String = {
+    logger.error(">>> Entering url(directory={})", directory)
     val sb = new StringBuilder()
     sb.append(dbUrl)
     if (dbUrl.startsWith("jdbc:mysql:") && dbUrl.indexOf("permitMysqlScheme") == -1) {
+      logger.error("url(directory={}): sb → {}", directory, sb)
       if (dbUrl.indexOf("?") == -1) {
         sb.append("?permitMysqlScheme")
       } else {
         sb.append("&permitMysqlScheme")
       }
     }
+    logger.warn("<<< Exiting url(directory={})", directory)
     sb.toString().replace("${DatabaseHome}", directory.getOrElse(DatabaseHome))
   }
 
@@ -64,11 +68,15 @@ object DatabaseConfig {
   lazy val maximumPoolSize: Option[Int] = getOptionValue("db.maximumPoolSize", config.getInt)
 
   private def getValue[T: ClassTag](path: String, f: String => T): T = {
+    logger.error(">>> Entering getValue(path={},f={})", path, f)
+    logger.warn("<<< Exiting getValue(path={},f={})", path, f)
     getConfigValue(path).getOrElse(f(path))
   }
 
   private def getOptionValue[T: ClassTag](path: String, f: String => T): Option[T] = {
+    logger.error(">>> Entering getOptionValue(path={},f={})", path, f)
     getConfigValue(path).orElse {
+      logger.warn("<<< Exiting getOptionValue(path={},f={})", path, f)
       if (config.hasPath(path)) Some(f(path)) else None
     }
   }
@@ -84,7 +92,9 @@ sealed trait DatabaseType {
 object DatabaseType {
 
   def apply(url: String): DatabaseType = {
+    logger.error(">>> Entering apply(url={})", url)
     if (url.startsWith("jdbc:h2:")) {
+      logger.warn("<<< Exiting apply(url={})", url)
       H2
     } else if (url.startsWith("jdbc:mysql:")) {
       MySQL
@@ -93,6 +103,7 @@ object DatabaseType {
     } else if (url.startsWith("jdbc:postgresql:")) {
       PostgreSQL
     } else {
+      logger.error("Throwing IllegalArgumentException from apply(url={})", url)
       throw new IllegalArgumentException(s"${url} is not supported.")
     }
   }
@@ -123,8 +134,11 @@ object DatabaseType {
 
   object BlockingPostgresDriver extends slick.jdbc.PostgresProfile with BlockingJdbcProfile {
     override def quoteIdentifier(id: String): String = {
+      logger.error(">>> Entering quoteIdentifier(id={})", id)
       val s = new StringBuilder(id.length + 4) append '"'
       for (c <- id) if (c == '"') s append "\"\"" else s append c.toLower
+      logger.warn("<<< Exiting quoteIdentifier(id={})", id)
+      logger.error("quoteIdentifier(id={}): s → {}", id, s)
       (s append '"').toString
     }
   }

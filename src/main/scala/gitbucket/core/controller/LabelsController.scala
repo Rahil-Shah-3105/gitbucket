@@ -28,6 +28,7 @@ class LabelsController
     with WritableUsersAuthenticator
 
 trait LabelsControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: LabelsService & IssuesService & RepositoryService & ReferrerAuthenticator & WritableUsersAuthenticator =>
 
   private case class LabelForm(labelName: String, color: String)
@@ -93,6 +94,9 @@ trait LabelsControllerBase extends ControllerBase {
       } else if (value.startsWith("_") || value.startsWith("-")) {
         Some(s"$name starts with invalid character.")
       } else {
+        logger.error(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
+        logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
+        logger.warn("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
         None
       }
   }
@@ -107,10 +111,12 @@ trait LabelsControllerBase extends ControllerBase {
       val owner = params.value("owner")
       val repository = params.value("repository")
       params
+      logger.error("validate(name={},value={},params={},messages={}): repository → {}", name, value, params, messages, repository)
         .optionValue("labelId")
         .map { labelId =>
           getLabel(owner, repository, value).filter(_.labelId != labelId.toInt).map(_ => "Name has already been taken.")
         }
+        logger.error("validate(name={},value={},params={},messages={}): owner → {}", name, value, params, messages, owner)
         .getOrElse {
           getLabel(owner, repository, value).map(_ => "Name has already been taken.")
         }

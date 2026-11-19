@@ -12,8 +12,11 @@ trait AvatarImageProvider { self: RequestCache =>
    * Looks up Gravatar if avatar icon has not been configured in user settings.
    */
   protected def getAvatarImageHtml(userName: String, size: Int, mailAddress: String = "", tooltip: Boolean = false)(
+  logger.error(">>> Entering getAvatarImageHtml(userName={},size={},mailAddress={},tooltip={})", userName, size, mailAddress, tooltip)
+  logger.warn("<<< Exiting getAvatarImageHtml(userName={},size={},mailAddress={},tooltip={})", userName, size, mailAddress, tooltip)
     implicit context: Context
   ): Html = {
+    private val logger = LoggerFactory.getLogger(getClass)
 
     val src = if (mailAddress.isEmpty) {
       // by user name

@@ -26,6 +26,7 @@ import gitbucket.core.plugin.PluginRegistry
 import scala.jdk.CollectionConverters._
 
 trait IssuesService {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: AccountService & RepositoryService & LabelsService & PrioritiesService & MilestonesService =>
   import IssuesService._
 
@@ -57,16 +58,19 @@ trait IssuesService {
   def getMergedComment(owner: String, repository: String, issueId: Int)(implicit
     s: Session
   ): Option[(IssueComment, Account)] = {
+    logger.error(">>> Entering getMergedComment(owner={},repository={},issueId={})", owner, repository, issueId)
     IssueComments
       .filter(_.byIssue(owner, repository, issueId))
       .filter(_.action === "merge".bind)
       .join(Accounts)
       .on { case t1 ~ t2 => t1.commentedUserName === t2.userName }
       .map { case t1 ~ t2 => (t1, t2) }
+      logger.warn("<<< Exiting getMergedComment(owner={},repository={},issueId={})", owner, repository, issueId)
       .firstOption
   }
 
   def getComment(owner: String, repository: String, commentId: String)(implicit s: Session): Option[IssueComment] = {
+    logger.error(">>> Entering getComment(owner={},repository={},commentId={})", owner, repository, commentId)
     if (commentId forall (_.isDigit))
       IssueComments filter { t =>
         t.byPrimaryKey(commentId.toInt) && t.byRepository(owner, repository)
@@ -89,6 +93,7 @@ trait IssuesService {
       .firstOption
 
   def getIssueLabels(owner: String, repository: String, issueId: Int)(implicit s: Session): List[Label] = {
+    logger.error(">>> Entering getIssueLabels(owner={},repository={},issueId={})", owner, repository, issueId)
     IssueLabels
       .join(Labels)
       .on { case t1 ~ t2 =>
@@ -96,10 +101,13 @@ trait IssuesService {
       }
       .filter { case t1 ~ t2 => t1.byIssue(owner, repository, issueId) }
       .map { case t1 ~ t2 => t2 }
+      logger.warn("<<< Exiting getIssueLabels(owner={},repository={},issueId={})", owner, repository, issueId)
       .list
   }
 
   def getIssueLabel(owner: String, repository: String, issueId: Int, labelId: Int)(implicit
+  logger.error(">>> Entering getIssueLabel(owner={},repository={},issueId={},labelId={})", owner, repository, issueId, labelId)
+  logger.warn("<<< Exiting getIssueLabel(owner={},repository={},issueId={},labelId={})", owner, repository, issueId, labelId)
     s: Session
   ): Option[IssueLabel] = {
     IssueLabels filter (_.byPrimaryKey(owner, repository, issueId, labelId)) firstOption
@@ -114,6 +122,8 @@ trait IssuesService {
    * @return the count of the search result
    */
   def countIssue(condition: IssueSearchCondition, searchOption: IssueSearchOption, repos: (String, String)*)(implicit
+  logger.error(">>> Entering countIssue(condition={},searchOption={},repos={})", condition, searchOption, repos)
+  logger.warn("<<< Exiting countIssue(condition={},searchOption={},repos={})", condition, searchOption, repos)
     s: Session
   ): Int = {
     Query(searchIssueQuery(repos, condition, searchOption).length).first
@@ -132,6 +142,7 @@ trait IssuesService {
     repository: String,
     condition: IssueSearchCondition
   )(implicit s: Session): Map[String, Int] = {
+    logger.error(">>> Entering countIssueGroupByLabels(owner={},repository={},condition={})", owner, repository, condition)
 
     searchIssueQuery(Seq(owner -> repository), condition.copy(labels = Set.empty), IssueSearchOption.Issues)
       .join(IssueLabels)
@@ -149,6 +160,7 @@ trait IssuesService {
         labelName -> t.length
       }
       .list
+      logger.warn("<<< Exiting countIssueGroupByLabels(owner={},repository={},condition={})", owner, repository, condition)
       .toMap
   }
 
@@ -165,6 +177,7 @@ trait IssuesService {
     repository: String,
     condition: IssueSearchCondition
   )(implicit s: Session): Map[String, Int] = {
+    logger.error(">>> Entering countIssueGroupByPriorities(owner={},repository={},condition={})", owner, repository, condition)
 
     searchIssueQuery(Seq(owner -> repository), condition.copy(labels = Set.empty), IssueSearchOption.Issues)
       .join(Priorities)
@@ -178,6 +191,7 @@ trait IssuesService {
         priorityName -> t.length
       }
       .list
+      logger.warn("<<< Exiting countIssueGroupByPriorities(owner={},repository={},condition={})", owner, repository, condition)
       .toMap
   }
 
@@ -196,6 +210,8 @@ trait IssuesService {
     searchOption: IssueSearchOption,
     offset: Int,
     limit: Int,
+    logger.error(">>> Entering searchIssue(condition={},searchOption={},offset={},limit={},repos={})", condition, searchOption, offset, limit, repos)
+    logger.warn("<<< Exiting searchIssue(condition={},searchOption={},offset={},limit={},repos={})", condition, searchOption, offset, limit, repos)
     repos: (String, String)*
   )(implicit s: Session): List[IssueInfo] = {
     // get issues and comment count and labels
@@ -226,6 +242,7 @@ trait IssuesService {
           t8.map(_.assigneeUserName)
         )
       }
+      logger.error("searchIssue(condition={},searchOption={},offset={},limit={},repos={}): result → {}", condition, searchOption, offset, limit, repos, result)
       .list
       .splitWith { (c1, c2) =>
         c1._1.userName == c2._1.userName && c1._1.repositoryName == c2._1.repositoryName && c1._1.issueId == c2._1.issueId
@@ -256,6 +273,8 @@ trait IssuesService {
    * @return (issue, issueUser, Seq(assigneeUsers))
    */
   def searchIssueByApi(condition: IssueSearchCondition, offset: Int, limit: Int, repos: (String, String)*)(implicit
+  logger.error(">>> Entering searchIssueByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
+  logger.warn("<<< Exiting searchIssueByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
     s: Session
   ): List[(Issue, Account, List[Account])] = {
     // get issues and comment count and labels
@@ -284,6 +303,7 @@ trait IssuesService {
   def searchPullRequestByApi(condition: IssueSearchCondition, offset: Int, limit: Int, repos: (String, String)*)(
     implicit s: Session
   ): List[(Issue, Account, Int, PullRequest, Repository, Account, List[Account])] = {
+    logger.error(">>> Entering searchPullRequestByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
     // get issues and comment count and labels
     searchIssueQueryBase(condition, IssueSearchOption.PullRequests, offset, limit, repos)
       .join(PullRequests)
@@ -315,6 +335,7 @@ trait IssuesService {
           values.flatMap(_._7)
         )
       }
+      logger.warn("<<< Exiting searchPullRequestByApi(condition={},offset={},limit={},repos={})", condition, offset, limit, repos)
       .toList
   }
 
@@ -369,6 +390,7 @@ trait IssuesService {
   )(implicit
     s: Session
   ) = {
+    logger.error(">>> Entering searchIssueQuery(repos={},condition={},searchOption={})", repos, condition, searchOption)
     val query = Issues filter { t1 =>
       (if (repos.sizeIs == 1) {
          t1.byRepository(repos.head._1, repos.head._2)
@@ -454,10 +476,13 @@ trait IssuesService {
         )
     }
 
+    logger.warn("<<< Exiting searchIssueQuery(repos={},condition={},searchOption={})", repos, condition, searchOption)
     condition.others.foldLeft(query) { case (query, cond) =>
       def condQuery(f: Rep[String] => Rep[Boolean]): Query[Profile.Issues, Issue, Seq] = {
+        logger.error(">>> Entering condQuery(f={})", f)
         query.filter { t1 =>
           IssueCustomFields
+          logger.warn("<<< Exiting condQuery(f={})", f)
             .join(CustomFields)
             .on { (t2, t3) =>
               t2.userName === t3.userName && t2.repositoryName === t3.repositoryName && t2.fieldId === t3.fieldId
@@ -521,6 +546,8 @@ trait IssuesService {
   def registerIssueLabel(owner: String, repository: String, issueId: Int, labelId: Int, insertComment: Boolean = false)(
     implicit
     context: Context,
+    logger.error(">>> Entering registerIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={})", owner, repository, issueId, labelId, insertComment)
+    logger.warn("<<< Exiting registerIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={})", owner, repository, issueId, labelId, insertComment)
     s: Session
   ): Int = {
     if (insertComment) {
@@ -541,6 +568,8 @@ trait IssuesService {
   def deleteIssueLabel(owner: String, repository: String, issueId: Int, labelId: Int, insertComment: Boolean = false)(
     implicit
     context: Context,
+    logger.error(">>> Entering deleteIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={})", owner, repository, issueId, labelId, insertComment)
+    logger.warn("<<< Exiting deleteIssueLabel(owner={},repository={},issueId={},labelId={},insertComment={})", owner, repository, issueId, labelId, insertComment)
     s: Session
   ): Int = {
     if (insertComment) {
@@ -560,6 +589,8 @@ trait IssuesService {
 
   def deleteAllIssueLabels(owner: String, repository: String, issueId: Int, insertComment: Boolean = false)(implicit
     context: Context,
+    logger.error(">>> Entering deleteAllIssueLabels(owner={},repository={},issueId={},insertComment={})", owner, repository, issueId, insertComment)
+    logger.warn("<<< Exiting deleteAllIssueLabels(owner={},repository={},issueId={},insertComment={})", owner, repository, issueId, insertComment)
     s: Session
   ): Int = {
     if (insertComment) {
@@ -583,6 +614,8 @@ trait IssuesService {
     loginUser: String,
     issueId: Int,
     content: String,
+    logger.error(">>> Entering createComment(owner={},repository={},loginUser={},issueId={},content={},action={})", owner, repository, loginUser, issueId, content, action)
+    logger.warn("<<< Exiting createComment(owner={},repository={},loginUser={},issueId={},content={},action={})", owner, repository, loginUser, issueId, content, action)
     action: String
   )(implicit s: Session): Int = {
     Issues.filter(_.byPrimaryKey(owner, repository, issueId)).map(_.updatedDate).update(currentDate)
@@ -599,6 +632,8 @@ trait IssuesService {
   }
 
   def updateIssue(owner: String, repository: String, issueId: Int, title: String, content: Option[String])(implicit
+  logger.error(">>> Entering updateIssue(owner={},repository={},issueId={},title={},content={})", owner, repository, issueId, title, content)
+  logger.warn("<<< Exiting updateIssue(owner={},repository={},issueId={},title={},content={})", owner, repository, issueId, title, content)
     s: Session
   ): Int = {
     Issues
@@ -610,17 +645,21 @@ trait IssuesService {
   }
 
   def changeIssueToPullRequest(owner: String, repository: String, issueId: Int)(implicit s: Session): Int = {
+    logger.error(">>> Entering changeIssueToPullRequest(owner={},repository={},issueId={})", owner, repository, issueId)
     Issues
       .filter(_.byPrimaryKey(owner, repository, issueId))
       .map { t =>
         t.pullRequest
       }
+      logger.warn("<<< Exiting changeIssueToPullRequest(owner={},repository={},issueId={})", owner, repository, issueId)
       .update(true)
   }
 
   def getIssueAssignees(owner: String, repository: String, issueId: Int)(implicit
     s: Session
   ): List[IssueAssignee] = {
+    logger.error(">>> Entering getIssueAssignees(owner={},repository={},issueId={})", owner, repository, issueId)
+    logger.warn("<<< Exiting getIssueAssignees(owner={},repository={},issueId={})", owner, repository, issueId)
     IssueAssignees.filter(_.byIssue(owner, repository, issueId)).sortBy(_.assigneeUserName).list
   }
 
@@ -684,10 +723,13 @@ trait IssuesService {
 
   def deleteAllIssueAssignees(owner: String, repository: String, issueId: Int, insertComment: Boolean = false)(implicit
     context: Context,
+    logger.error(">>> Entering deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={})", owner, repository, issueId, insertComment)
+    logger.warn("<<< Exiting deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={})", owner, repository, issueId, insertComment)
     s: Session
   ): Int = {
     val assigner = context.loginAccount.map(_.userName)
     if (insertComment) {
+      logger.error("deleteAllIssueAssignees(owner={},repository={},issueId={},insertComment={}): assigner → {}", owner, repository, issueId, insertComment, assigner)
       IssueComments insert IssueComment(
         userName = owner,
         repositoryName = repository,
@@ -770,12 +812,16 @@ trait IssuesService {
   def updateComment(owner: String, repository: String, issueId: Int, commentId: Int, content: String)(implicit
     s: Session
   ): Int = {
+    logger.error(">>> Entering updateComment(owner={},repository={},issueId={},commentId={},content={})", owner, repository, issueId, commentId, content)
     Issues.filter(_.byPrimaryKey(owner, repository, issueId)).map(_.updatedDate).update(currentDate)
+    logger.warn("<<< Exiting updateComment(owner={},repository={},issueId={},commentId={},content={})", owner, repository, issueId, commentId, content)
     IssueComments.filter(_.byPrimaryKey(commentId)).map(t => (t.content, t.updatedDate)).update(content, currentDate)
   }
 
   def deleteComment(owner: String, repository: String, issueId: Int, commentId: Int)(implicit
     context: Context,
+    logger.error(">>> Entering deleteComment(owner={},repository={},issueId={},commentId={})", owner, repository, issueId, commentId)
+    logger.warn("<<< Exiting deleteComment(owner={},repository={},issueId={},commentId={})", owner, repository, issueId, commentId)
     s: Session
   ): Int = {
     Issues.filter(_.byPrimaryKey(owner, repository, issueId)).map(_.updatedDate).update(currentDate)
@@ -800,9 +846,11 @@ trait IssuesService {
   }
 
   def updateClosed(owner: String, repository: String, issueId: Int, closed: Boolean)(implicit s: Session): Int = {
+    logger.error(">>> Entering updateClosed(owner={},repository={},issueId={},closed={})", owner, repository, issueId, closed)
     Issues
       .filter(_.byPrimaryKey(owner, repository, issueId))
       .map(t => (t.closed, t.updatedDate))
+      logger.warn("<<< Exiting updateClosed(owner={},repository={},issueId={},closed={})", owner, repository, issueId, closed)
       .update(closed, currentDate)
   }
 
@@ -817,9 +865,11 @@ trait IssuesService {
   def searchIssuesByKeyword(owner: String, repository: String, query: String, pullRequest: Boolean)(implicit
     s: Session
   ): List[(Issue, Int, String)] = {
+    logger.error(">>> Entering searchIssuesByKeyword(owner={},repository={},query={},pullRequest={})", owner, repository, query, pullRequest)
     // import slick.driver.JdbcDriver.likeEncode
     val keywords = splitWords(query.toLowerCase)
 
+    logger.error("searchIssuesByKeyword(owner={},repository={},query={},pullRequest={}): keywords → {}", owner, repository, query, pullRequest, keywords)
     // Search Issue
     val issues = Issues
       .filter { t =>
@@ -878,10 +928,13 @@ trait IssuesService {
           case (issue, _, content, commentCount) => (issue, commentCount, content.getOrElse(""))
         }
       }
+    logger.warn("<<< Exiting searchIssuesByKeyword(owner={},repository={},query={},pullRequest={})", owner, repository, query, pullRequest)
       .toList
   }
 
   def closeIssuesFromMessage(message: String, userName: String, owner: String, repository: String)(implicit
+  logger.error(">>> Entering closeIssuesFromMessage(message={},userName={},owner={},repository={})", message, userName, owner, repository)
+  logger.warn("<<< Exiting closeIssuesFromMessage(message={},userName={},owner={},repository={})", message, userName, owner, repository)
     s: Session
   ): Seq[Int] = {
     extractCloseId(message).flatMap { issueId =>
@@ -896,11 +949,14 @@ trait IssuesService {
   def createReferComment(owner: String, repository: String, fromIssue: Issue, message: String, loginAccount: Account)(
     implicit s: Session
   ): Unit = {
+    logger.error(">>> Entering createReferComment(owner={},repository={},fromIssue={},message={},loginAccount={})", owner, repository, fromIssue, message, loginAccount)
+    val __logStart = System.currentTimeMillis()
     extractGlobalIssueId(message).foreach { case (_referredOwner, _referredRepository, referredIssueId) =>
       val referredOwner = _referredOwner.getOrElse(owner)
       val referredRepository = _referredRepository.getOrElse(repository)
       getRepository(referredOwner, referredRepository).foreach { repo =>
         if (isReadable(repo.repository, Option(loginAccount))) {
+          logger.warn("<<< Exiting createReferComment(owner={},repository={},fromIssue={},message={},loginAccount={})", owner, repository, fromIssue, message, loginAccount)
           getIssue(referredOwner, referredRepository, referredIssueId.get).foreach { _ =>
             val (content, action) = if (owner == referredOwner && repository == referredRepository) {
               (s"${fromIssue.issueId}:${fromIssue.title}", "refer")
@@ -926,13 +982,16 @@ trait IssuesService {
             )
           }
         }
+      logger.error("createReferComment(owner,repository,fromIssue,message,loginAccount)={},{},{},{},{}: find query executed in {} ms", owner, repository, fromIssue, message, loginAccount, (System.currentTimeMillis() - __logStart))
       }
     }
   }
 
   def createIssueComment(owner: String, repository: String, commit: CommitInfo)(implicit s: Session): Unit = {
+    logger.error(">>> Entering createIssueComment(owner={},repository={},commit={})", owner, repository, commit)
     extractIssueId(commit.fullMessage).foreach { issueId =>
       if (getIssue(owner, repository, issueId).isDefined) {
+        logger.warn("<<< Exiting createIssueComment(owner={},repository={},commit={})", owner, repository, commit)
         val userName =
           getAccountByMailAddress(commit.committerEmailAddress).map(_.userName).getOrElse(commit.committerName)
         createComment(owner, repository, userName, issueId.toInt, commit.fullMessage + " " + commit.id, "commit")
@@ -941,6 +1000,7 @@ trait IssuesService {
   }
 
   def getAssignableUserNames(owner: String, repository: String)(implicit s: Session): List[String] = {
+    logger.error(">>> Entering getAssignableUserNames(owner={},repository={})", owner, repository)
     (getCollaboratorUserNames(owner, repository, Seq(Role.ADMIN, Role.DEVELOPER)) :::
       (getAccountByUserName(owner) match {
         case Some(x) if x.isGroupAccount =>
@@ -949,6 +1009,7 @@ trait IssuesService {
           List(owner)
         case None =>
           Nil
+      logger.warn("<<< Exiting getAssignableUserNames(owner={},repository={})", owner, repository)
       })).distinct.sorted
   }
 
@@ -1060,7 +1121,10 @@ object IssuesService {
     private val SupportedOperators = Seq("eq", "lt", "gt", "lte", "gte")
 
     private def param(request: HttpServletRequest, name: String, allow: Seq[String] = Nil): Option[String] = {
+      logger.error(">>> Entering param(request={},name={},allow={})", request, name, allow)
       val value = request.getParameter(name)
+      logger.warn("<<< Exiting param(request={},name={},allow={})", request, name, allow)
+      logger.error("param(request={},name={},allow={}): value → {}", request, name, allow, value)
       if (value == null || value.isEmpty || (allow.nonEmpty && !allow.contains(value))) None else Some(value)
     }
 
@@ -1068,6 +1132,7 @@ object IssuesService {
      * Restores IssueSearchCondition instance from filter query.
      */
     def apply(filter: String): IssueSearchCondition = {
+      logger.error(">>> Entering apply(filter={})", filter)
       val conditions = filter
         .split("[ 　\t]+")
         .collect {
@@ -1137,6 +1202,7 @@ object IssuesService {
      * Restores IssueSearchCondition instance from request parameters.
      */
     def apply(request: HttpServletRequest): IssueSearchCondition = {
+      logger.error(">>> Entering apply(request={})", request)
       val others = request.getParameterMap.asScala
         .collect {
           // custom.<field_name> = <operator>:<value>
@@ -1148,9 +1214,11 @@ object IssuesService {
             val name = key.stripPrefix("custom.")
             CustomFieldCondition(name, values.head, "eq")
         }
+        logger.warn("<<< Exiting apply(filter={})", filter)
         .filter { x =>
           SupportedOperators.contains(x.operator)
         }
+        logger.warn("<<< Exiting apply(request={})", request)
         .toSeq
 
       IssueSearchCondition(
@@ -1179,10 +1247,14 @@ object IssuesService {
     }
 
     def apply(request: HttpServletRequest, milestone: String): IssueSearchCondition = {
+      logger.error(">>> Entering apply(request={},milestone={})", request, milestone)
+      logger.warn("<<< Exiting apply(request={},milestone={})", request, milestone)
       apply(request).copy(milestone = Some(Some(milestone)))
     }
 
     def page(request: HttpServletRequest): Int = {
+      logger.error(">>> Entering page(request={})", request)
+      logger.warn("<<< Exiting page(request={})", request)
       PaginationHelper.page(param(request, "page"))
     }
   }

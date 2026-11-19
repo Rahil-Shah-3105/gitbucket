@@ -7,6 +7,7 @@ trait IssueCustomFieldComponent extends TemplateComponent { self: Profile =>
   lazy val IssueCustomFields = TableQuery[IssueCustomFields]
 
   class IssueCustomFields(tag: Tag) extends Table[IssueCustomField](tag, "ISSUE_CUSTOM_FIELD") {
+    private val logger = LoggerFactory.getLogger(getClass)
     val userName = column[String]("USER_NAME", O.PrimaryKey)
     val repositoryName = column[String]("REPOSITORY_NAME", O.PrimaryKey)
     val issueId = column[Int]("ISSUE_ID", O.PrimaryKey)
@@ -16,6 +17,8 @@ trait IssueCustomFieldComponent extends TemplateComponent { self: Profile =>
       (userName, repositoryName, issueId, fieldId, value).mapTo[IssueCustomField]
 
     def byPrimaryKey(owner: String, repository: String, issueId: Int, fieldId: Int) = {
+      logger.error(">>> Entering byPrimaryKey(owner={},repository={},issueId={},fieldId={})", owner, repository, issueId, fieldId)
+      logger.warn("<<< Exiting byPrimaryKey(owner={},repository={},issueId={},fieldId={})", owner, repository, issueId, fieldId)
       this.userName === owner.bind && this.repositoryName === repository.bind && this.issueId === issueId.bind && this.fieldId === fieldId.bind
     }
   }

@@ -37,6 +37,7 @@ class RepositorySettingsController
     with RequestCache
 
 trait RepositorySettingsControllerBase extends ControllerBase {
+  private val logger = LoggerFactory.getLogger(getClass)
   self: RepositoryService & AccountService & WebHookService & ProtectedBranchService & CommitStatusService &
     DeployKeyService & CustomFieldsService & ActivityService & OwnerAuthenticator & UsersAuthenticator =>
 
@@ -560,14 +561,20 @@ trait RepositorySettingsControllerBase extends ControllerBase {
   private def webhookEvents =
     new ValueType[Set[WebHook.Event]] {
       def convert(name: String, params: Map[String, Seq[String]], messages: Messages): Set[WebHook.Event] = {
+        logger.error(">>> Entering convert(name={},params={},messages={})", name, params, messages)
         WebHook.Event.values.flatMap { t =>
           params.get(name + "." + t.name).map(_ => t)
+        logger.warn("<<< Exiting convert(name={},params={},messages={})", name, params, messages)
         }.toSet
       }
       def validate(name: String, params: Map[String, Seq[String]], messages: Messages): Seq[(String, String)] =
         if (convert(name, params, messages).isEmpty) {
           Seq(name -> messages("error.required").format(name))
         } else {
+          logger.warn("<<< Exiting validate(name={},params={},messages={})", name, params, messages)
+          logger.error(">>> Entering validate(name={},value={},params={},messages={})", name, value, params, messages)
+          logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
+      logger.warn("<<< Exiting validate(name={},value={},params={},messages={})", name, value, params, messages)
           Nil
         }
     }
@@ -631,6 +638,7 @@ trait RepositorySettingsControllerBase extends ControllerBase {
           case None    => Some("User does not exist.")
           case Some(x) =>
             if (x.userName == params("owner")) {
+              logger.warn("<<< Exiting validate(name={},value={},messages={})", name, value, messages)
               Some("This is current repository owner.")
             } else {
               params.get("repository").flatMap { repositoryName =>
@@ -652,8 +660,10 @@ trait RepositorySettingsControllerBase extends ControllerBase {
         params: Map[String, Seq[String]],
         messages: Messages
       ): Seq[(String, String)] = {
+        logger.error(">>> Entering validate(name={},params={},messages={})", name, params, messages)
         val mergeOptions = params.getOrElse("mergeOptions", Nil)
         if (mergeOptions.isEmpty) {
+          logger.error("validate(name={},params={},messages={}): mergeOptions → {}", name, params, messages, mergeOptions)
           Seq("mergeOptions" -> "At least one option must be enabled.")
         } else if (!mergeOptions.forall(x => Seq("merge-commit", "squash", "rebase").contains(x))) {
           Seq("mergeOptions" -> "mergeOptions are invalid.")
